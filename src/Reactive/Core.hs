@@ -1,4 +1,3 @@
-{-# LANGUAGE ExistentialQuantification, MultiParamTypeClasses, FlexibleInstances #-}
 {-----------------------------------------------------------------------------
     Reactive Banana
 
@@ -173,6 +172,10 @@ union :: Event a -> Event a -> Event a
 union e1 e2 = mkEvent addHandler'
     where addHandler' g = addHandler e1 g >> addHandler e2 g
     
+    -- monoid instance for merging events
+instance Monoid (Event a) where
+    mpempty = never
+    mappend = union
 
     -- merge two event streams of different types
 merge :: Event a -> Event b -> Event (Either a b)
@@ -292,7 +295,7 @@ mapAccum :: (acc -> x -> (acc,y)) -> acc -> Event x -> (Behavior acc, Event y)
 mapAccum f acc xs =
     (fmap fst result, fmap snd $ changes result)
     where
-    result = accumulate (\(acc,_) x -> f acc x) (acc,undefined) xs
+    result = accumulate' (\(acc,_) x -> f acc x) (acc,undefined) xs
 
     -- very important primitive function:
     -- apply a time-varying functions to events as they come in
@@ -302,38 +305,6 @@ apply bf ex =
     where
     go _ (Left  f) = (f, Keep)
     go f (Right x) = (f, Change $ f x)
-
-{-----------------------------------------------------------------------------
-    Name overloading
-------------------------------------------------------------------------------}
-{-
-    Question: Should all the  map  functions get the same name?
-        I tend to say yes, and the same goes for accumulate.
-        Adding the  Change  part to the map functions makes it
-        kind of like filter, and thus different from lists,
-        but I think the similarity to  accumulate  justifies that.
-
--}
-
-    -- convenient type class for automatically
-    -- selecting the right accumulation function by type
-class Accumulate b t where
-    accumulate :: (b -> a -> t) -> b -> Event a -> Behavior b
-    map        :: (a -> t) -> Event a -> Event b
-
-instance Accumulate b b where
-    accumulate = accumulate'
-    map        = fmap
-instance Accumulate b (Change b) where
-    accumulate = accumulateChange
-    map        = mapChange
-instance Accumulate b (IO b) where
-    accumulate = accumulateIO
-    map        = mapIO
-instance Accumulate b (IO (Change b)) where
-    accumulate = accumulateIOChange
-    map        = mapIOChange
-
 
 {-----------------------------------------------------------------------------
     Test examples
