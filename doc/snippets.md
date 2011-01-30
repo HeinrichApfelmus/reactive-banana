@@ -1,9 +1,11 @@
-=== Note on GUIs and FRP ===
+Note on GUIs and FRP
+====================
 
 First, note that the `Blackboard` application is not making much use of `wxHaskell`, I'm even drawing my own controls. That is probably kind of disappointing, since other FRP approaches Yampa can do the same thing. However, my FRP approach is very flexible and it is absolutely no problem to hook it up to `wxHaskell` or `Gtk2hs`, I'm just not making use of that in my application.
 
 
-=== Short overview of the FRP library ===
+Short overview of the FRP library
+=================================
 
 The key data types are `Event a` and `Behavior a`. The former represents a series of events that carry a value of type  a , the latter represents a value of type  a  that varies in time. You can *think* of them as
 
@@ -37,7 +39,8 @@ Despite this similarity, they are quite distinct. The core functionality is give
 Note that `apply` and `(<*>)` have similar types, but different semantics! In the case of `apply`, changes in the first argument do not trigger events in the result.
 
 
-=== A programming pattern for merging events ===
+A programming pattern for merging events
+========================================
 
 Often, a behavior depends on different events which have to be merged. For instance, ... . One could make a new data type that is a disjoint union of the different event types, like
 
