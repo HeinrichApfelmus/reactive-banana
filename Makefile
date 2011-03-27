@@ -1,4 +1,4 @@
-OBJ=obj
+OBJ=dist/build
 COMPILE=ghc --make -outputdir $(OBJ) -i$(OBJ) -L$(OBJ) -isrc
 
 GUITest : src/GUITest.hs src/GUI.hs

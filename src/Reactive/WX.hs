@@ -10,7 +10,6 @@
 module Reactive.WX where
 
 import Reactive.Core
-import Graphics as WX
 import qualified Graphics.UI.WX as WX
 
 {-----------------------------------------------------------------------------
@@ -21,15 +20,15 @@ import qualified Graphics.UI.WX as WX
 
     -- event with exactly one parameter
 event1 :: w -> WX.Event w (a -> IO ()) -> Event a
-event1 widget e = fromSource $ EventSource
-    { getHandlerS = WX.get widget (WX.on e)
-    , setHandlerS = \h -> WX.set widget [WX.on e := h] }
+event1 widget e = fromEventSource $ EventSource
+    { getEventHandler = WX.get widget (WX.on e)
+    , setEventHandler = \h -> WX.set widget [WX.on e WX.:= h] }
 
     -- event without parameters
 event0 :: w -> WX.Event w (IO ()) -> Event ()
-event0 widget e = fromSource $ EventSource
-    { getHandlerS = (\m -> \() -> m) `fmap` WX.get widget (WX.on e)
-    , setHandlerS = \h -> WX.set widget [WX.on e := h ()] }
+event0 widget e = fromEventSource $ EventSource
+    { getEventHandler = (\m -> \() -> m) `fmap` WX.get widget (WX.on e)
+    , setEventHandler = \h -> WX.set widget [WX.on e WX.:= h ()] }
 
     -- "animate" a proper by passing an event to it
 data Prop' w = forall a. (WX.Attr w a) :== Behavior a

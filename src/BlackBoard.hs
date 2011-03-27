@@ -11,14 +11,16 @@ import Data.Monoid
 import Data.List
 import Debug.Trace
 import System.FilePath
+import Data.Functor
 
 -- import EnableGUI
 import qualified Graphics.UI.WX as WX
 
-import Graphics
-import Reactive hiding (map, filter)
+import Graphics as G
+import Reactive hiding (filter)
 import qualified Reactive as R
 import Reactive.GraphicOpt
+import Reactive.WX
 import ToolPickers
 import TextBox
 import Controls
@@ -78,12 +80,12 @@ main = runGUI $ do
         ]
     -}
             
-        -- events for drawing
+    -- events for drawing
     let
         emouse    = event1 w mouse
         ekeyboard = event1 w keyboard
     
-        -- the slides to draw on
+    -- the slides to draw on
     (slides, slideSwitches, slideControls) <- prepareSlides emouse
     
     let
@@ -97,29 +99,57 @@ main = runGUI $ do
         
         -- controls as they are displayed
         -- FIXME: Wouldn't work for pure images!
+        --       later: because??
         controls       = overTT textOverImage $
                          overTT picker $ overTT slideControls $ background
-        controlUpdates = updateToPaint `fmap` updates
+        controlUpdates = updateToPaint <$> updates
             where TimeGraphic _ updates = controls
         
         updateToPaint (g,r) = g r `over` erase r
         erase r = black `mask` fill (rectangle r)
         
         -- text box
-        text   = textBox ekeyboard emouse
+        text :: TimeGraphic
+        text   = textBox ekeyboard emouse ("" <$ afterTextLocked)
         
         -- time-varying image
         image :: Behavior GraphicOpt
-        image = fmap displayCurrentSlide slides
+        image = displayCurrentSlide <$> slides
         
         -- image updates with text on top
         textOverImage = overTB (overTT text dummy) image
-        -- dummy forces graphics updates when slides are switches
-        dummy = TimeGraphic (const empty) $
-                    fmap (\_ -> (const empty,canvasBox)) $ slideSwitches
+        -- dummy forces graphics updates when slides are switched
+        dummy = TimeGraphic (const G.empty) $
+                    (const G.empty,canvasBox) <$
+                        (traceEvent "dummy " $ () <$ changes slides)
 
 
+        toolSwitches = never
+
+        -- draw text on image
+        -- events that indicate when the text should be locked
+        -- and drawn into the image
+        -- FIXME: doesn't work well with slide switches due to simultaneous
+        --        occurrence. Until we can control for that, only
+        --        react to tool switches, where the problem doesn't happen.
+        (beforeTextLocked, afterTextLocked) = orderedDuplicate $
+            slideSwitches `R.union` toolSwitches
+        
+        -- contents of the text box as a graphic
+        -- assumption: the graphic updates are always the full things
+        textGraphic = behavior G.empty $ (\(g,_) -> g canvasBox) <$> gs
+            where TimeGraphic _ gs = text
+        -- text box has to be drawn
+        textDrawings = ((\g s () -> paintOnSlide g s >> return ())
+            <$> textGraphic <*> slides)
+            `apply` beforeTextLocked
+
+
+    
     -- draw on image
+    -- FIXME: order of drawing operations matters!
+    --        the text should be drawn *before* the slide is switched...
+    reactimate $ textDrawings
     -- FIXME: coordinates on screen do not coincide with coordinates
     --        on the bitmap! Need to offset!
     reactimate $ fmap (\s g -> paintOnSlide g s >> return ()) slides
@@ -131,7 +161,7 @@ main = runGUI $ do
     overpaint (g windowRect) (screen w)
     
     -- reactimate the drawing operations
-    reactimate $ (\g -> overpaint g (screen w)) `fmap` overpaints
+    reactimate $ (\g -> overpaint g (screen w)) <$> overpaints
     -- reactimate $ const (repaint w) `fmap` drawings
 
     where
@@ -157,11 +187,11 @@ fileTypes = [("Blackboard project files",["*.*"])]
 windowSize = sz 750 500
 windowRect = rect (pt 0 0) windowSize
 
-    -- box containing the drawing surface
+-- box containing the drawing surface
 canvasSize = sz 600 400
 canvasBox  = rect (pt 10 10) canvasSize
 
-    -- background image for the user interface
+-- background image for the user interface
 background :: TimeGraphic
 background = TimeGraphic
     (withinBox box . mask white . stroke . rectangle $ box)
@@ -173,22 +203,22 @@ background = TimeGraphic
 ------------------------------------------------------------------------------}
 type MouseDrawState = [Point]
 
-mouseDrag :: MouseDrawState -> EventMouse -> Change MouseDrawState
-mouseDrag []      (MouseLeftDown new _) = Change [new]
-mouseDrag (old:_) (MouseLeftDrag new _) = Change [new,old]
-mouseDrag _       (MouseLeftUp   _   _) = Change []
-mouseDrag s       _                     = Keep
+mouseDrag :: EventMouse -> MouseDrawState -> Change MouseDrawState
+mouseDrag (MouseLeftDown new _) []      = Change [new]
+mouseDrag (MouseLeftDrag new _) (old:_) = Change [new,old]
+mouseDrag (MouseLeftUp   _   _) _       = Change []
+mouseDrag _                     s       = Keep
 
 -- myPen = [color := white, penJoin := JoinBevel, penWidth := 2]
 
 drawMouseState :: Color -> MouseDrawState -> Graphic
-drawMouseState c []          = empty
-drawMouseState c [pos]       = empty      -- circle pos 1
+drawMouseState c []          = G.empty
+drawMouseState c [pos]       = G.empty      -- circle pos 1
 drawMouseState c [pos1,pos2] = mask c .
                              -- fill $ circle pos1 1
                              stroke $ line pos1 pos2
 
-    -- strokes created by the mouse movements
+-- strokes created by the mouse movements
 drawMouse :: Behavior Color -> Event EventMouse -> Event Overpaint
 drawMouse color emouse = id
     . apply (drawMouseState `fmap` color)       -- stroke state changes
@@ -218,27 +248,27 @@ type Slides = (Index, M.Map Index Image)
 
 emptySlides = (0,M.empty)
 
-    -- create a new slide for perusal
+-- create a new slide for perusal
 newSlide :: Slides -> IO Slides
 newSlide (_,slides) = do
     image <- newImage canvasSize
     let focus = M.size slides
     return $ (focus, M.insert focus image slides)
 
-    -- paint a graphic on a slide
+-- paint a graphic on a slide
 paintOnSlide :: Overpaint -> Slides -> IO Slides
 paintOnSlide g s@(focus, slides) = do
     overpaint g (slides M.! focus)
     return s
 
-    -- draw the current slide
+-- draw the current slide
 displayCurrentSlide :: Slides -> GraphicOpt
 displayCurrentSlide (focus, slides) = 
     withinBox r $ mask (slides M.! focus `at` (pt 0 0)) r
     where r = canvasBox
 
 
-    -- create the slides and controls used to change the current slide
+-- create the slides and controls used to change the current slide
 prepareSlides :: Event EventMouse
                -> Prepare (Behavior Slides, Event (), TimeGraphic)
 prepareSlides emouse = do
@@ -268,13 +298,16 @@ prepareSlides emouse = do
         lift   f = fmap (\() -> return . f)
         liftIO f = fmap (\() -> f)
     
-        slides = accumulate (flip id) slide0
+        slides = accumulate ($) slide0
                 . foldr1 R.union
                 $ [lift up eup, lift down edown, liftIO plus eplus]
         
+        -- We want slidesSwitches events happen *before* the slides are drawn.
+        (slideChanges1, slideChanges2) = orderedDuplicate $ changes slides
+        slides' = behavior slide0 slideChanges2
         -- records when a slide is switched, as opposed to only being drawn upon
-        slideSwitches = fmap (const ()) $ changes slides
+        slideSwitches = () <$ slideChanges1
         
-    return (slides, slideSwitches, g)
+    return (slides', slideSwitches, g)
     
 

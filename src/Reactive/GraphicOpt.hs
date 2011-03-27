@@ -11,7 +11,7 @@
 
 module Reactive.GraphicOpt where
 
-import Graphics
+import Graphics as G
 import Reactive
 
 {-----------------------------------------------------------------------------
@@ -34,7 +34,7 @@ type GraphicOpt  = Rect -> Graphic
     --        is drawn! Otherwise, havoc will happen. Need clipping path!
 withinBox :: Rect -> Graphic -> GraphicOpt
 withinBox r g = \r' ->
-    if isEmpty (r `intersect` r') then empty else g
+    if isEmpty (r `intersect` r') then G.empty else g
 
     -- overlay optimized graphics
 overOpt :: GraphicOpt -> GraphicOpt -> GraphicOpt
@@ -55,7 +55,7 @@ overUpdate g1 (g2,r) = (g1 `overOpt` g2, r)
 updateToPaint :: GraphicUpdate -> Overpaint
 updateToPaint (g,r) = g r `over` erase r
     where
-    erase r = empty -- how to erase depends pretty much on the window...
+    erase r = G.empty -- how to erase depends pretty much on the window...
 
 {-----------------------------------------------------------------------------
     Time varying graphics

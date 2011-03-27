@@ -8,20 +8,20 @@ module TextBox (textBox) where
 
 import Data.Monoid
 
-import Graphics
-import Reactive hiding (map)
+import Graphics as G
+import Reactive
 import Reactive.GraphicOpt
 
 {-----------------------------------------------------------------------------
     Exported Funciton
 ------------------------------------------------------------------------------}
     -- tne text box
-textBox :: Event EventKey -> Event EventMouse -> TimeGraphic
-textBox ekeyboard emouse = TimeGraphic (const empty) $ id
+textBox :: Event EventKey -> Event EventMouse -> Event String -> TimeGraphic
+textBox ekeyboard emouse estring = TimeGraphic (const G.empty) $ id
     . fmap toGraphic
     . changes
-    . accumulate keypress (initialTextBox { position = position })
-    $ ekeyboard
+    . accumulate ($) (initialTextBox { position = position })
+    $ (fmap keypress ekeyboard `union` fmap setText estring)
     where
     toGraphic textbox = (withinBox rect (draw textbox), rect)
         where rect = boundingRect textbox
@@ -75,7 +75,7 @@ boundingRect :: TextBox -> Rect
 boundingRect t = rect (position t) size
     where
     text = lines $ contents t
-    size = sz (dx * (maximum (map length text) + 1)) (dy * (length text + 1))
+    size = sz (dx * (maximum (0:map length text) + 1)) (dy * (length text + 1))
 
 dx = 10
 dy = 14
@@ -92,9 +92,13 @@ positions t = result
         | (x,c   ) <- zip [0..] line]
         | (y,line) <- zip [0..] text]
 
+    -- set the whole text at once 
+setText :: String -> TextBox -> Change TextBox
+setText s t = Change $ initialTextBox { contents = s }
+
     -- adjust the text box depending on which key was pressed
-keypress :: TextBox -> EventKey -> Change TextBox
-keypress t (EventKey key modifiers point) =
+keypress :: EventKey -> TextBox -> Change TextBox
+keypress (EventKey key modifiers point) t =
     case key of
         KeyChar c -> Change $ t { contents = char c   , cursor = k+1 }
         KeySpace  -> Change $ t { contents = char ' ' , cursor = k+1 }

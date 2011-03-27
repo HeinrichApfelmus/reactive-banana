@@ -9,7 +9,7 @@ module ToolPickers where
 import Data.Monoid
 
 import Graphics
-import Reactive hiding (map)
+import Reactive
 import Reactive.GraphicOpt
 
 {-----------------------------------------------------------------------------
@@ -30,7 +30,7 @@ colorPicker colors position mouse = (behaveColor, picture)
     behaveColor  = accumulate clickPick initialColor mouse
     initialColor = head colors
     
-    clickPick _ (MouseLeftDown point _) = pick colorBoxes point
+    clickPick (MouseLeftDown point _) _ = pick colorBoxes point
     clickPick _ _ = Keep
 
     -- draw the color Picker

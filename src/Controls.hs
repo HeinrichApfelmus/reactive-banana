@@ -9,7 +9,7 @@ module Controls where
 import Data.Monoid
 
 import Graphics
-import Reactive hiding (map)
+import Reactive
 import qualified Reactive as R
 import Reactive.GraphicOpt
 
