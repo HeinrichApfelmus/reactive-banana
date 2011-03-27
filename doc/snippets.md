@@ -66,5 +66,20 @@ Then, you can simply accumulate the behavior as
 In a sense, this is the Church-encoding of the dummy type.
 
 
+**NOTE:** I think it's best to change the type of accumulate, so we can simply write
+
+    accumulate ($) 0 handlers
+
+This way, it's easier to change from an explicit
+
+    accumulate handleCharacter echars
+
+to a more general
+
+    let handlers = fmap handleCharacter echars
+    accumulate ($) 0 handlers
+
+without having to flip arguments and thelike.
+
 
 

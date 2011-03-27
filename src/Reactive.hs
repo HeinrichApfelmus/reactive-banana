@@ -5,11 +5,11 @@
 ------------------------------------------------------------------------------}
 
 module Reactive (
+    module Control.Applicative,
     module Reactive.Core,
     module Reactive.Classes,
-    module Reactive.WX
     ) where
 
+import Control.Applicative
 import Reactive.Core
 import Reactive.Classes
-import Reactive.WX

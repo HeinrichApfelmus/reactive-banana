@@ -1,0 +1,52 @@
+Name:                reactive-banana
+Version:             0.1.0.0
+Synopsis:            Small but flexible
+                     functional reactive programming (FRP) library.
+Description:         
+    A small but flexible library for functional reactive programming (FRP).
+    .
+    The main selling point of this library is that it
+    can be hooked into /any/ existing event-based framework.
+    In a sense, @reactive-banana@ is a fresh way to think
+    about callback functions.
+    .
+    Bored of writing imperative GUIs? Write some parts with FRP!
+    Don't know how to express something with FRP?
+    Switch back to imperative code!
+    .
+    In the spectrum of possible FRP implementations,
+    this one features simple semantics but little expressivity.
+    Predicting space & time usage should be easy.
+Homepage:            https://github.com/HeinrichApfelmus/reactive-banana
+License:             BSD3
+License-file:        LICENSE
+Author:              Heinrich Apfelmus
+Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
+Stability:           Experimental
+
+
+Category:            FRP
+Build-type:          Simple
+
+-- Extra files to be distributed with the package, such as examples or
+-- a README.
+-- Extra-source-files:  
+
+-- Constraint on the version of Cabal needed to build this package.
+Cabal-version:       >=1.6
+
+
+Library
+    hs-source-dirs:     src
+    extensions:         MultiParamTypeClasses, FlexibleInstances
+    build-depends:      base == 4.2.*
+    exposed-modules:    Reactive, Reactive.Classes, Reactive.Core
+
+    -- Packages needed in order to build this package.
+    -- Build-depends:       
+    
+    -- Modules not exported by this package.
+    -- other-modules:     Reactive.Snippets
+    
+    -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
+    -- Build-tools:         
