@@ -22,6 +22,13 @@ Build-type:          Simple
 Cabal-version:       >=1.2
 
 
+Library
+    hs-source-dirs:  src
+    build-depends:   base==4.2.*, reactive-banana==0.1.*,
+                     wx==0.12.*, wxcore==0.12.*
+    extensions:      ExistentialQuantification
+    exposed-modules: Reactive.WX
+
 Executable Counter
     hs-source-dirs:  src
     main-is:         Counter.hs

@@ -11,7 +11,7 @@ COMPILE=ghc --make -outputdir $(OBJ) -i$(OBJ) -L$(OBJ) -isrc
 
 BlackBoard : BlackBoard/BlackBoard.app
 
-BlackBoard/BlackBoard.app : reactive-banana BlackBoard/src/*.hs
+BlackBoard/BlackBoard.app : reactive-banana reactive-banana-wx BlackBoard/src/*.hs
 	cd BlackBoard && $(COMPILE) -o BlackBoard src/BlackBoard.hs \
 		&& macosx-app $@
 
@@ -25,3 +25,5 @@ run: BlackBoard
 
 reactive-banana:
 	cd reactive-banana && cabal build && cabal register --inplace
+reactive-banana-wx:
+	cd reactive-banana-wx && cabal build && cabal register --inplace
