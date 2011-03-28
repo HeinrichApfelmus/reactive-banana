@@ -10,16 +10,14 @@ License:             BSD3
 License-file:        LICENSE
 Author:              Heinrich Apfelmus
 Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
-Category:            FRP
+Category:            FRP, GUI
 
 Build-type:          Simple
 
--- Extra files to be distributed with the package, such as examples or
--- a README.
--- Extra-source-files:  
+Extra-source-files:  Makefile
 
 -- Constraint on the version of Cabal needed to build this package.
-Cabal-version:       >=1.2
+Cabal-version:       >=1.6
 
 
 Library
