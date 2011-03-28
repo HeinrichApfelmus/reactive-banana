@@ -9,11 +9,9 @@ COMPILE=ghc --make -outputdir $(OBJ) -i$(OBJ) -L$(OBJ) -isrc
 #	$(COMPILE) -o $@ $<
 #	macosx-app $@
 
-BlackBoard : BlackBoard/BlackBoard.app
-
-BlackBoard/BlackBoard.app : reactive-banana reactive-banana-wx BlackBoard/src/*.hs
+BlackBoard : reactive-banana reactive-banana-wx BlackBoard/src/*.hs
 	cd BlackBoard && $(COMPILE) -o BlackBoard src/BlackBoard.hs \
-		&& macosx-app $@
+		&& macosx-app BlackBoard
 
 all: BlackBoard reactive-banana reactive-banana-wx
 
