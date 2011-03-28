@@ -1,0 +1,12 @@
+/Materials/
+/BlackBoard.app/
+/GUITest.app/
+/alt/
+/obj/
+*.DS_Store
+/Materials /
+/dist/
+/src-all/
+/*.app
+/reactive-banana.html
+/GUITest
