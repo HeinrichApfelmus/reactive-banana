@@ -23,5 +23,6 @@ run: BlackBoard
 
 reactive-banana:
 	cd reactive-banana && cabal build && cabal register --inplace
-reactive-banana-wx:
+reactive-banana-wx: reactive-banana-wx/dist/build/Counter/Counter
+reactive-banana-wx/dist/build/Counter/Counter: reactive-banana-wx/src/*.hs reactive-banana-wx/src/Reactive/*.hs 
 	cd reactive-banana-wx && cabal build && cabal register --inplace

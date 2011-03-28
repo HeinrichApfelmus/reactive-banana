@@ -3,7 +3,7 @@
     
     Example: Counter
 ------------------------------------------------------------------------------}
-module Counter where
+module Main where
 
 import Reactive
 import Reactive.WX
