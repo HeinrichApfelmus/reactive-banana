@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.1.0.0
+Version:             0.1.0.2
 Synopsis:            Small but flexible
                      functional reactive programming (FRP) library.
 Description:         
@@ -35,5 +35,5 @@ Cabal-version:       >=1.6
 Library
     hs-source-dirs:     src
     extensions:         MultiParamTypeClasses, FlexibleInstances
-    build-depends:      base == 4.2.*
+    build-depends:      base >= 4.2 && < 4.4
     exposed-modules:    Reactive, Reactive.Classes, Reactive.Core
