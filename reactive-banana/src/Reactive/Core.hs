@@ -234,9 +234,15 @@ mapIO f e     = mkEvent addHandler'
 -- In that case, you have to combine this with the 'orderedDuplicate' function. 
 union :: Event a -> Event a -> Event a
 union Never e2    = e2
-union e1    Never = e1
+union e1    Never = Event { addHandler = addHandler e1} -- need to be lazy here
 union e1    e2    = mkEvent addHandler'
     where addHandler' g = addHandler e1 g >> addHandler e2 g
+    -- FIXME: union and recursion
+    -- Sometimes, events depend on themselves recursively.
+    -- This is were things get hairy.
+    -- Problem: Checking whether an event is Never may result in a black hole
+    -- For now, union is left-biased. Maye it should always return
+    -- Event anyway.
 
 -- | The 'Monoid' instance allows you to merge event streams,
 -- see the 'union' function below.
@@ -352,9 +358,10 @@ always a = Behavior { initial = a, changes = never }
 -- It is recommended that you use the 'accumulate' function from
 -- 'Reactive.Classes' to pick types automatically.
 accumulateIOChange :: (b -> a -> IO (Change a)) -> a -> Event b -> Behavior a
-accumulateIOChange f a Never = always a
-accumulateIOChange f a eb    =
-    Behavior { initial = a , changes = mkEvent addHandler' }
+accumulateIOChange f a eb    = Behavior { initial = a ,
+        changes = case eb of
+            Never -> Never
+            _     -> mkEvent addHandler' }
     where
     addHandler' g = addHandler eb (handler g)
     
