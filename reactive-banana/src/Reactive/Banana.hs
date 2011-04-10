@@ -4,12 +4,12 @@
     A tiny library for functional reactive programming.
 ------------------------------------------------------------------------------}
 
-module Reactive (
+module Reactive.Banana (
     module Control.Applicative,
-    module Reactive.Core,
-    module Reactive.Classes,
+    module Reactive.Banana.Implementation,
+    module Reactive.Banana.Model,
     ) where
 
 import Control.Applicative
-import Reactive.Core
-import Reactive.Classes
+import Reactive.Banana.Implementation
+import Reactive.Banana.Model
