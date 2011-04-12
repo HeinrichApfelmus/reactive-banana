@@ -12,6 +12,9 @@ The key data types are `Event a` and `Behavior a`. The former represents a serie
     type Event a    = [(Time,a)]  -- stream of events
     type Behavior a = Time -> a   -- time-varying value
 
+
+THE FOLLOWING IS NO LONGER TRUE:
+
 This is a bit too optimistic because  Behavior a  is a *piecewise* function, i.e. we can convert `Event a` and `Behavior a` via
     
     changes :: Behavior a -> Event a
@@ -37,49 +40,6 @@ Despite this similarity, they are quite distinct. The core functionality is give
    apply f = map (\(time,a) -> (time, f time a))
 
 Note that `apply` and `(<*>)` have similar types, but different semantics! In the case of `apply`, changes in the first argument do not trigger events in the result.
-
-
-A programming pattern for merging events
-========================================
-
-Often, a behavior depends on different events which have to be merged. For instance, ... . One could make a new data type that is a disjoint union of the different event types, like
-
-    data EventBox = Character c | MouseMove ...
-
-and write a function that handles these.
-
-Of course, this has the drawback that you always have to invent a dummy data type just to perform this disjoint union. A better idea is to use ordinary function names
-
-    handleCharacter :: Char -> Box -> Box
-    handleMouseMove :: Point -> Box -> Box
-
-and map them on the event streams
-
-    handlers =
-        fmap handleCharacter ekeyboard  `union` fmap handleMouseMove emouse
-
-Then, you can simply accumulate the behavior as
-
-    behavior = accumulate (flip ($)) 0 handlers
-
-
-In a sense, this is the Church-encoding of the dummy type.
-
-
-**NOTE:** I think it's best to change the type of accumulate, so we can simply write
-
-    accumulate ($) 0 handlers
-
-This way, it's easier to change from an explicit
-
-    accumulate handleCharacter echars
-
-to a more general
-
-    let handlers = fmap handleCharacter echars
-    accumulate ($) 0 handlers
-
-without having to flip arguments and thelike.
 
 
 

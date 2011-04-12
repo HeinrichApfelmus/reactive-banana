@@ -1,17 +1,21 @@
 Name:                reactive-banana
 Version:             0.2.0.0
-Synopsis:            Small but flexible
+Synopsis:            Small but solid
                      functional reactive programming (FRP) library.
 Description:         
-    A small but flexible library for functional reactive programming (FRP).
+    A small but solid library for functional reactive programming (FRP).
     .
-    The main selling point of this library is that it
-    can be hooked into /any/ existing event-based framework.
-    In a sense, @reactive-banana@ is a fresh way to think
-    about callback functions.
+    The focus of this library is to implement
+    (a subset of) the semantic model for functional reactive programming
+    pioneered by Conal Elliott.
     .
-    In other words, you can freely mix FRP and imperative code.
-    Bored of writing imperative GUIs? Write some parts with FRP!
+    Moreover, this library can hooked into /any/
+    existing event-based framework.
+    It is especially useful in conjunction with existing
+    GUI frameworks like @wxHaskell@ or @gtk2hs@.
+    .
+    This also means that your code can be a mix of FRP and imperative parts.
+    Bored of programming imperative GUIs? Write some parts with FRP!
     Don't know how to express something with FRP?
     Switch back to imperative style!
     .
@@ -34,6 +38,9 @@ Cabal-version:       >=1.6
 
 Library
     hs-source-dirs:     src
-    extensions:         MultiParamTypeClasses, FlexibleInstances
+    extensions:         TypeFamilies, FlexibleContexts,
+                        FlexibleInstances, EmptyDataDecls
     build-depends:      base >= 4.2 && < 4.4
-    exposed-modules:    Reactive, Reactive.Classes, Reactive.Core
+    exposed-modules:    Reactive.Banana, Reactive.Banana.Model,
+                        Reactive.Banana.Implementation
+

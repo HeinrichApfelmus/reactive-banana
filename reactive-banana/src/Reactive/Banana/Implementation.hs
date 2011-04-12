@@ -1,146 +1,124 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
     
-    A demand-driven implementation (full of yucky IO)
-    
-FIXME: This implementation sucks big time! Because of the global state.
-    Idea: use the automaton-like implementation, but with  Dynamic  as
-          input variable, to avoid the extra type parameter.
-
+    A demand-driven implementation
 ------------------------------------------------------------------------------}
 {-# LANGUAGE TypeFamilies, FlexibleInstances, EmptyDataDecls #-}
-module Reactive.Banana.Implementation where
+module Reactive.Banana.Implementation (
+    module Reactive.Banana.Model,
+    Demand, Event, Behavior,
+    Prepare, runPrepare, reactimate,
+    EventSource(..), fromEventSource,
+    module Data.Dynamic, run,
+    ) where
 
-import Reactive.Banana.Model hiding (Event, Behavior)
+import Reactive.Banana.Model hiding (Event, Behavior, run)
 import qualified Reactive.Banana.Model as Model
 
 import Control.Applicative
 import qualified Data.List
 import Prelude hiding (filter)
 import Data.Monoid
+import Data.Maybe
 
 import Control.Monad.Writer as Monad
+import Control.Monad.State as Monad
 import Control.Monad.Fix
 import Data.IORef
 import System.IO.Unsafe
 
+import Data.Dynamic
+
 {-----------------------------------------------------------------------------
-    Phases and IO actions that execute only once
+    Infinite sum of data types
 ------------------------------------------------------------------------------}
--- Using only two values for the phase requires that every element
--- is touched at least once. Otherwise, old phases may still linger around
-data Phase = None | One | Two
-        deriving (Eq, Ord, Show, Read)
+type Unique = Integer
+type Universe = (Unique, Dynamic)
 
--- TODO: The global variable is ugly. I think this can be backed into
--- the Once monad, Reader-style
+type MonadUniqueT = StateT Unique
 
-phaseRef :: IORef Phase
-phaseRef = unsafePerformIO $ newIORef One
+newUnique :: Monad m => MonadUniqueT m Unique
+newUnique = do u <- get; put $! (u+1); return u
 
-currentPhase :: IO Phase
-currentPhase = readIORef phaseRef
+runUnique :: Monad m => MonadUniqueT m a -> m a
+runUnique m = evalStateT m 0
 
-nextPhase :: IO ()
-nextPhase = do
-    modifyIORef phaseRef $ \phase -> case phase of
-        None -> One
-        One  -> Two
-        Two  -> One
-
-
--- IO actions that yield their side effect only once per phase
--- We NEED to make this an algebraic data type because
--- IO actions are not shared by default, but algebraic data types are.
--- The  Once  constructor serves as an indirection that allows us to 
--- reserve a mutable variable
-data Once a = Once { runOnce :: IO a }
-
-{-# NOINLINE once #-}
-once :: IO a -> Once a
-once m = ref `seq` (Once $ do
-        phase <- currentPhase
-        (phase', x) <- readIORef ref    -- read saved value
-        -- test if the saved value is from the current phase
-        if phase == phase'
-            then return x
-            else mfix $ \x -> do
-                writeIORef ref (phase, x)
-                x' <- m
-                return x')
-    where
-    ref = unsafePerformIO $ newIORef (None, undefined m)
-
--- Very important test. It should print "Hello" only once.
-testOnce = runOnce x >> runOnce x
-    where
-    x = once $ print "Hello!" >> return 2
+project :: Typeable a => Unique -> Universe -> Maybe a
+project u1 (u2,dx) = if u1 == u2 then fromDynamic dx else Nothing
 
 {-----------------------------------------------------------------------------
     Implementation
 ------------------------------------------------------------------------------}
-data DemandIO
+data Demand
 
 -- data types
-type Event = Model.Event DemandIO
-data instance Model.Event DemandIO a    = Event
-    { values :: Once [a]
-    , updateBehaviors :: Once () }
+type Event = Model.Event Demand
+newtype instance Model.Event Demand a
+    = Event { unEvent :: Universe -> ResultE a }
+data ResultE a = ResultE [a] (Event a)
 
-type Behavior = Model.Behavior DemandIO
-data instance Model.Behavior DemandIO a = Behavior
-    { value :: Once a
-    , updateBehavior :: Once () }
+type Behavior = Model.Behavior Demand
+newtype instance Model.Behavior Demand a
+    = Behavior { unBehavior :: Universe -> ResultB a }
+data ResultB a = ResultB a (Behavior a)
 
 -- instances
-instance Functor (Model.Event DemandIO) where
-    fmap f e = Event
-        (once $ map f <$> (runOnce $ values e))
-        (once $ runOnce $ updateBehaviors e)
+instance Functor (Model.Event Demand) where
+    fmap f (Event e) = Event $ \i ->
+        let ResultE as e' = e i
+        in  ResultE (map f as) (fmap f e')
 
-instance Applicative (Model.Behavior DemandIO) where
-    pure x    = Behavior (Once $ return x) (Once $ return ())
-    bf <*> bx = Behavior
-        (once $ (runOnce $ value bf) <*> (runOnce $ value bx) )
-        (once $ (runOnce $ updateBehavior bf) >> (runOnce $ updateBehavior bx))
+instance Applicative (Model.Behavior Demand) where
+    pure x    = Behavior $ \_ -> ResultB x (pure x)
+    (Behavior bf) <*> (Behavior bx) = Behavior $ \i ->
+        let ResultB f bf' = bf i
+            ResultB x bx' = bx i
+        in  ResultB (f x) (bf' <*> bx')
 
-instance Functor (Model.Behavior DemandIO) where
+instance Functor (Model.Behavior Demand) where
     fmap = liftA
 
-instance FRP DemandIO where
-    never = Event (Once $ return []) (Once $ return ())
-    union e1 e2 = Event
-        (once $ (++) <$> (runOnce $ values e1) <*> (runOnce $ values e2))
-        (once $ (runOnce $ updateBehaviors e1) >> (runOnce $ updateBehaviors e2))
+instance FRP Demand where
+    never = Event $ \_ -> ResultE [] never
+    union (Event e1) (Event e2) = Event $ \i ->
+        let ResultE as1 e1' = e1 i
+            ResultE as2 e2' = e2 i
+        in  ResultE (as1 ++ as2) (union e1' e2')
 
-    filter bp e = Event
-        (once $ Data.List.filter <$> (runOnce $ value bp) <*> (runOnce $ values e))
-        (once $ runOnce $ updateBehaviors e)
+    filter (Behavior b) (Event e) = Event $ \i ->
+        let ResultE as e' = e i
+            ResultB p  b' = b i
+        in  ResultE (Data.List.filter p as) (filter b' e')
 
-    apply bf ex = Event
-        (once $ map <$> (runOnce $ value bf) <*> (runOnce $ values ex))
-        (once $ (runOnce $ updateBehavior bf) >> (runOnce $ updateBehaviors ex))
+    apply (Behavior b) (Event e) = Event $ \i ->
+        let ResultB f  b' = b i
+            ResultE as e' = e i
+        in  ResultE (map f as) (apply b' e')
 
-    -- TODO: Implement  mapAccum  instead!
-    accumB x e = unsafePerformIO $ do
-        ref <- newIORef x
-        return $ Behavior
-            (once $ do
-                        -- Demand the event values, but don't do anything with them.
-                        -- We have to demand them here, before doing updates.
-                        runOnce $ values e
-                        readIORef ref)
-            (once $ do
-                        -- Read the prepared event values
-                       fs <- runOnce $ values e; modifyIORef ref (concatenate fs)
-                       runOnce $ updateBehaviors e;)
-        where
-        concatenate = foldl (.) id
+    accumB x (Event e) = Behavior $ \i ->
+        let ResultE fs e' = e i
+            -- compose functions from left to right. Left = earlier
+            x'            = Data.List.foldl' (flip ($)) x fs
+            -- the accumulation function is strict by default!
+        in  ResultB x (x' `seq` accumB x' e')
 
+-- interpreter
+run :: Typeable a => (Event a -> Event b) -> [a] -> [[b]]
+run f = fst . myMapAccumL step network
+    where
+    u       = 0
+    input   = Event $ \i -> ResultE (maybeToList $ project u i) input
+    network = f input
+    step (Event e) a = let ResultE bs e' = e (u, toDyn a) in (bs,e')
+    
+    switch (x,y) = (y,x)
+    myMapAccumL f acc =
+        switch . Data.List.mapAccumL (\acc -> switch . f acc) acc
 
 {-----------------------------------------------------------------------------
     Interpeter
 ------------------------------------------------------------------------------}
+{-
 -- Run a network of events for a single step
 stepNetwork :: Event a -> IO [a]
 stepNetwork e = do
@@ -158,44 +136,47 @@ run f xs = do
             writeIORef ref [x]
             stepNetwork network
     
-    mapM step xs
+    mapM step xs -}
 
 {-----------------------------------------------------------------------------
     Setting up an event network
 ------------------------------------------------------------------------------}
-type Preparations = ([Event (IO ())] , [IO () -> IO ()])
-type Prepare a = Monad.WriterT Preparations IO a
+type Preparations = ([Event (IO ())] , [EventSource Universe])
+type Prepare a = MonadUniqueT (Monad.WriterT Preparations IO) a
 
 reactimate :: Event (IO ()) -> Prepare ()
 reactimate e = tell ([e], [])
 
 -- | Set up an event network.
-setup :: Prepare () -> IO ()
-setup m = do
-    (_,(outputs,inputs)) <- runWriterT m
-    let
-        -- union of all  reactimates    
+runPrepare :: Prepare () -> IO ()
+runPrepare m = do
+    (_,(outputs,inputs)) <- runWriterT $ runUnique m
+    let -- union of all  reactimates    
         network = mconcat outputs :: Event (IO ())
-        -- trigger the events and run the results
-        run = stepNetwork network >>= sequence_
+    ref <- newIORef network
+    let -- run one step of the network
+        step i = do
+            Event network <- readIORef ref
+            let ResultE as network' = network i
+            writeIORef ref network'
+            sequence_ as
+
     -- Register event handlers.
-    mapM_ ($ run) inputs
+    mapM_ (\es -> addHandler es step) inputs
+
 
 data EventSource a = EventSource { addHandler :: (a -> IO ()) -> IO () }
 
-fromEventSource :: EventSource a -> Prepare (Event a)
+fromEventSource :: Typeable a => EventSource a -> Prepare (Event a)
 fromEventSource es = do
-    ref <- liftIO $ newIORef []
+    u <- newUnique
     let
-        -- The event just reads from the reference
-        event = Event (Once $ readIORef ref) (Once $ return ())
-        register = \run -> addHandler es $ \a -> do
-            writeIORef ref [a]  -- fill event value with reference
-            run
-            writeIORef ref []   -- remove event occurence again
-    tell ([], [register])
-    return event
-
-
+        -- Event that just projects the right value from the input
+        input  = Event (\i -> ResultE (maybeToList $ project u i) input)
+        source = EventSource $
+            \run -> addHandler es $ \a -> run (u, toDyn a)
+    
+    tell ([], [source])
+    return input
 
 

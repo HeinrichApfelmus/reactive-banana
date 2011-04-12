@@ -4,7 +4,11 @@
     Class interface + Semantic model
 ------------------------------------------------------------------------------}
 {-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances, EmptyDataDecls #-}
-module Reactive.Banana.Model where
+module Reactive.Banana.Model (
+    FRP(..), Event, Behavior, Model,
+    whenE, run, Time, interpret,
+    module Control.Applicative,
+    ) where
 
 import Control.Applicative
 import qualified Data.List
@@ -25,11 +29,14 @@ class (Functor (Event f),
     filter   :: Behavior f (a -> Bool) -> Event f a -> Event f a
     apply    :: Behavior f (a -> b) -> Event f a -> Event f b
     
-    -- accumulation.
+    -- Accumulation.
+    -- Note: all accumulation functions are strict in the accumulated value!
     -- minimal complete definition: either  accumB  or  mapAccum
     accumB   :: a -> Event f (a -> a) -> Behavior f a
-    accumE   :: a -> Event f (a -> a) -> Event f a    
+    accumE   :: a -> Event f (a -> a) -> Event f a
+    -- acc -> (x,acc) is the order used by  unfoldr  and  State 
     mapAccum :: acc -> Event f (acc -> (x,acc)) -> (Event f x, Behavior f acc)
+    behavior :: a -> Event f a -> Behavior f a
     
     accumB acc = snd . mapAccum acc . fmap ((\acc -> (undefined,acc)) .)
     accumE acc = fst . mapAccum acc . fmap ((\acc -> (acc,acc)) .)
@@ -37,6 +44,7 @@ class (Functor (Event f),
         where
         ex   = apply ((\acc f -> fst (f acc)) <$> bacc) ef
         bacc = accumB acc (fmap (snd .) ef)
+    behavior acc = accumB acc . fmap const
    
 instance FRP f => Monoid (Event f a) where
     mempty  = never
@@ -80,8 +88,8 @@ instance FRP Model where
         where
         accumB' z es = z : case es of
             []   -> []
-            e:es -> let z' = concatenate e z in accumB' z' es
-        concatenate = foldl (.) id
+            e:es -> let z' = concatenate e z in z' `seq` accumB' z' es
+        concatenate fs z = Data.List.foldl' (flip ($)) z fs
 
 -- interpreter
 run :: (Event Model a -> Event Model b) -> [a] -> [[b]]
