@@ -8,6 +8,8 @@ import Reactive.Banana as R
 import Control.Monad (when)
 import Data.Maybe (isJust, fromJust)
 import System.Random
+import Debug.Trace
+
 
 
 main :: IO ()
@@ -89,7 +91,7 @@ setupEvents (escoin,esplay) = prepareEvents $ do
             `union` (addWin <$> ewin))
         
         -- functions that change the accumulated state
-        addCredit     = (+1)
+        addCredit     = (\x -> trace "debug: addCredit" $ x+1)
         removeCredit  = subtract 1
         addWin Double = (+5)
         addWin Triple = (+20)

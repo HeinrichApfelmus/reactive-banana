@@ -144,10 +144,9 @@ prepareEvents m = do
     let -- run one step of the network
         step i = do
             Event network <- readIORef ref
-            case network i of
-                ResultE as network' -> do
-                    writeIORef ref network'
-                    sequence_ as
+            let !(ResultE as network') = network i
+            writeIORef ref network'
+            sequence_ as
 
     -- Register event handlers.
     mapM_ ($ step) inputs
