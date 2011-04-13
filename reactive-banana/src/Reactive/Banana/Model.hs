@@ -26,8 +26,13 @@ class (Functor (Event f),
     
     never    :: Event f a
     union    :: Event f a -> Event f a -> Event f a
-    filter   :: Behavior f (a -> Bool) -> Event f a -> Event f a
+    
     apply    :: Behavior f (a -> b) -> Event f a -> Event f b
+
+    -- Filters
+    -- minimal complete definition  filter  or  filterApply
+    filter   :: (a -> Bool) -> Event f a -> Event f a
+    filterApply :: Behavior f (a -> Bool) -> Event f a -> Event f a
     
     -- Accumulation.
     -- Note: all accumulation functions are strict in the accumulated value!
@@ -38,6 +43,12 @@ class (Functor (Event f),
     mapAccum :: acc -> Event f (acc -> (x,acc)) -> (Event f x, Behavior f acc)
     behavior :: a -> Event f a -> Behavior f a
     
+    
+    -- filter
+    filter p = filterApply (pure p)
+    filterApply bp = fmap snd . filter fst . apply ((\p a-> (p a,a)) <$> bp)    
+    
+    -- accumulation
     accumB acc = snd . mapAccum acc . fmap ((\acc -> (undefined,acc)) .)
     accumE acc = fst . mapAccum acc . fmap ((\acc -> (acc,acc)) .)
     mapAccum acc ef = (ex,bacc)
@@ -54,7 +65,7 @@ instance FRP f => Monoid (Event f a) where
     Derived Combinators
 ------------------------------------------------------------------------------}
 whenE :: FRP f => Behavior f Bool -> Event f a -> Event f a
-whenE bf = filter (const <$> bf)
+whenE bf = filterApply (const <$> bf)
 
 {-----------------------------------------------------------------------------
     Semantic model
@@ -81,8 +92,8 @@ instance FRP Model where
     never       = E $ repeat []
     union e1 e2 = E $ zipWith (++) (unE e1) (unE e2)
     
-    filter bp = E . zipWith (\p xs-> Data.List.filter p xs) (unB bp) . unE
-    apply b   = E . zipWith (\f xs -> map f xs) (unB b) . unE
+    filterApply bp = E . zipWith (\p xs-> Data.List.filter p xs) (unB bp) . unE
+    apply b    = E . zipWith (\f xs -> map f xs) (unB b) . unE
 
     accumB acc = B . accumB' acc . unE
         where

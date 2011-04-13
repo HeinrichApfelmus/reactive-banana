@@ -40,7 +40,7 @@ Library
     hs-source-dirs:     src
     extensions:         TypeFamilies, FlexibleContexts,
                         FlexibleInstances, EmptyDataDecls
-    build-depends:      base >= 4.2 && < 4.4
+    build-depends:      base >= 4.2 && < 4.4, mtl == 2.0.*
     exposed-modules:    Reactive.Banana, Reactive.Banana.Model,
                         Reactive.Banana.Implementation
 

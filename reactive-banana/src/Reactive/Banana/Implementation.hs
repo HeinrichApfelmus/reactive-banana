@@ -7,9 +7,15 @@
 module Reactive.Banana.Implementation (
     module Reactive.Banana.Model,
     Demand, Event, Behavior,
-    Prepare, runPrepare, reactimate,
-    EventSource(..), fromEventSource,
-    module Data.Dynamic, run,
+    run,
+    
+    -- * Setting up a network of events
+    Prepare, prepareEvents, reactimate, liftIO,
+    
+    -- $EventSource
+    EventSource(..), fromEventSource, Handler,
+        newEventSource, addEventHandler, fire,
+    module Data.Dynamic,
     ) where
 
 import Reactive.Banana.Model hiding (Event, Behavior, run)
@@ -85,10 +91,10 @@ instance FRP Demand where
             ResultE as2 e2' = e2 i
         in  ResultE (as1 ++ as2) (union e1' e2')
 
-    filter (Behavior b) (Event e) = Event $ \i ->
+    filterApply (Behavior b) (Event e) = Event $ \i ->
         let ResultE as e' = e i
             ResultB p  b' = b i
-        in  ResultE (Data.List.filter p as) (filter b' e')
+        in  ResultE (Data.List.filter p as) (filterApply b' e')
 
     apply (Behavior b) (Event e) = Event $ \i ->
         let ResultB f  b' = b i
@@ -116,41 +122,21 @@ run f = fst . myMapAccumL step network
         switch . Data.List.mapAccumL (\acc -> switch . f acc) acc
 
 {-----------------------------------------------------------------------------
-    Interpeter
-------------------------------------------------------------------------------}
-{-
--- Run a network of events for a single step
-stepNetwork :: Event a -> IO [a]
-stepNetwork e = do
-    xs <- runOnce $ values e
-    runOnce $ updateBehaviors e
-    nextPhase
-    return xs
-
-run :: (Event a -> Event b) -> [a] -> IO [[b]]
-run f xs = do
-    ref <- newIORef []
-    let
-        network = f $ Event (Once $ readIORef ref) (Once $ return ())
-        step x = do
-            writeIORef ref [x]
-            stepNetwork network
-    
-    mapM step xs -}
-
-{-----------------------------------------------------------------------------
     Setting up an event network
 ------------------------------------------------------------------------------}
-type Preparations = ([Event (IO ())] , [EventSource Universe])
+type Handler a = a -> IO ()
+type AddHandler a = Handler a -> IO ()
+
+type Preparations = ([Event (IO ())] , [AddHandler Universe])
 type Prepare a = MonadUniqueT (Monad.WriterT Preparations IO) a
 
 reactimate :: Event (IO ()) -> Prepare ()
 reactimate e = tell ([e], [])
 
 -- | Set up an event network.
-runPrepare :: Prepare () -> IO ()
-runPrepare m = do
-    (_,(outputs,inputs)) <- runWriterT $ runUnique m
+prepareEvents :: Prepare () -> IO ()
+prepareEvents m = do
+    (a,(outputs,inputs)) <- runWriterT $ runUnique m
     let -- union of all  reactimates    
         network = mconcat outputs :: Event (IO ())
     ref <- newIORef network
@@ -162,19 +148,69 @@ runPrepare m = do
             sequence_ as
 
     -- Register event handlers.
-    mapM_ (\es -> addHandler es step) inputs
+    mapM_ ($ step) inputs
+    return a
 
+{-----------------------------------------------------------------------------  
+    EventSource - "I'll call you back"
+------------------------------------------------------------------------------}
+{-$EventSource
 
-data EventSource a = EventSource { addHandler :: (a -> IO ()) -> IO () }
+* Event Sources
+    
+    After having read all about 'Event's and 'Behavior's,
+    you want to hook things up to an existing event-based framework,
+    like @wxHaskell@ or @Gtk2Hs@.
+    How do you do that?
+    
+    'EventSource's are a small bookkeeping device that helps you with that.
+    Basically, they store event handlers.
+    Sometimes, you can just obtain them from
+    corresponding bookkeeping devices from your framework,
+    but often you have to create your own 'EventSource'
+    and use the 'fire' function to hook it into the framework.
+    
+    After creating an 'EventSource',
+    you can finally obtain an 'Event' via the `fromEventSource' function.
+-}
 
+-- | An 'EventSource' is a facility where you can register
+-- callback functions, aka event handlers.
+data EventSource a = EventSource {
+                    -- | Replace all event handlers by this one.
+                      setEventHandler :: Handler a -> IO ()
+                    -- | Retrieve the currently registered event handler.
+                    , getEventHandler :: IO (Handler a) }
+
+-- | Add an additional event handler to the source
+addEventHandler :: EventSource a -> Handler a -> IO ()
+addEventHandler es f = do
+    g <- getEventHandler es
+    setEventHandler es (\a -> g a >> f a)
+
+-- | Fire the event handler of an event source manually.
+-- Useful for hooking into external event sources.
+fire :: EventSource a -> Handler a
+fire es a = getEventHandler es >>= ($ a)
+
+-- | Create a new store for callback functions.
+-- They have to be fired manually with the 'fire' function.
+newEventSource :: IO (EventSource a)
+newEventSource = do
+    handlerRef <- newIORef (const $ return ())
+    return $ EventSource
+        { setEventHandler = writeIORef handlerRef
+        , getEventHandler = readIORef handlerRef }
+
+-- | Obtain an 'Event' from an 'EventSource'.
+-- The event fires whenever the event source is fired.
 fromEventSource :: Typeable a => EventSource a -> Prepare (Event a)
 fromEventSource es = do
     u <- newUnique
     let
         -- Event that just projects the right value from the input
         input  = Event (\i -> ResultE (maybeToList $ project u i) input)
-        source = EventSource $
-            \run -> addHandler es $ \a -> run (u, toDyn a)
+        source = \run -> addEventHandler es $ \a -> run (u, toDyn a)
     
     tell ([], [source])
     return input
