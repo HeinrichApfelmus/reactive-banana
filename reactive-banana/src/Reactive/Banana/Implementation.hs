@@ -3,7 +3,7 @@
     
     A demand-driven implementation
 ------------------------------------------------------------------------------}
-{-# LANGUAGE TypeFamilies, FlexibleInstances, EmptyDataDecls #-}
+{-# LANGUAGE TypeFamilies, FlexibleInstances, EmptyDataDecls, BangPatterns #-}
 module Reactive.Banana.Implementation (
     module Reactive.Banana.Model,
     Demand, Event, Behavior,
@@ -71,14 +71,14 @@ data ResultB a = ResultB a (Behavior a)
 -- instances
 instance Functor (Model.Event Demand) where
     fmap f (Event e) = Event $ \i ->
-        let ResultE as e' = e i
+        let !(ResultE as e') = e i
         in  ResultE (map f as) (fmap f e')
 
 instance Applicative (Model.Behavior Demand) where
     pure x    = Behavior $ \_ -> ResultB x (pure x)
     (Behavior bf) <*> (Behavior bx) = Behavior $ \i ->
-        let ResultB f bf' = bf i
-            ResultB x bx' = bx i
+        let !(ResultB f bf') = bf i
+            !(ResultB x bx') = bx i
         in  ResultB (f x) (bf' <*> bx')
 
 instance Functor (Model.Behavior Demand) where
@@ -87,26 +87,27 @@ instance Functor (Model.Behavior Demand) where
 instance FRP Demand where
     never = Event $ \_ -> ResultE [] never
     union (Event e1) (Event e2) = Event $ \i ->
-        let ResultE as1 e1' = e1 i
-            ResultE as2 e2' = e2 i
+        let !(ResultE as1 e1') = e1 i
+            !(ResultE as2 e2') = e2 i
         in  ResultE (as1 ++ as2) (union e1' e2')
 
     filterApply (Behavior b) (Event e) = Event $ \i ->
-        let ResultE as e' = e i
-            ResultB p  b' = b i
+        let !(ResultB p  b') = b i
+            !(ResultE as e') = e i
         in  ResultE (Data.List.filter p as) (filterApply b' e')
 
     apply (Behavior b) (Event e) = Event $ \i ->
-        let ResultB f  b' = b i
-            ResultE as e' = e i
+        let !(ResultB f  b') = b i
+            !(ResultE as e') = e i
         in  ResultE (map f as) (apply b' e')
 
     accumB x (Event e) = Behavior $ \i ->
-        let ResultE fs e' = e i
-            -- compose functions from left to right. Left = earlier
-            x'            = Data.List.foldl' (flip ($)) x fs
-            -- the accumulation function is strict by default!
-        in  ResultB x (x' `seq` accumB x' e')
+        ResultB x $
+            let !(ResultE fs e') = e i
+                -- compose functions from left to right. Left = earlier
+                !x'              = Data.List.foldl' (flip ($)) x fs
+                -- the accumulation function is strict by default!
+            in  accumB x' e'
 
 -- interpreter
 run :: Typeable a => (Event a -> Event b) -> [a] -> [[b]]
@@ -143,9 +144,10 @@ prepareEvents m = do
     let -- run one step of the network
         step i = do
             Event network <- readIORef ref
-            let ResultE as network' = network i
-            writeIORef ref network'
-            sequence_ as
+            case network i of
+                ResultE as network' -> do
+                    writeIORef ref network'
+                    sequence_ as
 
     -- Register event handlers.
     mapM_ ($ step) inputs
