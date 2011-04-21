@@ -22,6 +22,9 @@ Description:
     In the spectrum of possible FRP implementations,
     this one features simple semantics but modest expressivity.
     Predicting space & time usage should be easy.
+    .
+    Stability forecast: Low bug count,
+    but signifcant API changes are likely in future versions.
 Homepage:            https://github.com/HeinrichApfelmus/Haskell-BlackBoard
 License:             BSD3
 License-file:        LICENSE
