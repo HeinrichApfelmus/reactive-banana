@@ -23,6 +23,7 @@ import qualified Reactive.Banana.Model as Model
 import Control.Applicative
 import qualified Data.List
 import Prelude hiding (filter)
+import Data.List (nub)
 import Data.Monoid
 
 import Control.Monad.RWS
@@ -246,26 +247,27 @@ compileUnion :: Event Shared a -> Compile [Event Linear a]
 compileUnion e = map snd <$> goE e
     where
     goE :: Event Shared a -> Compile [EventLinear a]
-    goE (ref, Filter p e )       = cacheEvents ref . map2 (Filter p) =<< goE e
-    goE (ref, ApplyE b e )       = cacheEvents ref . map2 (ApplyE b) =<< goE e
-    goE (_  , WriteBehavior b e) = return . map2 (WriteBehavior b) =<< goE e
-    goE (_  , Reactimate e)      = return . map2 (Reactimate) =<< goE e
+    goE (ref, Filter p e )       = cacheEvents ref (map2 (Filter p) <$> goE e)
+    goE (ref, ApplyE b e )       = cacheEvents ref (map2 (ApplyE b) <$> goE e)
+    goE (_  , WriteBehavior b e) = map2 (WriteBehavior b) <$> goE e
+    goE (_  , Reactimate e)      = map2 (Reactimate)      <$> goE e
     goE (_  , Union e1 e2)       = (++) <$> goE e1 <*> goE e2
     goE (_  , Never      )       = return []
     goE (_  , Input channel)     = return [(channel, Input channel)]
     
     second f (a,b) = (a, f b)
     map2 = map . second
-    
-    -- cacheEvents ref
-    
+        
     cacheEvents :: Ref (EventStore a)
-                -> [EventLinear a] -> Compile [EventLinear a]
-    cacheEvents ref es = do
+                -> Compile [EventLinear a] -> Compile [EventLinear a]
+    cacheEvents ref mes = do
         m <- lift $ readRef ref
         case m of
-            Just cached -> return $ map (\(c,r) -> (c,ReadCache c r)) cached
+            Just cached -> do
+                return $ map (\(c,r) -> (c,ReadCache c r)) cached
             Nothing     -> do
+                -- compile input events
+                es     <- mes
                 -- allocate corresponding cache references
                 cached <- forM es $ \(c,_) -> do r <- newCacheRef; return (c,r)
                 lift $ writeRef ref cached
@@ -311,11 +313,6 @@ compile e = runStore $ runCompile $
 -- debug :: MonadIO m => String -> m ()
 -- debug = liftIO . putStrLn
 
--- FIXME: make this faster
-groupChannels :: [(Channel, a -> b)] -> [(Channel, a)] -> [(Channel, b)]
-groupChannels fs xs =
-    [(i, f x) | (i,f) <- fs, (j,x) <- xs, i == j]  
-
 {-----------------------------------------------------------------------------
     Setting up an event network
 ------------------------------------------------------------------------------}
@@ -335,7 +332,9 @@ prepareEvents m = do
         Event network = mconcat outputs :: Model.Event PushIO (IO ())
     -- compile network
     (paths,cache) <- compile (invalidRef, Reactimate network)
-    
+    -- reduce to one path per channel
+    let paths1 = groupChannelsBy (\p q x -> p x >> q x) paths
+
     -- prepare threading the cache as state
     rcache <- newIORef emptyCache
     writeIORef rcache cache
@@ -343,11 +342,20 @@ prepareEvents m = do
             cache <- readIORef rcache
             (_,cache') <- runRun m cache
             writeIORef rcache cache'
-    
-        paths' = map (\(i,p) -> (i,run . p)) paths
+        paths2 = map (\(i,p) -> (i, run . p)) $ paths1
     
     -- register event handlers
-    sequence_ . map snd . groupChannels inputs $ paths'
+    sequence_ . map snd . applyChannels inputs $ paths2
+
+-- FIXME: make this faster
+groupChannelsBy :: (a -> a -> a) -> [(Channel, a)] -> [(Channel, a)]
+groupChannelsBy f xs = [(i, foldr1 f [x | (j,x) <- xs, i == j]) | i <- channels]
+    where channels = nub . map fst $ xs
+
+-- FIXME: make this faster
+applyChannels :: [(Channel, a -> b)] -> [(Channel, a)] -> [(Channel, b)]
+applyChannels fs xs =
+    [(i, f x) | (i,f) <- fs, (j,x) <- xs, i == j]
 
 
 {-$EventSource

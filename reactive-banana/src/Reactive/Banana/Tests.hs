@@ -33,17 +33,20 @@ testSuite = do
 {-----------------------------------------------------------------------------
     Examples
 ------------------------------------------------------------------------------}
-test f = Impl.run f [1..5]
+test f = Impl.run f [1..8::Int]
 
 add1      = fmap (+1)
 filtering = filter (>= 3) . fmap (subtract 1)
 counter e = apply (pure const <*> bcounter) e
     where bcounter = accumB 0 $ fmap (\_ -> (+1)) e
+double e  = union e e
+sharing e = union e1 e1
+    where e1 = filter (< 3) e
 
 -- counter that can be decreased as long as it's >= 0
 decrease :: FRP f => Event f a -> Event f Int
 decrease edec = apply (const <$> bcounter) ecandecrease
     where
-    bcounter     = accumB 10 $ (subtract 1) <$ ecandecrease
+    bcounter     = accumB 4 $ (subtract 1) <$ ecandecrease
     ecandecrease = whenE ((>0) <$> bcounter) edec
 
