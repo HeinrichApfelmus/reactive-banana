@@ -7,13 +7,14 @@
 TupleSections, GADTs, UndecidableInstances #-}
 module Reactive.Banana.Implementation (
     module Reactive.Banana.Model,
-    run,
     
-    -- * Setting up a network of events
-    Prepare, prepareEvents, reactimate, liftIO,
+    -- * Implementation
+    PushIO, run,
     
-    -- $EventSource
-    EventSource(..), fromEventSource,
+    -- * Using existing event-based frameworks
+    -- $Prepare
+    Prepare, prepareEvents, reactimate, AddHandler, fromAddHandler, liftIO,
+    
     module Data.Dynamic,
     ) where
 
@@ -35,6 +36,7 @@ import Data.IORef
 import System.IO.Unsafe
 import Data.Dynamic
 
+{-}
 -- argl, missing instance
 instance MonadIO m => MonadIO (IdentityT m) where
     liftIO = IdentityT . liftIO
@@ -46,6 +48,7 @@ instance Monad m => Applicative (StateT s m) where
 instance (Monad m, Monoid w) => Applicative (WriterT w m) where
     pure  = return
     (<*>) = ap
+-}
 
 {-----------------------------------------------------------------------------
     Observable sharing
@@ -316,14 +319,61 @@ compile e = runStore $ runCompile $
 {-----------------------------------------------------------------------------
     Setting up an event network
 ------------------------------------------------------------------------------}
-type AddHandler   = (Channel, (Universe -> IO ()) -> IO ())
-type Preparations = ([Model.Event PushIO (IO ())], [AddHandler])
+{-$Prepare
+
+    After having read all about 'Event's and 'Behavior's,
+    you want to hook things up to an existing event-based framework,
+    like @wxHaskell@ or @Gtk2Hs@.
+    How do you do that?
+
+    To do that, you have to use the 'Prepare' monad.
+    The typical setup looks like this:
+    
+> main = do
+>   ... -- other initialization
+>
+>   -- initialize event network
+>   prepareEvents $ do
+>       -- obtain  Event  from functions that register event handlers
+>       emouse    <- fromAddHandler (registerMouseEvent window)
+>       ekeyboard <- fromAddHandler (registerKeyEvent window)
+>   
+>       -- build event network
+>       let
+>           behavior1 = accumB ...
+>           ...
+>           event15 = union event13 event14
+>   
+>       -- animate relevant event occurences
+>       reactimate $ fmap print event15
+>       reactimate $ fmap drawCircle eventCircle
+>
+>   ... -- start the GUI framework here
+    
+    In short, you use 'fromAddHandler' to obtain /input events/;
+    the library will register corresponding event handlers
+    with your event-based framework.
+    
+    To animate /output events/, you use the 'reactimate' function.
+    
+    The whole setup has to be wrapped into a call to 'prepareEvents'.
+    
+    The 'Prepare' monad is an instance of 'MonadIO',
+    so 'IO' is allowed inside. However, you can't pass any
+    results outside the 'prepareEvents' call; this is intentional.
+
+-}
+
+type AddHandler'  = (Channel, (Universe -> IO ()) -> IO ())
+type Preparations = ([Model.Event PushIO (IO ())], [AddHandler'])
 type Prepare = RWST () Preparations Channel IO
 
+-- | Animate an output event.
+-- Executes the 'IO' action whenever the event occurs.
 reactimate :: Model.Event PushIO (IO ()) -> Prepare ()
 reactimate e = tell ([e], [])
 
--- | Set up an event network.
+-- | Wrap around the 'Prepare' monad to set up an event network.
 prepareEvents :: Prepare () -> IO ()
 prepareEvents m = do
     (_,_,(outputs,inputs)) <- runRWST m () 0
@@ -358,36 +408,17 @@ applyChannels fs xs =
     [(i, f x) | (i,f) <- fs, (j,x) <- xs, i == j]
 
 
-{-$EventSource
+-- | A value of type @AddHandler a@ is just an IO function that registers
+-- callback functions, also known as event handlers. 
+type AddHandler a = (a -> IO ()) -> IO ()
 
-* Event Sources
-
-    After having read all about 'Event's and 'Behavior's,
-    you want to hook things up to an existing event-based framework,
-    like @wxHaskell@ or @Gtk2Hs@.
-    How do you do that?
-
-    'EventSource's are a small bookkeeping device that helps you with that.
-    Basically, they store event handlers.
-    Sometimes, you can just obtain them from
-    corresponding bookkeeping devices from your framework,
-    but often you have to create your own 'EventSource'
-    and use the 'fire' function to hook it into the framework.
-
-    After creating an 'EventSource',
-    you can finally obtain an 'Event' via the `fromEventSource' function.
--}
-
--- | An 'EventSource' is just a facility for adding callback functions,
--- aka event handlers.
-data EventSource a = EventSource { addHandler :: (a -> IO ()) -> IO () }
-
--- | Obtain an 'Event' from an 'EventSource'.
--- An event is generated whenever the callback function is called
-fromEventSource :: Typeable a => EventSource a -> Prepare (Model.Event PushIO a)
-fromEventSource es = do
+-- | Obtain an 'Event' from an 'AddHandler'.
+-- This will register a callback function such that
+-- an event will occur whenever the callback function is called.
+fromAddHandler :: Typeable a => AddHandler a -> Prepare (Model.Event PushIO a)
+fromAddHandler addHandler = do
         channel <- newChannel
-        let addHandler' k = addHandler es $ k . toUniverse channel
+        let addHandler' k = addHandler $ k . toUniverse channel
         tell ([], [(channel, addHandler')])
         return $ event (Input channel) 
     where
@@ -405,7 +436,7 @@ run f xs = do
     let addHandler k = modifyIORef href (++[k])
 
     prepareEvents $ do
-        e <- fromEventSource $ EventSource addHandler
+        e <- fromAddHandler addHandler
         reactimate $ fmap (\b -> modifyIORef oref (++[b])) (f e)
     
     handler <- (\ks x -> mapM ($ x) ks) <$> readIORef href

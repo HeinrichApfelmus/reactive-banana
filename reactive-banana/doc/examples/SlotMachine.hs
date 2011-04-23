@@ -9,7 +9,7 @@ import Control.Monad (when)
 import Data.Maybe (isJust, fromJust)
 import System.Random
 import Debug.Trace
-
+import Data.IORef
 
 
 main :: IO ()
@@ -49,6 +49,29 @@ eventLoop (escoin,esplay) = loop
             _      -> putStrLn $ s ++ " - unknown command"
         when (s /= "quit") loop
 
+{-----------------------------------------------------------------------------
+    Event sources
+------------------------------------------------------------------------------}
+-- Event Sources - allows you to register event handlers
+-- Your GUI framework should provide something like this for you
+data EventSource a = EventSource {
+        setHandler :: (a -> IO ()) -> IO (),
+        getHandler :: IO (a -> IO ())
+        }
+
+newEventSource :: IO (EventSource a)
+newEventSource = do
+    ref <- newIORef (const $ return ())
+    return $
+        EventSource { setHandler = writeIORef ref, getHandler = readIORef ref}
+
+addHandler :: EventSource a -> AddHandler a
+addHandler es k = do
+    handler <- getHandler es
+    setHandler es (\x -> handler x >> k x)
+
+fire :: EventSource a -> (a -> IO ())
+fire es x = getHandler es >>= ($ x)
 
 {-----------------------------------------------------------------------------
     Program logic
@@ -73,8 +96,8 @@ setupEvents (escoin,esplay) = prepareEvents $ do
     initialStdGen <- liftIO $ newStdGen
 
     -- Obtain events corresponding to the  coin  and  play  commands
-    ecoin <- fromEventSource escoin
-    eplay <- fromEventSource esplay
+    ecoin <- fromAddHandler (addHandler escoin)
+    eplay <- fromAddHandler (addHandler esplay)
     
     let         
         -- The state of the slot machine is captured in Behaviors.
@@ -91,7 +114,7 @@ setupEvents (escoin,esplay) = prepareEvents $ do
             `union` (addWin <$> ewin))
         
         -- functions that change the accumulated state
-        addCredit     = (\x -> trace "debug: addCredit" $ x+1)
+        addCredit     = (+1)
         removeCredit  = subtract 1
         addWin Double = (+5)
         addWin Triple = (+20)
