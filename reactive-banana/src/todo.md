@@ -4,8 +4,8 @@ Present
 
 Push-base implementation
 ========================
-* Observable sharing
 * Compiling execution paths. Make sure space behavior is like demand-driven implementation (for better or worse).
+* Include sharing in Behaviors
 
 Change
 ======
@@ -44,3 +44,10 @@ Possibility 2:
 
     e1' = before e1
     e2' = after e2
+
+Possibility 3:
+    (e1,e2) = orderedDuplicate e
+    -- This probably violates transitivity of  ~ ?
+    -- e1 ~ e and e2 ~ e  but  e1 /~ e2
+    -- Needs another interpretation for  ~
+

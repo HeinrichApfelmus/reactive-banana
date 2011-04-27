@@ -1,12 +1,12 @@
 Name:                reactive-banana
 Version:             0.2.0.0
-Synopsis:            Small but solid
-                     functional reactive programming (FRP) library.
+Synopsis:            Small but solid library for
+                     functional reactive programming (FRP).
 Description:         
     A small but solid library for functional reactive programming (FRP).
     .
-    The focus of this library is to implement
-    (a subset of) the semantic model for functional reactive programming
+    The current focus of this library is to implement
+    a subset of the semantic model for functional reactive programming
     pioneered by Conal Elliott.
     .
     Moreover, this library can hooked into /any/
@@ -44,8 +44,15 @@ Cabal-version:       >=1.6
 Library
     hs-source-dirs:     src
     extensions:         TypeFamilies, FlexibleContexts,
-                        FlexibleInstances, EmptyDataDecls
-    build-depends:      base >= 4.2 && < 4.4, mtl == 2.0.*, transformers == 0.2.*
+                        FlexibleInstances, EmptyDataDecls,
+                        GADTs, BangPatterns, TupleSections,
+                        Rank2Types, NoMonomorphismRestriction
+    build-depends:
+        base >= 4.2 && < 4.4,
+        monads-tf == 0.1.*, transformers == 0.2.*,
+        QuickCheck == 2.4.*
     exposed-modules:    Reactive.Banana, Reactive.Banana.Model,
-                        Reactive.Banana.Implementation
+                        Reactive.Banana.Implementation,
+                        Reactive.Banana.Tests
+    other-modules:      Reactive.Banana.PushIO
 

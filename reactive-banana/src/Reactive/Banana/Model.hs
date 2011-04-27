@@ -5,14 +5,16 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances, EmptyDataDecls #-}
 module Reactive.Banana.Model (
-
+    -- * Synopsis
+    -- | Combinators for building event networks and their semantics.
+    
     -- * Combinators
     module Control.Applicative,
     FRP(..),
     
     Event, Behavior,
     -- $classes
-    whenE,
+    whenE, mapAccum,
     
     -- * Model implementation
     Model,
@@ -57,7 +59,7 @@ Concerning time and space complexity, the model is not authoritative, however.
 Implementations are free to be much more efficient.
 
 Minimal complete definition of the 'FRP' class: One of 'filter' or 'filterApply'
-and one of ('accumE' and 'accumB') or 'mapAccum'. 
+and one of 'accumB' or 'stepper'.
 
 -}
 
@@ -98,7 +100,20 @@ class (Functor (Event f),
     -- Accumulation.
     -- Note: all accumulation functions are strict in the accumulated value!
     -- acc -> (x,acc) is the order used by  unfoldr  and  State
-    
+
+    -- | Construct a time-varying function from an initial value and 
+    -- a stream of new values. Think of it as
+    --
+    -- > stepper x0 ex = \time -> last (x0 : [x | (timex,x) <- ex, timex < time])
+    -- 
+    -- Note that the smaller-than-sign in the comparision @timex < time@ means 
+    -- that the value of the behavior changes \"slightly after\"
+    -- the event occurrences. This allows for recursive definitions.
+    -- 
+    -- Also note that in the case of simultaneous occurrences,
+    -- only the last one is kept.
+    stepper :: a -> Event f a -> Behavior f a
+
     -- | The 'accumB' function is similar to a /strict/ left fold, 'foldl''.
     -- It starts with an initial value and combines it with incoming events.
     -- For example, think
@@ -115,32 +130,14 @@ class (Functor (Event f),
     -- there is no \"delay\" like in the case of 'accumB'.
     accumE   :: a -> Event f (a -> a) -> Event f a
     
-    -- | Efficient combination of 'accumE' and 'accumB'.
-    mapAccum :: acc -> Event f (acc -> (x,acc)) -> (Event f x, Behavior f acc)
-    
-    -- | Construct a time-varying function from an initial value and 
-    -- a stream of new values. Think of it as
-    --
-    -- > behavior x0 ex = \time -> last (x0 : [x | (timex,x) <- ex, timex < time])
-    -- 
-    -- Note that the smaller-than-sign in the comparision @timex < time@ means 
-    -- that the value of the behavior changes \"slightly after\"
-    -- the event occurrences. This allows for recursive definitions.
-    behavior :: a -> Event f a -> Behavior f a
-    
     
     -- implementation filter
     filter p = filterApply (pure p)
     filterApply bp = fmap snd . filter fst . apply ((\p a-> (p a,a)) <$> bp)    
     
     -- implementation accumulation
-    accumB acc = snd . mapAccum acc . fmap ((\acc -> (undefined,acc)) .)
-    accumE acc = fst . mapAccum acc . fmap ((\acc -> (acc,acc)) .)
-    mapAccum acc ef = (ex,bacc)
-        where
-        bacc = accumB acc ((snd .) <$> ef)
-        ex   = fst <$> accumE (undefined,acc) ((. snd) <$> ef)
-    behavior acc = accumB acc . fmap const
+    accumB  acc = stepper acc . accumE acc
+    stepper acc = accumB acc . fmap const
 
 {-$classes
 
@@ -149,6 +146,10 @@ class (Functor (Event f),
 > instance FRP f => Monoid (Event f a)
 
 The combinators 'never' and 'union' turn 'Event' into a monoid.
+
+> instance FPR f => Applicative (Behavior f)
+
+'Behavior' is an applicative functor. In particular, we have the following functions.
 
 > pure :: FRP f => a -> Behavior f a
 
@@ -172,11 +173,18 @@ instance FRP f => Monoid (Event f a) where
 whenE :: FRP f => Behavior f Bool -> Event f a -> Event f a
 whenE bf = filterApply (const <$> bf)
 
+-- | Efficient combination of 'accumE' and 'accumB'.
+mapAccum :: FRP f => acc -> Event f (acc -> (x,acc)) -> (Event f x, Behavior f acc)
+mapAccum acc ef = (fst <$> e, stepper acc (snd <$> e))
+    where e = accumE (undefined,acc) ((. snd) <$> ef)
+
 {-----------------------------------------------------------------------------
     Semantic model
 ------------------------------------------------------------------------------}
 -- | The type index 'Model' represents the model implementation.
 -- You are encouraged to look at the source code!
+-- (If there is no link to the source code at every type signature,
+-- then you have to run @cabal@ with @--hyperlink-source@ flag.)
 data Model
 
 -- Stream of events. Simultaneous events are grouped into lists.
@@ -202,12 +210,22 @@ instance FRP Model where
     filterApply bp = E . zipWith (\p xs-> Data.List.filter p xs) (unB bp) . unE
     apply b    = E . zipWith (\f xs -> map f xs) (unB b) . unE
 
-    accumB acc = B . accumB' acc . unE
+    stepper x  = B . scanl go x . unE
+        where go x e = last (x:e)
+
+    accumE acc = E . accumE' acc . unE
         where
-        accumB' z es = z : case es of
-            []   -> []
-            e:es -> let z' = concatenate e z in z' `seq` accumB' z' es
-        concatenate fs z = Data.List.foldl' (flip ($)) z fs
+        accumE' acc []     = []
+        accumE' acc (e:es) = e' : accumE' acc' es
+            where
+            e'   = tail $ scanl' (flip ($)) acc e
+            acc' = last e'
+
+-- strict version of scanl
+scanl' :: (a -> b -> a) -> a -> [b] -> [a]
+scanl' f x ys = x : case ys of
+    []   -> []
+    y:ys -> let z = f x y in z `seq` scanl' f z ys
 
 -- | Slightly simpler interpreter that does not mention 'Time'.
 -- Returns lists of event values that occur simultaneously.
