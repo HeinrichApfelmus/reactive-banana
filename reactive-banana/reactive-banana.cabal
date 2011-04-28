@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.2.0.0
+Version:             0.2.0.1
 Synopsis:            Small but solid library for
                      functional reactive programming (FRP).
 Description:         
@@ -40,6 +40,7 @@ Build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 Cabal-version:       >=1.6
 
+extra-source-files:  doc/examples/*.hs
 
 Library
     hs-source-dirs:     src

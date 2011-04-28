@@ -252,9 +252,6 @@ compileUnion e = map snd <$> goE e
     goE (_  , Never      )       = return []
     goE (_  , Input channel)     = return [(channel, Input channel)]
     
-    second f (a,b) = (a, f b)
-    map2 = map . second
-    
     compileAccumE :: a -> [EventLinear (a -> a)] -> Compile [EventLinear a]
     compileAccumE x es = do
         ref <- newAccumRef x
@@ -275,6 +272,9 @@ compileUnion e = map snd <$> goE e
                 lift $ writeRef ref cached
                 -- return events that also write to the cache
                 return $ zipWith (second . (WriteCache . snd)) cached es
+
+second f (a,b) = (a, f b)
+map2 = map . second
 
 -- compile a behavior
 -- FIXME: take care of sharing, caching
