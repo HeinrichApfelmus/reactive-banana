@@ -1,5 +1,6 @@
-.PHONY: all clean
+.PHONY: all clean open
 
+APPS=Counter
 OBJ=dist/build
 COMPILE=ghc --make -outputdir $(OBJ) -i$(OBJ) -L$(OBJ) -isrc -i../reactive-banana/src
 
@@ -11,4 +12,7 @@ Counter : src/Counter.hs src/Reactive/Banana/WX.hs
 all: Counter
 
 clean:
-	rm -rf $(APPS) obj/*.o obj/*.hi *.app *.exe *.manifest
+	rm -rf $(APPS) $(OBJ)/*.o $(OBJ)/*.hi *.app *.exe *.manifest
+
+open: Counter
+	open Counter.app
