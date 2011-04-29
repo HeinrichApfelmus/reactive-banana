@@ -8,6 +8,7 @@ import Reactive.Banana as R
 import Control.Monad (when)
 import Data.Maybe (isJust, fromJust)
 import System.Random
+import System.IO
 import Debug.Trace
 import Data.IORef
 
@@ -41,6 +42,7 @@ eventLoop (escoin,esplay) = loop
     where
     loop = do
         putStr "> "
+        hFlush stdout
         s <- getLine
         case s of
             "coin" -> fire escoin ()    -- fire corresponding events

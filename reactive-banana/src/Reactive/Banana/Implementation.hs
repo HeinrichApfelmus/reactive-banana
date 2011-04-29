@@ -27,6 +27,8 @@ import Control.Applicative
 import Control.Monad.RWS
 import Data.IORef
 
+-- debug = putStrLn
+
 {-----------------------------------------------------------------------------
     PushIO specific functions
 ------------------------------------------------------------------------------}
@@ -135,6 +137,7 @@ prepareEvents (Prepare m) = do
     let
         -- union of all  reactimates
         network = mconcat outputs :: Model.Event PushIO (IO ())
+    
     -- compile network
     paths <- compileHandlers network
     -- register event handlers

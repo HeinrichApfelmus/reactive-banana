@@ -39,13 +39,13 @@ type Ref a = IORef (Maybe a)
 runStore :: Store a -> IO a
 runStore = id
 
--- create a new reference. Dummy argument to prevent let floating
-newRef   :: b -> Ref a
+-- create a new reference.
+newRef   :: Store (Ref a)
 -- read a reference. Only possible in the  Store  monad.
 readRef  :: Ref a -> Store (Maybe a)
 writeRef :: Ref a -> a -> Store ()
 
-newRef b = unsafePerformIO . seq [b] . newIORef $ Nothing
+newRef   = newIORef Nothing
 readRef  = readIORef
 writeRef ref = writeIORef ref . Just
 
@@ -306,6 +306,7 @@ compilePath e = goE e return
     goE (Input channel)     k =
             (channel, maybe (error "wrong channel") k . fromUniverse channel)
     
+    goB :: Behavior Linear a -> Run a
     goB = compileBehavior
 
 -- compilation function
@@ -331,16 +332,18 @@ unEvent (Event e) = e
 
 -- sharing
 behavior :: BehaviorD Accum a -> Model.Behavior PushIO a
-behavior b = Behavior (ref, b)
+behavior b = Behavior pair
     where
-    {-# NOINLINE ref #-}    
-    ref = newRef b
+    {-# NOINLINE pair #-}
+    -- mention argument to prevent let-floating  
+    pair = unsafePerformIO (fmap (,b) newRef)
 
 event :: EventD Accum a -> Model.Event PushIO a
-event e = Event (ref, e)
+event e = Event pair
     where
-    {-# NOINLINE ref #-}
-    ref = newRef e
+    {-# NOINLINE pair #-}
+    -- mention argument to prevent let-floating
+    pair = unsafePerformIO (fmap (,e) newRef)
 
 -- boilerplate class instances
 instance Functor (Model.Event PushIO) where
