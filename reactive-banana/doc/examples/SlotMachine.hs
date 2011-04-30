@@ -7,6 +7,7 @@ import Reactive.Banana as R
 
 import Control.Monad (when)
 import Data.Maybe (isJust, fromJust)
+import Data.List (nub)
 import System.Random
 import System.IO
 import Debug.Trace
@@ -152,9 +153,9 @@ setupEvents (escoin,esplay) = prepareEvents $ do
         ewin :: Event Win
         ewin = fmap fromJust $ R.filter isJust $ fmap checkWin eroll
         checkWin (z1,z2,z3)
-            | z1 == z2 || z2 == z3 || z3 == z1 = Just Double
-            | z1 == z2 && z2 == z3             = Just Triple
-            | otherwise                        = Nothing
+            | length (nub [z1,z2,z3]) == 1 = Just Triple
+            | length (nub [z1,z2,z3]) == 2 = Just Double
+            | otherwise                    = Nothing
 
 
     reactimate $ putStrLn . showCredit <$> ecredits
