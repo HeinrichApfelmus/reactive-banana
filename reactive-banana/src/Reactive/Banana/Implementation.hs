@@ -124,6 +124,11 @@ instance Monad (Prepare) where
     m >>= k = Prepare $ unPrepare m >>= unPrepare . k
 instance MonadIO Prepare where
     liftIO  = Prepare . liftIO
+instance Functor (Prepare) where
+    fmap f  = Prepare . fmap f . unPrepare
+instance Applicative (Prepare) where
+    pure    = Prepare . pure
+    f <*> a = Prepare $ unPrepare f <*> unPrepare a
 
 -- | Animate an output event.
 -- Executes the 'IO' action whenever the event occurs.
