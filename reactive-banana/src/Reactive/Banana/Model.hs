@@ -119,13 +119,18 @@ class (Functor (Event f),
     -- For example, think
     --
     -- > accumB "x" [(time1,(++"y")),(time2,(++"z"))]
-    -- >    = behavior "x" [(time1,"yx"),(time2,"zyx")]
+    -- >    = stepper "x" [(time1,"xy"),(time2,"xyz")]
     -- 
     -- Note that the value of the behavior changes \"slightly after\"
     -- the events occur. This allows for recursive definitions.
     accumB   :: a -> Event f (a -> a) -> Behavior f a
     
     -- | The 'accumE' function accumulates a stream of events.
+    -- Example:
+    --
+    -- > accumE "x" [(time1,(++"y")),(time2,(++"z"))]
+    -- >    = [(time1,"xy"),(time2,"xyz")]
+    --
     -- Note that the output events are simultaneous with the input events,
     -- there is no \"delay\" like in the case of 'accumB'.
     accumE   :: a -> Event f (a -> a) -> Event f a
