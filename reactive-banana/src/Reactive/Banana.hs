@@ -11,7 +11,7 @@ module Reactive.Banana (
     Event, Behavior
     ) where
 
-import Reactive.Banana.Model hiding (run, Event, Behavior)
+import Reactive.Banana.Model hiding (interpret, Event, Behavior)
 import qualified Reactive.Banana.Model as Model
 import Reactive.Banana.Implementation
 import qualified Reactive.Banana.Implementation as Implementation

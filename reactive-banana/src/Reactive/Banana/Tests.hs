@@ -20,8 +20,8 @@ import Test.QuickCheck
 matchesModel :: (Typeable a, Show b, Eq b) =>
     (forall f. FRP f => Event f a -> Event f b) -> [a] -> IO Bool
 matchesModel f = \xs -> do
-        let bs1 = Model.run f xs
-        bs2 <- Impl.run f xs
+        let bs1 = Model.interpret f xs
+        bs2 <- Impl.interpret f xs
         when (bs1 /= bs2) $ print bs1 >> print bs2
         return $ bs1 == bs2
 
@@ -35,7 +35,7 @@ testSuite = do
 {-----------------------------------------------------------------------------
     Examples
 ------------------------------------------------------------------------------}
-test f = Impl.run f [1..8::Int]
+test f = Impl.interpret f [1..8::Int]
 
 add1      = fmap (+1)
 filtering = filter (>= 3) . fmap (subtract 1)

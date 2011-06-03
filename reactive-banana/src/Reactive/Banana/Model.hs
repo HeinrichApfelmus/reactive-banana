@@ -18,7 +18,7 @@ module Reactive.Banana.Model (
     
     -- * Model implementation
     Model,
-    Time, interpret, run,
+    Time, interpretTime, interpret,
     ) where
 
 import Control.Applicative
@@ -234,14 +234,14 @@ scanl' f x ys = x : case ys of
 
 -- | Slightly simpler interpreter that does not mention 'Time'.
 -- Returns lists of event values that occur simultaneously.
-run :: (Event Model a -> Event Model b) -> [a] -> [[b]]
-run f = unE . f . E . map (:[])
+interpret :: (Event Model a -> Event Model b) -> [a] -> [[b]]
+interpret f = unE . f . E . map (:[])
 
 type Time = Double
 -- | Interpreter that corresponds to your mental model.
-interpret :: (Event Model a -> Event Model b) -> [(Time,a)] -> [(Time,b)]
-interpret f xs =
-    concat . zipWith tag times . run f . map snd $ xs
+interpretTime :: (Event Model a -> Event Model b) -> [(Time,a)] -> [(Time,b)]
+interpretTime f xs =
+    concat . zipWith tag times . interpret f . map snd $ xs
     where
     times = map fst xs
     tag t xs = map (\x -> (t,x)) xs
@@ -255,7 +255,7 @@ example edec = apply ((\c _ -> c) <$> bcounter) ecandecrease
     bcounter     = accumB 10 $ (subtract 1) <$ ecandecrease
     ecandecrease = whenE ((>0) <$> bcounter) edec
 
-testModel = run example $ replicate 15 ()
+testModel = interpret example $ replicate 15 ()
 -- > testModel
 -- [[10],[9],[8],[7],[6],[5],[4],[3],[2],[1],[],[],[],[],[]]
 

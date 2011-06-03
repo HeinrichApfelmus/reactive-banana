@@ -7,7 +7,7 @@
      TupleSections, BangPatterns #-}
 module Reactive.Banana.PushIO where
 
-import Reactive.Banana.Model hiding (Event, Behavior, run)
+import Reactive.Banana.Model hiding (Event, Behavior, interpret)
 import qualified Reactive.Banana.Model as Model
 
 import Control.Applicative
