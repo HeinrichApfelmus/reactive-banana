@@ -1,0 +1,30 @@
+% reactivebanana-Hr.tex
+%
+% Entry for the  Haskell Communities and Activities Report
+%
+% http://www.haskell.org/haskellwiki/Haskell_Communities_and_Activities_Report
+% 
+\begin{hcarentry}[new]{reactive-banana}
+\report{Heinrich Apfelmus}%05/11
+\status{active development}
+\makeheader
+
+Reactive-banana is a small library for functional reactive programming (FRP).
+
+The goal is to create a solid foundation for anything FRP-related.
+\begin{itemize}
+\item Users can finally start experimenting with graphical user interfaces based on FRP since the library can be hooked into \emph{any} existing event-based framework and comes with ample documentation.
+\item FRP implementors will have a reference for a simple semantics with a working implementation.
+\item No more spooky time leaks and efficiency concerns. Predicting space \& time usage should be straightforward.
+\end{itemize}
+
+Version 0.2 of the reactive-banana library has been released on Hackage. It provides a solid push-based implementation of a subset of the semantics for FRP pioneered by Conal Elliott.
+
+Current development focuses on providing tutorials, documentation and examples for the library. Furthermore, the author is writing an example application to test and refine the FRP approach to GUI programming.
+
+\FurtherReading
+\begin{compactitem}
+\item  Cabal package and link to source code:  \url{http://hackage.haskell.org/package/reactive}
+\item  Developer blog:  \url{http://apfelmus.nfshost.com/blog.html}
+\end{compactitem}
+\end{hcarentry}
