@@ -218,8 +218,8 @@ run = id
 --
 -- Note: You can stop a network even while it is processing events,
 -- i.e. you can use 'pause' as an argument to 'reactimate'.
--- It will stop immediately, but the remaining output will be produced as soon as
--- the network is resumed with 'run'.
+-- The network will /not/ stop immediately though, only after
+-- the current event has been processed completely.
 pause :: EventNetwork -> IO ()
 pause network = return ()
 

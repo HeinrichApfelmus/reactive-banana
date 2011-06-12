@@ -10,6 +10,10 @@ module Reactive.Banana.PushIO where
 import Reactive.Banana.Model hiding (Event, Behavior, interpret)
 import qualified Reactive.Banana.Model as Model
 
+import Reactive.Banana.TypedDict (Dict)
+import qualified Reactive.Banana.TypedDict as Dict
+
+
 import Control.Applicative
 import qualified Data.List
 import Prelude hiding (filter)
@@ -55,83 +59,93 @@ invalidRef = error "Store: invalidRef. This is an internal bug."
 {-----------------------------------------------------------------------------
     Cache
 ------------------------------------------------------------------------------}
--- a cache stores values of different types
--- This is done with IORefs and a list of finalizerss
-type Cache = [IO ()]
+-- A cache stores values of different types
+-- and finalizers to change them.
+data Cache = Cache { dict :: Dict, finalizers :: [Finalizer] }
+type Finalizer = Dict -> IO Dict
 
-emptyCache = []
-
--- FIXME: add initializers to the Cache, so we can use it
--- like a data store!
+emptyCache = Cache Dict.empty []
 
 -- monad to build the network in
 type Compile = StateT Cache Store
 -- monad to run the network in
-type Run     = IdentityT IO
+type Run     = StateT Cache IO
 
 runCompile :: Compile a -> Store (a, Cache)
 runCompile m = runStateT m []
 
-registerFinalizer :: IO () -> Compile ()
-registerFinalizer m = modify $ (++[m])
+registerFinalizer :: Finalizer -> Compile ()
+registerFinalizer m = modify $
+    \cache -> cache { finalizers = finalizers cache ++ [m] }
 
 runRun :: Run a -> Cache -> IO (a, Cache)
 runRun m cache = do
-    x <- runIdentityT m   -- run the action
-    sequence_ cache       -- run all the finalizers
-    return (x,cache)      -- return dummy argument
+    (x,cache') <- runStateT m cache                 -- run the action
+    foldr (>=>) return (finalizers cache') cache'   -- run all the finalizers
+    return (x,cache')                               -- return new cache
 
--- a simple value to be cached. Lasts one phase.
-type CacheRef a = IORef (Maybe a)
+-- helper functions for reading and writing keys into  dict cache
+writeCacheKey ref x = do
+    cache <- get
+    dict' <- liftIO $ Dict.insert ref x (dict cache)
+    put $ cache { dict = dict' }
+readCacheKey ref = do
+    cache <- get
+    liftIO $ Dict.lookup ref (dict cache)
+
+
+-- A simple value to be cached. Lasts one phase.
+type CacheRef a = Dict.Key a
 
 newCacheRef   :: Compile (CacheRef a)
 readCacheRef  :: CacheRef a -> Run (Maybe a)
 writeCacheRef :: CacheRef a -> a -> Run ()
 
-newCacheRef       = do
-    ref <- liftIO $ newIORef Nothing
-    registerFinalizer $ writeIORef ref Nothing
-    return ref
+newCacheRef      = do
+    key <- liftIO $ Dict.newKey
+    registerFinalizer $ Dict.delete key
+    return key
+readCacheRef  = readCacheKey
+writeCacheRef = writeCacheKey
 
-readCacheRef      = liftIO . readIORef
-writeCacheRef ref = liftIO . writeIORef ref . Just
-
--- accumulation values
--- cache a value over several phases
-type AccumRef a = IORef a
+-- Accumulation values.
+-- Cache a value over several phases
+type AccumRef a = Dict.Key a
 
 newAccumRef   :: a -> Compile (AccumRef a)
 updateAccum   :: AccumRef a -> (a -> a) -> Run a
 
-newAccumRef       = liftIO . newIORef
+newAccumRef x     = do
+    ref   <- liftIO $ Dict.newKey
+    writeCacheKey ref x
 updateAccum ref f = do
-    x <- liftIO $ readIORef ref
+    Just x <- readCacheKey ref 
     let !y = f x
-    liftIO $ writeIORef ref y
+    writeCacheKey ref y
     return y
 
 -- behaviors
 -- Cache a value over several phases,
 -- but updates are only visible at the beginning of a new phase.
-type BehaviorRef a = (IORef a, IORef a)
+type BehaviorRef a = (Dict.Key a, Dict.Key a)
 
 newBehaviorRef    :: a -> Compile (BehaviorRef a)
 readBehaviorRef   :: BehaviorRef a -> Run a
 updateBehaviorRef :: BehaviorRef a -> (a -> a) -> Run () -- Strict!
 
 newBehaviorRef x = do
-    ref  <- liftIO $ newIORef x
-    temp <- liftIO $ newIORef x
-    registerFinalizer $ do
-        x <- readIORef temp
-        writeIORef ref x
+    ref  <- liftIO $ Dict.newKey
+    temp <- liftIO $ Dict.newKey
+    registerFinalizer $ \dict ->
+        Just x <- Dict.lookup temp dict
+        Dict.insert ref x dict
     return (ref,temp)
-
-readBehaviorRef (ref,temp) = liftIO $ readIORef ref
-
-updateBehaviorRef (ref,temp) f = liftIO $ do
-    x <- readIORef temp
-    writeIORef temp $! f x -- strict!
+readBehaviorRef (ref,temp) = do
+    Just x <- readCacheKey ref
+    return x
+updateBehaviorRef (ref,temp) f = do
+    Just x <- readCacheKey temp
+    writeCacheKey temp $! f x -- strict!
 
 {-----------------------------------------------------------------------------
     Abstract syntax tree
