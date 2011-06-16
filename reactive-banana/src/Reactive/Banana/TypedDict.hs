@@ -9,15 +9,17 @@ module Reactive.Banana.TypedDict (
     empty, newKey, lookup, insert, delete,
     ) where
 
-import Data.Unique
+import Prelude hiding (lookup)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.IORef
+import Data.Unique
 
 -- | An inhomogeneous, type safe dictionary.
-type Dict  = Data.Map Unique Item
+type Dict  = Map Unique Item
 -- Values are stored in closures that write to a temporary IORef
 -- This way, we can "circumvent" the type system.
-data Item  = IO ()
+type Item  = IO ()
 
 -- Key for the dictionary
 data Key a   = Key Unique (Item' a)
@@ -30,7 +32,7 @@ empty = Map.empty
 
 -- | Create a new key for use with a dictionary.
 newKey   :: IO (Key a)
-newKey dict = do
+newKey = do
     k   <- newUnique
     ref <- newIORef Nothing
     return $ Key k ref

@@ -57,7 +57,7 @@ writeRef ref = writeIORef ref . Just
 invalidRef = error "Store: invalidRef. This is an internal bug."
 
 {-----------------------------------------------------------------------------
-    Cache
+    Cache, generalities
 ------------------------------------------------------------------------------}
 -- A cache stores values of different types
 -- and finalizers to change them.
@@ -72,17 +72,23 @@ type Compile = StateT Cache Store
 type Run     = StateT Cache IO
 
 runCompile :: Compile a -> Store (a, Cache)
-runCompile m = runStateT m []
+runCompile m = runStateT m $ Cache { dict = Dict.empty, finalizers = [] }
 
 registerFinalizer :: Finalizer -> Compile ()
 registerFinalizer m = modify $
     \cache -> cache { finalizers = finalizers cache ++ [m] }
 
+runFinalizers :: [Finalizer] -> Dict -> IO Dict
+runFinalizers = foldr (>=>) return
+
 runRun :: Run a -> Cache -> IO (a, Cache)
 runRun m cache = do
-    (x,cache') <- runStateT m cache                 -- run the action
-    foldr (>=>) return (finalizers cache') cache'   -- run all the finalizers
-    return (x,cache')                               -- return new cache
+    -- run the action
+    (x,cache') <- runStateT m cache   
+    -- run all the finalizers              
+    dict' <- runFinalizers (finalizers cache') (dict cache')
+    -- return new cache
+    return (x,cache' { dict = dict'})
 
 -- helper functions for reading and writing keys into  dict cache
 writeCacheKey ref x = do
@@ -93,8 +99,11 @@ readCacheKey ref = do
     cache <- get
     liftIO $ Dict.lookup ref (dict cache)
 
-
--- A simple value to be cached. Lasts one phase.
+{-----------------------------------------------------------------------------
+    Cache, particular reference types
+------------------------------------------------------------------------------}
+-- CacheRef
+-- A simple value to be cached. Lasts one phase. Useful for sharing.
 type CacheRef a = Dict.Key a
 
 newCacheRef   :: Compile (CacheRef a)
@@ -109,7 +118,7 @@ readCacheRef  = readCacheKey
 writeCacheRef = writeCacheKey
 
 -- Accumulation values.
--- Cache a value over several phases
+-- Cache and accumulate a value over several phases.
 type AccumRef a = Dict.Key a
 
 newAccumRef   :: a -> Compile (AccumRef a)
@@ -118,14 +127,15 @@ updateAccum   :: AccumRef a -> (a -> a) -> Run a
 newAccumRef x     = do
     ref   <- liftIO $ Dict.newKey
     writeCacheKey ref x
+    return ref
 updateAccum ref f = do
     Just x <- readCacheKey ref 
     let !y = f x
     writeCacheKey ref y
     return y
 
--- behaviors
--- Cache a value over several phases,
+-- BehaviorRef.
+-- Cache and accumulate a value over several phases,
 -- but updates are only visible at the beginning of a new phase.
 type BehaviorRef a = (Dict.Key a, Dict.Key a)
 
@@ -136,9 +146,11 @@ updateBehaviorRef :: BehaviorRef a -> (a -> a) -> Run () -- Strict!
 newBehaviorRef x = do
     ref  <- liftIO $ Dict.newKey
     temp <- liftIO $ Dict.newKey
-    registerFinalizer $ \dict ->
+    registerFinalizer $ \dict -> do
         Just x <- Dict.lookup temp dict
         Dict.insert ref x dict
+    writeCacheKey ref  x
+    writeCacheKey temp x
     return (ref,temp)
 readBehaviorRef (ref,temp) = do
     Just x <- readCacheKey ref
@@ -334,6 +346,10 @@ compile e = runStore $ runCompile $
 {-----------------------------------------------------------------------------
     Class instances
 ------------------------------------------------------------------------------}
+-- | The type index 'PushIO' represents the efficient push-driven implementation
+-- described here.
+-- It implements the same 'FRP' interface as the model implementation
+-- represented by 'Model'.
 data PushIO
 
 -- type Behavior = Model.Behavior PushIO

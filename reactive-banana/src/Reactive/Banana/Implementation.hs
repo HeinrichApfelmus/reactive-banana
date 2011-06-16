@@ -11,13 +11,16 @@ module Reactive.Banana.Implementation (
     -- * Implementation
     PushIO, interpret,
 
-    -- * Build event networks with input and output
+    -- * Building event networks with input and output
     -- $build
-    NetworkDescription, compile, EventNetwork,
+    NetworkDescription, compile,
     AddHandler, fromAddHandler, reactimate, liftIO,
     
-    -- * Run event networks
-    run, pause, reset,
+    -- * Running event networks
+    EventNetwork, run, pause,
+    
+    -- * Utilities
+    newAddHandler,
     
     module Data.Dynamic,
     ) where
@@ -26,12 +29,15 @@ import Reactive.Banana.PushIO hiding (compile)
 import qualified Reactive.Banana.PushIO as Implementation
 -- import Reactive.Banana.Model hiding (Event, Behavior, run)
 import qualified Reactive.Banana.Model as Model
-import Data.Dynamic
 
-import Data.List (nub)
 import Control.Applicative
 import Control.Monad.RWS
+
+import Data.Dynamic
+import Data.List (nub)
 import Data.IORef
+import qualified Data.Map as Map
+import Data.Unique
 
 -- debug = putStrLn
 
@@ -44,10 +50,10 @@ input :: Typeable a => Channel -> Model.Event Flavor a
 input = event . Input
 
 compileHandlers :: Model.Event Flavor (IO ()) -> IO [(Channel, Universe -> IO ())]
-compileHandlers network = do
-    -- compile network
-    let network' = Implementation.unEvent network
-    (paths,cache) <- Implementation.compile (invalidRef, Reactimate network')
+compileHandlers graph = do
+    -- compile event graph
+    let graph' = Implementation.unEvent graph
+    (paths,cache) <- Implementation.compile (invalidRef, Reactimate graph')
     -- reduce to one path per channel
     let paths1 = groupChannelsBy (\p q x -> p x >> q x) paths
 
@@ -128,7 +134,7 @@ groupChannelsBy f xs = [(i, foldr1 f [x | (j,x) <- xs, i == j]) | i <- channels]
 
 -}
 
-type AddHandler'  = (Channel, (Universe -> IO ()) -> IO ())
+type AddHandler'  = (Channel, AddHandler Universe)
 type Preparations = ([Model.Event Flavor (IO ())], [AddHandler'])
 
 -- | Monad for describing event networks.
@@ -140,7 +146,7 @@ type Preparations = ([Model.Event Flavor (IO ())], [AddHandler'])
 -- outside the 'NetworkDescription' monad. This shouldn't be possible by default,
 -- but you might get clever and use 'IORef' to circumvent this.
 -- Don't do that, it won't work and also has a 99,98% chance of 
--- destroying the earth with time-traveling zygohistomorphisms.
+-- destroying the earth by summoning time-traveling zygohistomorphisms.
 newtype NetworkDescription a = Prepare { unPrepare :: RWST () Preparations Channel IO a }
 
 instance Monad (NetworkDescription) where
@@ -160,8 +166,15 @@ reactimate :: Model.Event PushIO (IO ()) -> NetworkDescription ()
 reactimate e = Prepare $ tell ([e], [])
 
 -- | A value of type @AddHandler a@ is just a facility for registering
--- callback functions, also known as event handlers. 
-type AddHandler a = (a -> IO ()) -> IO ()
+-- callback functions, also known as event handlers.
+-- 
+-- The type is a bit mysterious, it works like this:
+-- 
+-- > do unregisterMyHandler <- addHandler myHandler
+--
+-- The argument is an event handler that will be registered.
+-- The return value is an action that unregisters this very event handler again.
+type AddHandler a = (a -> IO ()) -> IO (IO ())
 
 -- | Input,
 -- obtain an 'Event' from an 'AddHandler'.
@@ -179,18 +192,18 @@ fromAddHandler addHandler = Prepare $ do
     newChannel = do c <- get; put $! c+1; return c
 
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
--- that you can 'run', 'pause' and 'reset'.
+-- that you can 'run', 'pause' and so on.
 compile :: NetworkDescription () -> IO EventNetwork
 compile (Prepare m) = do
     (_,_,(outputs,inputs)) <- runRWST m () 0
-    let
-        -- union of all  reactimates
-        network = mconcat outputs :: Model.Event Flavor (IO ())
-
-    -- compile network
-    paths <- compileHandlers network
-    -- register event handlers
-    return $ sequence_ . map snd . applyChannels inputs $ paths
+    
+    let -- union of all  reactimates
+        graph = mconcat outputs :: Model.Event Flavor (IO ())
+    paths <- compileHandlers graph
+    
+    let -- register event handlers
+        register = fmap sequence_ . sequence . map snd . applyChannels inputs $ paths
+    makeEventNetwork register
 
 -- FIXME: make this faster
 applyChannels :: [(Channel, a -> b)] -> [(Channel, a)] -> [(Channel, b)]
@@ -200,59 +213,77 @@ applyChannels fs xs =
 {-----------------------------------------------------------------------------
     Running event networks
 ------------------------------------------------------------------------------}
-type EventNetwork = IO ()
+-- | Data type that represents a compiled event network.
+-- It may be paused or already running.
+data EventNetwork = EventNetwork {
+    -- | Run an event network.
+    -- The inputs will register their event handlers, so that
+    -- the networks starts to produce outputs in response to input events.
+    run :: IO (),
+    
+    -- | Pause an event network.
+    -- Immediately stop producing output and
+    -- unregister all event handlers for inputs.
+    -- Hence, the network stops responding to input events,
+    -- but it's state will be preserved.
+    --
+    -- You can resume the network with 'run'.
+    --
+    -- Note: You can stop a network even while it is processing events,
+    -- i.e. you can use 'pause' as an argument to 'reactimate'.
+    -- The network will /not/ stop immediately though, only after
+    -- the current event has been processed completely.
+    pause :: IO ()
+    }
 
--- | Run an event network.
--- The inputs will register their event handlers, so that
--- the networks starts to produce outputs in response to input events.
-run   :: EventNetwork -> IO ()
-run = id
+-- Make an event network from a function that registers all event handlers
+makeEventNetwork :: IO (IO ()) -> IO EventNetwork
+makeEventNetwork register = do
+    let nop = return ()
+    unregister <- newIORef nop
+    let
+        run   = register >>= writeIORef unregister
+        pause = readIORef unregister >>= id >> writeIORef unregister nop
+    return $ EventNetwork run pause
 
--- | Pause an event network.
--- Immediately stop producing output and
--- unregister all event handlers for inputs.
--- Hence, the network stops responding to input events,
--- but it's state will be preserved.
---
--- You can resume the network with 'run'.
---
--- Note: You can stop a network even while it is processing events,
--- i.e. you can use 'pause' as an argument to 'reactimate'.
--- The network will /not/ stop immediately though, only after
--- the current event has been processed completely.
-pause :: EventNetwork -> IO ()
-pause network = return ()
-
--- | Reset an event network.
--- Immediately pauses the event network and also resets its state.
---
--- You can restart the network with 'run'.
-reset :: EventNetwork -> IO ()
-reset network = pause network >> return ()
 
 {-----------------------------------------------------------------------------
-    interpret
+    Interpreter for testing
 ------------------------------------------------------------------------------}
 -- | Simple way to run an event graph. Very useful for testing.
 interpret :: Typeable a
     => (Model.Event PushIO a -> Model.Event PushIO b) -> [a] -> IO [[b]]
 interpret f xs = do
-    oref <- newIORef []
-
-    href <- newIORef []
-    let addHandler k = modifyIORef href (++[k])
-
-    network <- compile $ do
+    output                    <- newIORef []
+    (addHandler, runHandlers) <- newAddHandler
+    network                   <- compile $ do
         e <- fromAddHandler addHandler
-        reactimate $ fmap (\b -> modifyIORef oref (++[b])) (f e)
-
-    handler <- (\ks x -> mapM ($ x) ks) <$> readIORef href
+        reactimate $ fmap (\b -> modifyIORef output (++[b])) (f e)
 
     run network
     bs <- forM xs $ \x -> do
-        handler x
-        bs <- readIORef oref
-        writeIORef oref []
+        runHandlers x
+        bs <- readIORef output
+        writeIORef output []
         return bs
-    reset network
     return bs
+
+
+{-----------------------------------------------------------------------------
+    Utilities
+------------------------------------------------------------------------------}
+-- | Build a facility to register and unregister event handlers.
+-- 
+-- This function is only useful if you want to hook up this library
+-- to a poorly designed event-based framework, or roll your own.
+newAddHandler :: IO (AddHandler a, a -> IO ())
+newAddHandler = do
+    handlers <- newIORef Map.empty
+    let addHandler k = do
+            key <- newUnique
+            modifyIORef handlers $ Map.insert key k
+            return $ modifyIORef handlers $ Map.delete key
+        runHandlers x =
+            mapM_ ($ x) . map snd . Map.toList =<< readIORef handlers
+    return (addHandler, runHandlers)
+

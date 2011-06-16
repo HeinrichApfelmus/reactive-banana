@@ -3,8 +3,6 @@
     
     Example: Slot machine
 ------------------------------------------------------------------------------}
-import Reactive.Banana as R
-
 import Control.Monad (when)
 import Data.Maybe (isJust, fromJust)
 import Data.List (nub)
@@ -13,12 +11,15 @@ import System.IO
 import Debug.Trace
 import Data.IORef
 
+import Reactive.Banana as R
+
 
 main :: IO ()
 main = do
     displayHelpMessage
     sources <- makeSources
-    setupEvents sources
+    network <- setupNetwork sources
+    run network
     eventLoop sources
 
 displayHelpMessage :: IO ()
@@ -35,7 +36,7 @@ displayHelpMessage = mapM_ putStrLn $
     []
 
 -- Create event sources corresponding to  coin  and  play
-makeSources = (,) <$> newEventSource <*> newEventSource
+makeSources = (,) <$> newAddHandler <*> newAddHandler
 
 -- Read commands and fire corresponding events 
 eventLoop :: (EventSource (), EventSource ()) -> IO ()
@@ -57,24 +58,13 @@ eventLoop (escoin,esplay) = loop
 ------------------------------------------------------------------------------}
 -- Event Sources - allows you to register event handlers
 -- Your GUI framework should provide something like this for you
-data EventSource a = EventSource {
-        setHandler :: (a -> IO ()) -> IO (),
-        getHandler :: IO (a -> IO ())
-        }
-
-newEventSource :: IO (EventSource a)
-newEventSource = do
-    ref <- newIORef (const $ return ())
-    return $
-        EventSource { setHandler = writeIORef ref, getHandler = readIORef ref}
+type EventSource a = (AddHandler a, a -> IO ())
 
 addHandler :: EventSource a -> AddHandler a
-addHandler es k = do
-    handler <- getHandler es
-    setHandler es (\x -> handler x >> k x)
+addHandler = fst
 
-fire :: EventSource a -> (a -> IO ())
-fire es x = getHandler es >>= ($ x)
+fire :: EventSource a -> a -> IO ()
+fire = snd
 
 {-----------------------------------------------------------------------------
     Program logic
@@ -92,8 +82,8 @@ payout Triple = 200
 
 
 -- Set up the program logic in terms of events and behaviors.
-setupEvents :: (EventSource (), EventSource ()) -> IO ()
-setupEvents (escoin,esplay) = prepareEvents $ do
+setupNetwork :: (EventSource (), EventSource ()) -> IO EventNetwork
+setupNetwork (escoin,esplay) = compile $ do
 
     -- initial random number generator
     initialStdGen <- liftIO $ newStdGen
