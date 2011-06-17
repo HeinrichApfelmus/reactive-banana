@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-----------------------------------------------------------------------------
     Reactive Banana
     
@@ -234,7 +235,7 @@ data EventNetwork = EventNetwork {
     -- The network will /not/ stop immediately though, only after
     -- the current event has been processed completely.
     pause :: IO ()
-    }
+    } deriving (Typeable)
 
 -- Make an event network from a function that registers all event handlers
 makeEventNetwork :: IO (IO ()) -> IO EventNetwork
