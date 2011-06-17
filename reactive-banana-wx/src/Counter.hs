@@ -5,9 +5,10 @@
 ------------------------------------------------------------------------------}
 module Main where
 
+import Control.Monad
+import Graphics.UI.WX hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.WX
-import Graphics.UI.WX hiding (Event)
 
 {-----------------------------------------------------------------------------
     Main
@@ -21,7 +22,7 @@ main = start $ do
     set f [layout := margin 10 $
             column 5 [widget bup, widget bdown, widget output]]
     
-    prepareEvents $ do
+    network <- compile $ do
         eup   <- event0 bup   command
         edown <- event0 bdown command
         
@@ -30,3 +31,5 @@ main = start $ do
             counter = accumE 0 $ ((+1) <$ eup) `union` (subtract 1 <$ edown)
     
         sink output [text :== ("0", show <$> counter)]
+    
+    run network
