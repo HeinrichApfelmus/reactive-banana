@@ -10,13 +10,11 @@ module Reactive.Banana.PushIO where
 import Reactive.Banana.Model hiding (Event, Behavior, interpret)
 import qualified Reactive.Banana.Model as Model
 
-import Reactive.Banana.TypedDict (Dict)
-import qualified Reactive.Banana.TypedDict as Dict
+import Reactive.Banana.Vault (Vault)
+import qualified Reactive.Banana.Vault as Vault
 
 
 import Control.Applicative
-import qualified Data.List
-import Prelude hiding (filter)
 import Data.Monoid
 
 import Control.Monad.Trans.Identity
@@ -61,10 +59,10 @@ invalidRef = error "Store: invalidRef. This is an internal bug."
 ------------------------------------------------------------------------------}
 -- A cache stores values of different types
 -- and finalizers to change them.
-data Cache = Cache { dict :: Dict, finalizers :: [Finalizer] }
-type Finalizer = Dict -> IO Dict
+data Cache = Cache { vault :: Vault, finalizers :: [Finalizer] }
+type Finalizer = Vault -> IO Vault
 
-emptyCache = Cache Dict.empty []
+emptyCache = Cache Vault.empty []
 
 -- monad to build the network in
 type Compile = StateT Cache Store
@@ -72,13 +70,13 @@ type Compile = StateT Cache Store
 type Run     = StateT Cache IO
 
 runCompile :: Compile a -> Store (a, Cache)
-runCompile m = runStateT m $ Cache { dict = Dict.empty, finalizers = [] }
+runCompile m = runStateT m $ Cache { vault = Vault.empty, finalizers = [] }
 
 registerFinalizer :: Finalizer -> Compile ()
 registerFinalizer m = modify $
     \cache -> cache { finalizers = finalizers cache ++ [m] }
 
-runFinalizers :: [Finalizer] -> Dict -> IO Dict
+runFinalizers :: [Finalizer] -> Vault -> IO Vault
 runFinalizers = foldr (>=>) return
 
 runRun :: Run a -> Cache -> IO (a, Cache)
@@ -86,46 +84,46 @@ runRun m cache = do
     -- run the action
     (x,cache') <- runStateT m cache   
     -- run all the finalizers              
-    dict' <- runFinalizers (finalizers cache') (dict cache')
+    vault' <- runFinalizers (finalizers cache') (vault cache')
     -- return new cache
-    return (x,cache' { dict = dict'})
+    return (x,cache' { vault = vault'})
 
--- helper functions for reading and writing keys into  dict cache
+-- helper functions for reading and writing keys into  vault cache
 writeCacheKey ref x = do
     cache <- get
-    dict' <- liftIO $ Dict.insert ref x (dict cache)
-    put $ cache { dict = dict' }
+    vault' <- liftIO $ Vault.insert ref x (vault cache)
+    put $ cache { vault = vault' }
 readCacheKey ref = do
     cache <- get
-    liftIO $ Dict.lookup ref (dict cache)
+    liftIO $ Vault.lookup ref (vault cache)
 
 {-----------------------------------------------------------------------------
     Cache, particular reference types
 ------------------------------------------------------------------------------}
 -- CacheRef
 -- A simple value to be cached. Lasts one phase. Useful for sharing.
-type CacheRef a = Dict.Key a
+type CacheRef a = Vault.Key a
 
 newCacheRef   :: Compile (CacheRef a)
 readCacheRef  :: CacheRef a -> Run (Maybe a)
 writeCacheRef :: CacheRef a -> a -> Run ()
 
 newCacheRef      = do
-    key <- liftIO $ Dict.newKey
-    registerFinalizer $ Dict.delete key
+    key <- liftIO $ Vault.newKey
+    registerFinalizer $ Vault.delete key
     return key
 readCacheRef  = readCacheKey
 writeCacheRef = writeCacheKey
 
 -- Accumulation values.
 -- Cache and accumulate a value over several phases.
-type AccumRef a = Dict.Key a
+type AccumRef a = Vault.Key a
 
 newAccumRef   :: a -> Compile (AccumRef a)
 updateAccum   :: AccumRef a -> (a -> a) -> Run a
 
 newAccumRef x     = do
-    ref   <- liftIO $ Dict.newKey
+    ref   <- liftIO $ Vault.newKey
     writeCacheKey ref x
     return ref
 updateAccum ref f = do
@@ -137,18 +135,18 @@ updateAccum ref f = do
 -- BehaviorRef.
 -- Cache and accumulate a value over several phases,
 -- but updates are only visible at the beginning of a new phase.
-type BehaviorRef a = (Dict.Key a, Dict.Key a)
+type BehaviorRef a = (Vault.Key a, Vault.Key a)
 
 newBehaviorRef    :: a -> Compile (BehaviorRef a)
 readBehaviorRef   :: BehaviorRef a -> Run a
 updateBehaviorRef :: BehaviorRef a -> (a -> a) -> Run () -- Strict!
 
 newBehaviorRef x = do
-    ref  <- liftIO $ Dict.newKey
-    temp <- liftIO $ Dict.newKey
-    registerFinalizer $ \dict -> do
-        Just x <- Dict.lookup temp dict
-        Dict.insert ref x dict
+    ref  <- liftIO $ Vault.newKey
+    temp <- liftIO $ Vault.newKey
+    registerFinalizer $ \vault -> do
+        Just x <- Vault.lookup temp vault
+        Vault.insert ref x vault
     writeCacheKey ref  x
     writeCacheKey temp x
     return (ref,temp)
@@ -389,7 +387,7 @@ instance Functor (Model.Behavior PushIO) where
 instance FRP PushIO where
     never = event $ Never
     union (Event e1) (Event e2) = event $ Union e1 e2
-    filter p (Event e) = event $ Filter p e
+    filterE p (Event e) = event $ Filter p e
     apply (Behavior bf) (Event ex) = event $ ApplyE bf ex
     accumB x (Event e) = behavior $ AccumB x e
     accumE x (Event e) = event $ AccumE x e

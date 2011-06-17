@@ -6,7 +6,6 @@
 {-# LANGUAGE Rank2Types, NoMonomorphismRestriction #-}
 module Reactive.Banana.Tests where
 
-import Prelude hiding (filter)
 import Control.Monad (when)
 
 import Reactive.Banana.Model as Model
@@ -38,12 +37,12 @@ testSuite = do
 test f = Impl.interpret f [1..8::Int]
 
 add1      = fmap (+1)
-filtering = filter (>= 3) . fmap (subtract 1)
+filtering = filterE (>= 3) . fmap (subtract 1)
 counter e = apply (pure const <*> bcounter) e
     where bcounter = accumB 0 $ fmap (\_ -> (+1)) e
 double e  = union e e
 sharing e = union e1 e1
-    where e1 = filter (< 3) e
+    where e1 = filterE (< 3) e
 
 type Dummy = Int
 

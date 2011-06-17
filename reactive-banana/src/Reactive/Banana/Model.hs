@@ -89,11 +89,11 @@ class (Functor (Event f),
     -- | Allow all events that fulfill the predicate, discard the rest.
     -- Think of it as
     -- 
-    -- > filter p es = [(time,a) | (time,a) <- es, p a]
-    filter   :: (a -> Bool) -> Event f a -> Event f a
+    -- > filterE p es = [(time,a) | (time,a) <- es, p a]
+    filterE   :: (a -> Bool) -> Event f a -> Event f a
     
     -- | Allow all events that fulfill the time-varying predicate, discard the rest.
-    -- It's a slight generalization of 'filter'.
+    -- It's a slight generalization of 'filterE'.
     filterApply :: Behavior f (a -> Bool) -> Event f a -> Event f a
     
     
@@ -137,8 +137,8 @@ class (Functor (Event f),
     
     
     -- implementation filter
-    filter p = filterApply (pure p)
-    filterApply bp = fmap snd . filter fst . apply ((\p a-> (p a,a)) <$> bp)    
+    filterE p = filterApply (pure p)
+    filterApply bp = fmap snd . filterE fst . apply ((\p a-> (p a,a)) <$> bp)    
     
     -- implementation accumulation
     accumB  acc = stepper acc . accumE acc

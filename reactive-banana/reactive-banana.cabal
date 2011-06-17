@@ -56,5 +56,5 @@ Library
                         Reactive.Banana.Implementation,
                         Reactive.Banana.Tests
     other-modules:      Reactive.Banana.PushIO,
-                        Reactive.Banana.TypedDict
+                        Reactive.Banana.Vault
 

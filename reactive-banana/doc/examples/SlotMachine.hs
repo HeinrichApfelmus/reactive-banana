@@ -118,10 +118,10 @@ setupNetwork (escoin,esplay) = compile $ do
         
         -- Event: player has enough coins and plays
         edoesplay :: Event ()
-        edoesplay = () <$ R.filter id  emayplay
+        edoesplay = () <$ filterE id  emayplay
         -- Event: event that fires when the player doesn't have enough money
         edenied   :: Event ()
-        edenied   = () <$ R.filter not emayplay
+        edenied   = () <$ filterE not emayplay
         
         
         -- State: random number generator
@@ -141,7 +141,7 @@ setupNetwork (escoin,esplay) = compile $ do
         
         -- Event: it's a win!
         ewin :: Event Win
-        ewin = fmap fromJust $ R.filter isJust $ fmap checkWin eroll
+        ewin = fmap fromJust $ filterE isJust $ fmap checkWin eroll
         checkWin (z1,z2,z3)
             | length (nub [z1,z2,z3]) == 1 = Just Triple
             | length (nub [z1,z2,z3]) == 2 = Just Double
