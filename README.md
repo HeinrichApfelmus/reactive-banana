@@ -1,20 +1,24 @@
-Haskell Blackboard
-------------------
-
 ## What is Blackboard?
 
 Blackboard is my (Heinrich Apfelmus) personal drawing application for making slideshows and videos.
 
 ## What is of interest to Haskell programmers here?
 
-Blackboard is implemented in Haskell. In particular, I'm making use of *functional reactive programming* (FRP). I've written a small domain specific language for FRP, which is now available on hackage.
+Blackboard is implemented in Haskell. In particular, I'm making use of *functional reactive programming* (FRP). I've implemented a small library for FRP, called `reactive-banana`, which is now available on hackage.
 
-* [reactive-banana][] - the FRP library itself
-* [reactive-banana-wx][] - example binding to wxHaskell
+* `reactive-banana` ([source][1], [hackage][2]) - the FRP library itself
+* `reactive-banana-wx` ([source][3], [hackage][4]) - example binding to wxHaskell
+* [Developer blog][5]
+
+  [1]: https://github.com/HeinrichApfelmus/Haskell-BlackBoard/tree/master/reactive-banana
+  [2]: http://hackage.haskell.org/package/reactive-banana
+  [3]: https://github.com/HeinrichApfelmus/Haskell-BlackBoard/tree/master/reactive-banana-wx
+  [4]: http://hackage.haskell.org/package/reactive-banana-wx
+  [5]: http://apfelmus.nfshost.com/blog.html#functional-reactive-programming-frp
 
 ## How do I understand the source code?
 
-You need to have a grasp of basic Haskell to understand anything, of course, but even then it might be difficult to decipher what is going on. The `reactive-banana` has extensive Haddock documentation. Some in-depth documentation can be found in the [`doc` directory][doc]
+You need to have a grasp of basic Haskell to understand anything, of course, but even then it might be difficult to decipher what is going on. The [reactive-banana][2] library has extensive Haddock documentation. Some in-depth documentation can be found in the [`doc` directory][doc]
 
   [doc]: https://github.com/HeinrichApfelmus/Haskell-BlackBoard/tree/master/reactive-banana/doc
 
