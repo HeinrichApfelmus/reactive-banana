@@ -47,7 +47,8 @@ Library
     extensions:         TypeFamilies, FlexibleContexts,
                         FlexibleInstances, EmptyDataDecls,
                         GADTs, BangPatterns, TupleSections,
-                        Rank2Types, NoMonomorphismRestriction
+                        Rank2Types, NoMonomorphismRestriction,
+                        DeriveDataTypeable
     build-depends:
         base >= 4.2 && < 4.4, containers == 0.4.*,
         monads-tf == 0.1.*, transformers == 0.2.*,
