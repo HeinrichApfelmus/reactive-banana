@@ -1,24 +1,21 @@
 Name:                reactive-banana-wx
-Version:             0.3.0.0
+Version:             0.3.0.1
 Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
-    This library provides some examples for the @reactive-banana@ library,
+    This library provides some GUI examples for the @reactive-banana@ library,
     using wxHaskell.
 
-Homepage:            https://github.com/HeinrichApfelmus/Haskell-BlackBoard
+Homepage:            http://haskell.org/haskellwiki/Reactive-banana
 License:             BSD3
 License-file:        LICENSE
 Author:              Heinrich Apfelmus
 Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Category:            FRP, GUI
-
-Build-type:          Simple
-
-Extra-source-files:  Makefile
-
--- Constraint on the version of Cabal needed to build this package.
 Cabal-version:       >=1.6
 
+
+Build-type:          Simple
+Extra-source-files:  Makefile
 
 Library
     hs-source-dirs:  src
@@ -28,6 +25,11 @@ Library
     extensions:      ExistentialQuantification
     exposed-modules: Reactive.Banana.WX
 
+Source-repository    head
+    type:            git
+    location:        git://github.com/HeinrichApfelmus/Haskell-BlackBoard.git
+    subdir:          reactive-banana-wx
+
 Executable Counter
     hs-source-dirs:  src
     main-is:         Counter.hs
@@ -35,4 +37,3 @@ Executable Counter
                      reactive-banana >= 0.3.0.0 && < 0.4,
                      wx==0.12.*, wxcore==0.12.*
     extensions:      ExistentialQuantification
-

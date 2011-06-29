@@ -6,15 +6,12 @@ Blackboard is my (Heinrich Apfelmus) personal drawing application for making sli
 
 Blackboard is implemented in Haskell. In particular, I'm making use of *functional reactive programming* (FRP). I've implemented a small library for FRP, called `reactive-banana`, which is now available on hackage.
 
-* `reactive-banana` ([source][1], [hackage][2]) - the FRP library itself
-* `reactive-banana-wx` ([source][3], [hackage][4]) - example binding to wxHaskell
-* [Developer blog][5]
+For more on **reactive-banana**, see the **[project homepage][0]**.
 
-  [1]: https://github.com/HeinrichApfelmus/Haskell-BlackBoard/tree/master/reactive-banana
-  [2]: http://hackage.haskell.org/package/reactive-banana
-  [3]: https://github.com/HeinrichApfelmus/Haskell-BlackBoard/tree/master/reactive-banana-wx
-  [4]: http://hackage.haskell.org/package/reactive-banana-wx
-  [5]: http://apfelmus.nfshost.com/blog.html#functional-reactive-programming-frp
+Currently, the source code for the reactive-banana and reactive-banana-wx libraries is part of the source code for BlackBoard.
+
+  [0]: http://haskell.org/haskellwiki/Reactive-banana
+
 
 ## How do I understand the source code?
 

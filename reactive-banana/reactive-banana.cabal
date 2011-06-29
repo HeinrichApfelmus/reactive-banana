@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.3.0.0
+Version:             0.3.0.1
 Synopsis:            Small but solid library for
                      functional reactive programming (FRP).
 Description:         
@@ -27,19 +27,18 @@ Description:
     Known inefficiencies that will be addressed.
     No semantic bugs expected.
     Significant API changes are likely in future versions.
-Homepage:            https://github.com/HeinrichApfelmus/Haskell-BlackBoard
+
+Homepage:            http://haskell.org/haskellwiki/Reactive-banana
 License:             BSD3
 License-file:        LICENSE
 Author:              Heinrich Apfelmus
 Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Stability:           Experimental
 Category:            FRP
-
-Build-type:          Simple
-
--- Constraint on the version of Cabal needed to build this package.
 Cabal-version:       >=1.6
 
+
+Build-type:          Simple
 extra-source-files:  doc/examples/*.hs
 
 Library
@@ -58,4 +57,9 @@ Library
                         Reactive.Banana.Tests
     other-modules:      Reactive.Banana.PushIO,
                         Reactive.Banana.Vault
+
+Source-repository head
+    type:               git
+    location:           git://github.com/HeinrichApfelmus/Haskell-BlackBoard.git
+    subdir:             reactive-banana/
 
