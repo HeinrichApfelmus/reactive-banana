@@ -8,11 +8,14 @@ Counter : src/Counter.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $<
 	macosx-app $@	
 
+TwoCounters : src/TwoCounters.hs src/Reactive/Banana/WX.hs
+	$(COMPILE) -o $@ $<
+	macosx-app $@
 
-all: Counter
+all: TwoCounters
 
 clean:
 	rm -rf $(APPS) $(OBJ)/*.o $(OBJ)/*.hi *.app *.exe *.manifest
 
-open: Counter
-	open Counter.app
+open: all
+	open TwoCounters.app
