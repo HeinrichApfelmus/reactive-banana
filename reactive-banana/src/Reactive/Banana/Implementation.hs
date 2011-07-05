@@ -304,12 +304,13 @@ interpretAsHandler f addHandlerA = \handlerB -> do
 {-----------------------------------------------------------------------------
     Utilities
 ------------------------------------------------------------------------------}
-{-$binding
+{-$utilities
 
     This section collects a few convenience functions
     for unusual use cases. For instance:
     
     * The event-based framework you want to hook into is poorly designed
+    
     * You have to write your own event loop and roll a little event framework
 
 -}

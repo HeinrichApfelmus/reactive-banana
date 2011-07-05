@@ -2,23 +2,6 @@ Present
 -------
 * Add test cases and examples.
 
-Behaviors
-=========
-Make it possible to obtain Behaviors from polling. (Oops, that should have been included right from the start.)
-
-    fromPoll :: IO a -> NetworkDescription (Behavior a)
-    unsafeFromPoll :: IO a -> NetworkDescription (Behavior a)
-
-Think of the I/O action as `readIORef ref`.
-
-* The I/O action might return different results while one event is processed. This can be solved by caching the value.
-* A more subtle problem is that the behavior must be polled *before* the network executes any I/O action. That's because one of the I/O actions might change the value returned, which would violate the `(< time)` semantics of behaviors. The `unsafeFromPoll` function violates this in the name of speed. I should include a few tools for making them safe again, to be used in bindings to GUI libraries.
-
-Convenience
-===========
-Convenience function for writing custom GUI widgets in FRP style.
-
-    interpretAsHandler :: (Event a -> Event b) -> (AddHandler a -> AddHandler b)
 
 Reactive Values
 ===============
@@ -48,18 +31,33 @@ They receive a rate as input and generate events in regular intervals.
 * Dynamic event switching as well
 
 
-Push-based implementation
-=========================
+Efficiency
+==========
+* Sharing for Behaviors
+
+* Optimize finalizers and initializers.
+  Currently, *every* temporariliy cached value will be deleted,
+  and *every* accumulated behavior will be updated.
+  Ideally, you would only this with references that were actually *used*.
+* Actually, we can keep a separate vault for the temporary values
+  and throw it away wholesale.
+
+* Polling behaviors from the outside should only be read if we actually need them.
+  This is a bit tricky, we may not execute any IO action before doing that,
+  because that might change the external behavior.
+* Ponder the difference between internal behaviors and external behaviors
+    internal: freeze after we have changed the accum value
+        Here we have full control, reactimate can't do anything bad.
+    external: freeze before we do anything with it
+  We could avoid a test if we do it right.
+  (Then again, we shouldn't use the Vault if we want to avoid tests...)
+
+* Optimize pure behaviors
+
+    (pure f <$>)   -> fmap f
+    apply (pure f) -> fmap f
+
 * Make sure space behavior is like demand-driven implementation (for better or worse).
-* Include sharing in Behaviors
-
-Optimize pure behaviors
-=======================
-Make sure that never changing behaviors are as efficient as a simple fmap. In particular,
-
-   (pure f <$>)   = fmap f
-   apply (pure f) = fmap f
-
 
 
 
@@ -68,6 +66,11 @@ Future
 Dynamic Event Switching
 =======================
 http://apfelmus.nfshost.com/blog/2011/05/15-frp-dynamic-event-switching.html
+
+Incremental Computation
+=======================
+Investigate whether there is a general framework behind reactive values, i.e. where the events are efficient diffs.
+
 
 Timing
 ======
