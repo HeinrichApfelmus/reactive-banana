@@ -18,7 +18,7 @@ module Reactive.Banana.Implementation (
     AddHandler, fromAddHandler, fromPoll, reactimate, liftIO,
     
     -- * Running event networks
-    EventNetwork, run, pause,
+    EventNetwork, actuate, pause,
     
     -- * Utilities
     -- $utilities
@@ -29,7 +29,6 @@ module Reactive.Banana.Implementation (
 
 import Reactive.Banana.PushIO hiding (compile)
 import qualified Reactive.Banana.PushIO as Implementation
--- import Reactive.Banana.Model hiding (Event, Behavior, run)
 import qualified Reactive.Banana.Model as Model
 
 import Control.Applicative
@@ -102,7 +101,7 @@ groupChannelsBy f xs = [(i, foldr1 f [x | (j,x) <- xs, i == j]) | i <- channels]
     describe the inputs, outputs and event graph in the 'NetworkDescription' monad 
     and use the 'compile' function to obtain an event network from that.
 
-    To /run/ an event network, use the 'run' function.
+    To /activate/ an event network, use the 'actuate' function.
     The network will register its input event handlers and start producing output.
 
     A typical setup looks like this:
@@ -132,7 +131,7 @@ groupChannelsBy f xs = [(i, foldr1 f [x | (j,x) <- xs, i == j]) | i <- channels]
 >       reactimate $ fmap drawCircle eventCircle
 >
 >   -- register handlers and start producing outputs
->   run network
+>   actuate network
 
     In short, you use 'fromAddHandler' to obtain /input/ events.
     The library uses this to register event handlers
@@ -187,7 +186,7 @@ type AddHandler a = (a -> IO ()) -> IO (IO ())
 -- | Input,
 -- obtain an 'Event' from an 'AddHandler'.
 --
--- When the event network is run,
+-- When the event network is actuated,
 -- this will register a callback function such that
 -- an event will occur whenever the callback function is called.
 fromAddHandler :: Typeable a => AddHandler a -> NetworkDescription (Model.Event PushIO a)
@@ -215,7 +214,7 @@ fromPoll :: IO a -> NetworkDescription (Model.Behavior PushIO a)
 fromPoll m = return $ poll m
 
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
--- that you can 'run', 'pause' and so on.
+-- that you can 'actuate', 'pause' and so on.
 compile :: NetworkDescription () -> IO EventNetwork
 compile (Prepare m) = do
     (_,_,(outputs,inputs)) <- runRWST m () 0
@@ -239,10 +238,10 @@ applyChannels fs xs =
 -- | Data type that represents a compiled event network.
 -- It may be paused or already running.
 data EventNetwork = EventNetwork {
-    -- | Run an event network.
+    -- | Actuate an event network.
     -- The inputs will register their event handlers, so that
     -- the networks starts to produce outputs in response to input events.
-    run :: IO (),
+    actuate :: IO (),
     
     -- | Pause an event network.
     -- Immediately stop producing output and
@@ -250,7 +249,7 @@ data EventNetwork = EventNetwork {
     -- Hence, the network stops responding to input events,
     -- but it's state will be preserved.
     --
-    -- You can resume the network with 'run'.
+    -- You can resume the network with 'actuate'.
     --
     -- Note: You can stop a network even while it is processing events,
     -- i.e. you can use 'pause' as an argument to 'reactimate'.
@@ -265,9 +264,9 @@ makeEventNetwork register = do
     let nop = return ()
     unregister <- newIORef nop
     let
-        run   = register >>= writeIORef unregister
-        pause = readIORef unregister >>= id >> writeIORef unregister nop
-    return $ EventNetwork run pause
+        actuate = register >>= writeIORef unregister
+        pause   = readIORef unregister >>= id >> writeIORef unregister nop
+    return $ EventNetwork actuate pause
 
 
 {-----------------------------------------------------------------------------
@@ -283,7 +282,7 @@ interpret f xs = do
         e <- fromAddHandler addHandler
         reactimate $ fmap (\b -> modifyIORef output (++[b])) (f e)
 
-    run network
+    actuate network
     bs <- forM xs $ \x -> do
         runHandlers x
         bs <- readIORef output
@@ -299,7 +298,7 @@ interpretAsHandler f addHandlerA = \handlerB -> do
     network <- compile $ do
         e <- fromAddHandler addHandlerA
         reactimate $ handlerB <$> f e
-    run network
+    actuate network
     return (pause network)
 
 {-----------------------------------------------------------------------------

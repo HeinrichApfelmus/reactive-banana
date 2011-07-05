@@ -24,12 +24,24 @@ matchesModel f = \xs -> do
         when (bs1 /= bs2) $ print bs1 >> print bs2
         return $ bs1 == bs2
 
-{-
+
 testSuite = do
-    -- TODO: algebraic laws
-    -- larger examples
-    quickCheck $ matchesModel decrease
-    -}
+        -- trivial unit tests
+        test add1
+        test filtering
+        test counter
+        test double
+        test sharing
+        test decrease
+        test accumBvsE
+        -- TODO:
+        --  * algebraic laws
+        --  * larger examples
+        --  * quickcheck
+    where
+    test :: (Show b, Eq b) => (forall f. FRP f => Event f Int -> Event f b)
+         -> IO ()
+    test f = print =<< matchesModel f [1..8::Int]
 
 {-----------------------------------------------------------------------------
     Examples

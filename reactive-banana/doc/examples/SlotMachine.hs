@@ -19,7 +19,7 @@ main = do
     displayHelpMessage
     sources <- makeSources
     network <- setupNetwork sources
-    run network
+    actuate network
     eventLoop sources
 
 displayHelpMessage :: IO ()
