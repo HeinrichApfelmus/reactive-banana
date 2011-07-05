@@ -47,4 +47,4 @@ main = start $ do
         sink out1 [text :== ("0", show . fst <$> counters)]
         sink out2 [text :== ("0", show . snd <$> counters)]
     
-    run network
+    actuate network

@@ -28,6 +28,10 @@ event1 widget e = do
 event0 :: w -> WX.Event w (IO ()) -> NetworkDescription (Event ())
 event0 widget e = event1 widget $ WX.mapEvent const (\_ e -> e ()) e
 
+-- | Behavior form an attribute
+behavior :: w -> WX.Attr w a -> NetworkDescription (Behavior a)
+behavior widget attr = fromPoll . liftIO $ WX.get widget attr
+
 
 data Prop' w = forall a. (WX.Attr w a) :== (a, Event a)
 

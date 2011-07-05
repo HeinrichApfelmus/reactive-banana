@@ -32,4 +32,4 @@ main = start $ do
     
         sink output [text :== ("0", show <$> counter)]
     
-    run network
+    actuate network
