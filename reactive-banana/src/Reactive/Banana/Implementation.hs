@@ -9,18 +9,19 @@ module Reactive.Banana.Implementation (
     -- | Build event networks using existing event-based frameworks
     --   and run them.
     
-    -- * Implementation
-    PushIO, interpret,
+    -- * Simple use
+    PushIO, interpret, interpretAsHandler,
 
-    -- * Building event networks with input and output
+    -- * Building event networks with input/output
     -- $build
     NetworkDescription, compile,
-    AddHandler, fromAddHandler, reactimate, liftIO,
+    AddHandler, fromAddHandler, fromPoll, reactimate, liftIO,
     
     -- * Running event networks
     EventNetwork, run, pause,
     
     -- * Utilities
+    -- $utilities
     newAddHandler,
     
     module Data.Dynamic,
@@ -46,6 +47,9 @@ import Data.Unique
     PushIO specific functions
 ------------------------------------------------------------------------------}
 type Flavor  = Implementation.PushIO
+
+poll :: IO a -> Model.Behavior Flavor a
+poll = behavior . Poll
 
 input :: Typeable a => Channel -> Model.Event Flavor a
 input = event . Input
@@ -111,9 +115,12 @@ groupChannelsBy f xs = [(i, foldr1 f [x | (j,x) <- xs, i == j]) | i <- channels]
 >   -- build the event network
 >   network <- compile $ do
 >       -- input: obtain  Event  from functions that register event handlers
->       emouse    <- fromAddHandler (registerMouseEvent window)
->       ekeyboard <- fromAddHandler (registerKeyEvent window)
->   
+>       emouse    <- fromAddHandler $ registerMouseEvent window
+>       ekeyboard <- fromAddHandler $ registerKeyEvent window
+>       -- input: obtain  Behavior  from mutable data by polling
+>       btext     <- fromPoll       $ getTextValue editBox
+>       bdie      <- fromPoll       $ randomRIO (1,6)
+>
 >       -- express event graph
 >       let
 >           behavior1 = accumB ...
@@ -192,6 +199,21 @@ fromAddHandler addHandler = Prepare $ do
     where
     newChannel = do c <- get; put $! c+1; return c
 
+-- | Input,
+-- obtain a 'Behavior' by polling mutable data, like mutable variables or GUI widgets.
+-- 
+-- Ideally, the argument IO action just polls a mutable variable,
+-- it should not perform expensive computations.
+-- Neither should its side effects affect the event network significantly.
+-- 
+-- Internally, the event network will take a snapshot of each mutable
+-- datum before processing an input event, so that the obtained behavior
+-- is well-defined. This snapshot is guaranteed to happen before
+-- any 'reactimate' is performed. The network may omit taking a snapshot altogether
+-- if the behavior is not needed.
+fromPoll :: IO a -> NetworkDescription (Model.Behavior PushIO a)
+fromPoll m = return $ poll m
+
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
 -- that you can 'run', 'pause' and so on.
 compile :: NetworkDescription () -> IO EventNetwork
@@ -249,7 +271,7 @@ makeEventNetwork register = do
 
 
 {-----------------------------------------------------------------------------
-    Interpreter for testing
+    Simple use
 ------------------------------------------------------------------------------}
 -- | Simple way to run an event graph. Very useful for testing.
 interpret :: Typeable a
@@ -269,14 +291,31 @@ interpret f xs = do
         return bs
     return bs
 
+-- | Simple way to write a single event handler with functional reactive programming.
+interpretAsHandler :: Typeable a
+    => (Model.Event PushIO a -> Model.Event PushIO b)
+    -> AddHandler a -> AddHandler b
+interpretAsHandler f addHandlerA = \handlerB -> do
+    network <- compile $ do
+        e <- fromAddHandler addHandlerA
+        reactimate $ handlerB <$> f e
+    run network
+    return (pause network)
 
 {-----------------------------------------------------------------------------
     Utilities
 ------------------------------------------------------------------------------}
+{-$binding
+
+    This section collects a few convenience functions
+    for unusual use cases. For instance:
+    
+    * The event-based framework you want to hook into is poorly designed
+    * You have to write your own event loop and roll a little event framework
+
+-}
+
 -- | Build a facility to register and unregister event handlers.
--- 
--- This function is only useful if you want to hook up this library
--- to a poorly designed event-based framework, or roll your own.
 newAddHandler :: IO (AddHandler a, a -> IO ())
 newAddHandler = do
     handlers <- newIORef Map.empty
