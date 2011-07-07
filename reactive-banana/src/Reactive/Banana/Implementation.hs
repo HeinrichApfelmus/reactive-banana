@@ -2,7 +2,7 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
     
-    Linking any implementation to an event-based framework
+    Linking the push-based implementation to an event-based framework
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Implementation (
     -- * Synopsis

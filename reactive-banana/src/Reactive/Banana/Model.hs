@@ -8,12 +8,12 @@ module Reactive.Banana.Model (
     -- * Synopsis
     -- | Combinators for building event networks and their semantics.
     
-    -- * Combinators
+    -- * Core Combinators
     module Control.Applicative,
     FRP(..),
-    
     Event, Behavior,
     -- $classes
+    -- * Derived Combinators
     whenE, mapAccum,
     
     -- * Model implementation

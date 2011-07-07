@@ -33,15 +33,17 @@ behavior :: w -> WX.Attr w a -> NetworkDescription (Behavior a)
 behavior widget attr = fromPoll . liftIO $ WX.get widget attr
 
 
-data Prop' w = forall a. (WX.Attr w a) :== (a, Event a)
+data Prop' w = forall a. (WX.Attr w a) :== Discrete a
+
+infixr 0 :==
 
 -- | "Animate" a property with a stream of events
 sink :: w -> [Prop' w] -> NetworkDescription ()
 sink widget props = mapM_ sink1 props
     where
-    sink1 (attr :== (x,ex)) = do
-        liftIO $ WX.set widget [attr := x]
-        reactimate $ (\x -> WX.set widget [attr := x]) <$> ex
+    sink1 (attr :== x) = do
+        liftIO $ WX.set widget [attr := initial x]
+        reactimate $ (\x -> WX.set widget [attr := x]) <$> changes x
 
 
 

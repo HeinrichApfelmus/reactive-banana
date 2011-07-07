@@ -23,7 +23,8 @@ main = start $ do
     
     set f [layout := margin 10 $
             column 5 [row 5 [widget bup, widget bdown, widget bswitch],
-                      row 30 [widget out1, widget out2]]]
+                      grid 5 5 [[label "First Counter:" , widget out1]
+                               ,[label "Second Counter:", widget out2]]]]
     
     network <- compile $ do
         eup     <- event0 bup   command
@@ -36,15 +37,15 @@ main = start $ do
             firstcounter = accumB True $ not <$ eswitch
         
             -- joined state of the two counters
-            counters :: Event (Int, Int)
-            counters = accumE (0,0) $
+            counters :: Discrete (Int, Int)
+            counters = accumD (0,0) $
                 union ((increment <$> firstcounter) `apply` eup)
                       ((decrement <$> firstcounter) `apply` edown)
             
             increment left _ (x,y) = if left then (x+1,y) else (x,y+1)
             decrement left _ (x,y) = if left then (x-1,y) else (x,y-1)
     
-        sink out1 [text :== ("0", show . fst <$> counters)]
-        sink out2 [text :== ("0", show . snd <$> counters)]
+        sink out1 [text :== show . fst <$> counters]
+        sink out2 [text :== show . snd <$> counters]
     
     actuate network

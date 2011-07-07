@@ -33,7 +33,7 @@ Source-repository    head
 Executable Counter
     hs-source-dirs:  src
     main-is:         Counter.hs
-    build-depends:   base >= 4.2 && < 4.4,
-                     reactive-banana >= 0.3.0.0 && < 0.4,
-                     wx==0.12.*, wxcore==0.12.*
-    extensions:      ExistentialQuantification
+
+Executable TwoCounters
+    hs-source-dirs:  src
+    main-is:         TwoCounters.hs

@@ -52,7 +52,9 @@ Library
         base >= 4.2 && < 4.4, containers == 0.4.*,
         monads-tf == 0.1.*, transformers == 0.2.*,
         QuickCheck == 2.4.*
-    exposed-modules:    Reactive.Banana, Reactive.Banana.Model,
+    exposed-modules:    Reactive.Banana,
+                        Reactive.Banana.Incremental,
+                        Reactive.Banana.Model,
                         Reactive.Banana.Implementation,
                         Reactive.Banana.Tests
     other-modules:      Reactive.Banana.PushIO,

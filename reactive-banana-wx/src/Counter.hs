@@ -27,9 +27,9 @@ main = start $ do
         edown <- event0 bdown command
         
         let
-            counter :: Event Int
-            counter = accumE 0 $ ((+1) <$ eup) `union` (subtract 1 <$ edown)
+            counter :: Discrete Int
+            counter = accumD 0 $ ((+1) <$ eup) `union` (subtract 1 <$ edown)
     
-        sink output [text :== ("0", show <$> counter)]
+        sink output [text :== show <$> counter]
     
     actuate network
