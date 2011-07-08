@@ -3,8 +3,6 @@
     
     Example: Counter
 ------------------------------------------------------------------------------}
-module Main where
-
 import Control.Monad
 import Graphics.UI.WX hiding (Event)
 import Reactive.Banana

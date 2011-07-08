@@ -24,6 +24,11 @@ event1 widget e = do
     liftIO $ WX.set widget [on e :~ \h x -> h x >> runHandlers x]
     fromAddHandler addHandler
 
+    -- NOTE: Some events don't work, for instance   leftKey  and  rightKey
+    -- "user error (WX.Events: the key event is write-only.)"
+    -- That's because they are actually just derived from the  key  event
+    -- Not sure what to do with this.
+
 -- | Event without parameters.
 event0 :: w -> WX.Event w (IO ()) -> NetworkDescription (Event ())
 event0 widget e = event1 widget $ WX.mapEvent const (\_ e -> e ()) e
@@ -44,6 +49,15 @@ sink widget props = mapM_ sink1 props
     sink1 (attr :== x) = do
         liftIO $ WX.set widget [attr := initial x]
         reactimate $ (\x -> WX.set widget [attr := x]) <$> changes x
+
+
+-- Typeable instances, yikes!
+-- Also, these instances are wrong, but I don't care.
+instance Typeable WX.EventKey where
+    typeOf _ = mkTyConApp (mkTyCon "WX.EventKey") []
+instance Typeable WX.EventMouse where
+    typeOf _ = mkTyConApp (mkTyCon "WX.EventMouse") []
+
 
 
 
