@@ -27,18 +27,19 @@ module Reactive.Banana.Implementation (
     module Data.Dynamic,
     ) where
 
-import Reactive.Banana.PushIO hiding (compile)
-import qualified Reactive.Banana.PushIO as Implementation
-import qualified Reactive.Banana.Model as Model
-
 import Control.Applicative
+import Control.Concurrent
 import Control.Monad.RWS
 
 import Data.Dynamic
-import Data.List (nub)
 import Data.IORef
+import Data.List (nub)
 import qualified Data.Map as Map
 import Data.Unique
+
+import Reactive.Banana.PushIO hiding (compile)
+import qualified Reactive.Banana.PushIO as Implementation
+import qualified Reactive.Banana.Model as Model
 
 -- debug = putStrLn
 
@@ -62,12 +63,15 @@ compileHandlers graph = do
     let paths1 = groupChannelsBy (\p q x -> p x >> q x) paths
 
     -- prepare threading the cache as state
-    rcache <- newIORef emptyCache
-    writeIORef rcache cache
+    rcache <- newEmptyMVar
+    putMVar rcache cache
     let run m = do
-            cache <- readIORef rcache
+            -- takeMVar  makes sure that network runs are sequential
+            -- In particular, the network will deadlock
+            -- if you try to call an event handler during a  reactimate .
+            cache <- takeMVar rcache
             (_,cache') <- runRun m cache
-            writeIORef rcache cache'
+            putMVar rcache cache'
         paths2 = map (\(i,p) -> (i, run . p)) $ paths1
     
     return paths2
