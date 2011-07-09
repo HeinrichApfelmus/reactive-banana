@@ -3,6 +3,7 @@
     
     Derived data type, a hybrid between  Event  and  Behavior
 ------------------------------------------------------------------------------}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Reactive.Banana.Incremental (
     -- * Why a third type Discrete?
     -- $discrete
@@ -90,6 +91,10 @@ accumD x = stepperD x . accumE x
 applyD :: FRP f => Discrete f (a -> b) -> Event f a -> Event f b
 applyD = apply . value
 
+-- | Overloading 'applyD'
+instance FRP f => Apply (Discrete f) (Event f) where
+    (<@>) = applyD
+
 -- | Functor instance
 instance FRP f => Functor (Discrete f) where
     fmap f r = stepperD (f $ initial r) $ fmap f (changes r)
@@ -107,4 +112,3 @@ instance FRP f => Applicative (Discrete f) where
         left  f (_,x) = (f,x)
         right x (f,_) = (f,x)
 
-    

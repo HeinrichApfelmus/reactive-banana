@@ -3,7 +3,8 @@
     
     Class interface + Semantic model
 ------------------------------------------------------------------------------}
-{-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances, EmptyDataDecls #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances, EmptyDataDecls,
+  MultiParamTypeClasses #-}
 module Reactive.Banana.Model (
     -- * Synopsis
     -- | Combinators for building event networks and their semantics.
@@ -14,7 +15,7 @@ module Reactive.Banana.Model (
     Event, Behavior,
     -- $classes
     -- * Derived Combinators
-    whenE, mapAccum,
+    whenE, mapAccum, Apply(..),
     
     -- * Model implementation
     Model,
@@ -182,6 +183,18 @@ whenE bf = filterApply (const <$> bf)
 mapAccum :: FRP f => acc -> Event f (acc -> (x,acc)) -> (Event f x, Behavior f acc)
 mapAccum acc ef = (fst <$> e, stepper acc (snd <$> e))
     where e = accumE (undefined,acc) ((. snd) <$> ef)
+
+-- | Class for overloading the 'apply' function.
+class (Functor f, Functor g) => Apply f g where
+    -- | Infix operation for the 'apply' function, similar to '<*>'
+    (<@>) :: f (a -> b) -> g a -> g b
+    -- | Convenience function, similar to '<*'
+    (<@)  :: f a -> g b -> g a
+    
+    f <@ g = (const <$> f) <@> g 
+
+instance FRP f => Apply (Behavior f) (Event f) where
+    (<@>) = apply
 
 {-----------------------------------------------------------------------------
     Semantic model
