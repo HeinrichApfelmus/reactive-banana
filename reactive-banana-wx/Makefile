@@ -1,6 +1,6 @@
 .PHONY: all clean open
 
-APPS=Asteroids Counter CurrencyConverter TwoCounters Wave
+APPS=Asteroids Counter CurrencyConverter NetMonitor TwoCounters Wave
 OBJ=dist/build
 COMPILE=ghc --make -i$(OBJ) -L$(OBJ) -isrc -i../reactive-banana/src
 
@@ -10,11 +10,15 @@ Asteroids : src/Asteroids.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/
 	macosx-app $@
 
-CurrencyConverter : src/CurrencyConverter.hs src/Reactive/Banana/WX.hs
+Counter : src/Counter.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/
 	macosx-app $@
 
-Counter : src/Counter.hs src/Reactive/Banana/WX.hs
+NetMonitor : src/NetMonitor.hs src/Reactive/Banana/WX.hs
+	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/
+	macosx-app $@
+
+CurrencyConverter : src/CurrencyConverter.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/
 	macosx-app $@
 
@@ -28,6 +32,3 @@ Wave : src/Wave.hs src/Reactive/Banana/WX.hs
 
 clean:
 	rm -rf $(APPS) $(OBJ)/*.o $(OBJ)/*.hi *.app *.exe *.manifest
-
-open: Guitar
-	open Guitar.app

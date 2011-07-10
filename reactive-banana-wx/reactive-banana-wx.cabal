@@ -4,6 +4,9 @@ Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,
     using wxHaskell.
+    .
+    Note: You need to install the (platform independent)
+    @cabal-macosx@ library before you can configure/build and install this library.
 
 Homepage:            http://haskell.org/haskellwiki/Reactive-banana
 License:             BSD3
@@ -43,6 +46,10 @@ Executable Asteroids
 Executable CurrencyConverter
     hs-source-dirs:  src
     main-is:         CurrencyConverter.hs
+
+Executable NetMonitor
+    hs-source-dirs:  src
+    main-is:         NetMonitor.hs
 
 Executable TwoCounters
     hs-source-dirs:  src
