@@ -4,8 +4,10 @@
     Example: Currency Converter
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo #-}
+import Data.Bits
 import Data.Maybe
 import Graphics.UI.WX hiding (Event)
+import Graphics.UI.WXCore hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.WX
 import Text.Printf
@@ -14,10 +16,10 @@ import Text.Printf
     Main
 ------------------------------------------------------------------------------}
 main = start $ do
-    f        <- frame    [text := "Currency Converter"]
-    
-    dollar   <- entry f  [processEnter := True]
-    euro     <- entry f  [processEnter := True]
+    -- FIXME: Why does tab traversal not work?
+    f        <- frame   [ text := "Currency Converter", tabTraversal := True ]
+    dollar   <- entry f [ processEnter := True ]
+    euro     <- entry f [ processEnter := True ]
     
     set f [layout := margin 10 $
             column 10 [
@@ -53,6 +55,9 @@ reactimateTextEntry
 reactimateTextEntry entry input = do
     sink entry [ text :== input ]
 
+    -- FIXME: How to do real-time updates?
+    -- The  keyboard  event always lags one character behind.
+    -- Where is wxEVT_COMMAND_TEXT_UPDATED in wxHaskell?
     e <- event0   entry command
     b <- behavior entry text
     return $ b <@ e
