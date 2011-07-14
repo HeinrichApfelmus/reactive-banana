@@ -1,8 +1,8 @@
 .PHONY: all clean open
 
-APPS=Asteroids Counter CurrencyConverter NetMonitor TwoCounters Wave
+APPS=Asteroids Counter CRUD CurrencyConverter NetMonitor TwoCounters Wave
 OBJ=dist/build
-COMPILE=ghc --make -i$(OBJ) -L$(OBJ) -isrc -i../reactive-banana/src
+COMPILE=ghc --make -i$(OBJ) -L/usr/lib -L$(OBJ) -isrc -i../reactive-banana/src
 
 all: $(APPS)
 
@@ -15,6 +15,10 @@ Counter : src/Counter.hs src/Reactive/Banana/WX.hs
 	macosx-app $@
 
 NetMonitor : src/NetMonitor.hs src/Reactive/Banana/WX.hs
+	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/
+	macosx-app $@
+
+CRUD : src/CRUD.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/
 	macosx-app $@
 

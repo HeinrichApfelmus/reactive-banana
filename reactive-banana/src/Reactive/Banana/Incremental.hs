@@ -37,7 +37,8 @@ it may not always suit the user;
 there are many different ways of implementing
 /incremental computations/.
 But I don't know a unified theory for them, so
-I have decided that the reactive-banana will give /explicit control over updates to the user/
+I have decided that the reactive-banana will give
+/explicit control over updates to the user/
 in the form of specialized data types like 'Discrete',
 and shall not attempt to bake experimental optimizations into the 'Behavior' type.
 
@@ -45,12 +46,15 @@ To sum it up:
 
 * You get explicit control over updates (the 'changes' function),
 
-* but you need to learn a third data type 'Discrete', which almost duplicates the 'Behavior' type.
+* but you need to learn a third data type 'Discrete',
+which almost duplicates the 'Behavior' type.
 
 * Even though the type 'Behavior' is more fundamental,
 you will probably use 'Discrete' more often.
 
-That said, 'Discrete' is not a new primitive type, but built from exising types and combinators; you are encouraged to look at the source code.
+That said, 'Discrete' is not a new primitive type,
+but built from exising types and combinators;
+you are encouraged to look at the source code.
 
 If you are an FRP implementor, I encourage you to find a better solution.
 But if you are a user, you may want to accept the trade-off for now.

@@ -47,9 +47,8 @@ sink :: w -> [Prop' w] -> NetworkDescription ()
 sink widget props = mapM_ sink1 props
     where
     sink1 (attr :== x) = do
-        liftIO $ WX.set widget [attr := initial x]
+        liftIOLater $ WX.set widget [attr := initial x]
         reactimate $ (\x -> WX.set widget [attr := x]) <$> changes x
-
 
 -- Typeable instances, yikes!
 -- Also, these instances are wrong, but I don't care.

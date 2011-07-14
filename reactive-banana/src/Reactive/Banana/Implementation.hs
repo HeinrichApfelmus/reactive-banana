@@ -15,7 +15,7 @@ module Reactive.Banana.Implementation (
     -- * Building event networks with input/output
     -- $build
     NetworkDescription, compile,
-    AddHandler, fromAddHandler, fromPoll, reactimate, liftIO,
+    AddHandler, fromAddHandler, fromPoll, reactimate, liftIO, liftIOLater,
     
     -- * Running event networks
     EventNetwork, actuate, pause,
@@ -146,7 +146,7 @@ groupChannelsBy f xs = [(i, foldr1 f [x | (j,x) <- xs, i == j]) | i <- channels]
 -}
 
 type AddHandler'  = (Channel, AddHandler Universe)
-type Preparations = ([Model.Event Flavor (IO ())], [AddHandler'])
+type Preparations = ([Model.Event Flavor (IO ())], [AddHandler'], [IO ()])
 
 -- | Monad for describing event networks.
 -- 
@@ -170,11 +170,13 @@ instance Functor (NetworkDescription) where
 instance Applicative (NetworkDescription) where
     pure    = Prepare . pure
     f <*> a = Prepare $ unPrepare f <*> unPrepare a
+instance MonadFix (NetworkDescription) where
+    mfix f  = Prepare $ mfix (unPrepare . f)
 
 -- | Output.
 -- Execute the 'IO' action whenever the event occurs.
 reactimate :: Model.Event PushIO (IO ()) -> NetworkDescription ()
-reactimate e = Prepare $ tell ([e], [])
+reactimate e = Prepare $ tell ([e], [], [])
 
 -- | A value of type @AddHandler a@ is just a facility for registering
 -- callback functions, also known as event handlers.
@@ -197,7 +199,7 @@ fromAddHandler :: Typeable a => AddHandler a -> NetworkDescription (Model.Event 
 fromAddHandler addHandler = Prepare $ do
         channel <- newChannel
         let addHandler' k = addHandler $ k . toUniverse channel
-        tell ([], [(channel, addHandler')])
+        tell ([], [(channel, addHandler')], [])
         return $ input channel
     where
     newChannel = do c <- get; put $! c+1; return c
@@ -217,18 +219,26 @@ fromAddHandler addHandler = Prepare $ do
 fromPoll :: IO a -> NetworkDescription (Model.Behavior PushIO a)
 fromPoll m = return $ poll m
 
+-- | Lift an 'IO' action into the 'NetworkDescription' monad,
+-- but defer its execution until compilation time.
+-- This can be useful for recursive definitions using 'MonadFix'.
+liftIOLater :: IO () -> NetworkDescription ()
+liftIOLater m = Prepare $ tell ([],[], [m])
+
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
 compile :: NetworkDescription () -> IO EventNetwork
 compile (Prepare m) = do
-    (_,_,(outputs,inputs)) <- runRWST m () 0
+    (_,_,(outputs,inputs,liftIOs)) <- runRWST m () 0
+    sequence_ liftIOs
     
     let -- union of all  reactimates
         graph = mconcat outputs :: Model.Event Flavor (IO ())
     paths <- compileHandlers graph
     
     let -- register event handlers
-        register = fmap sequence_ . sequence . map snd . applyChannels inputs $ paths
+        register = fmap sequence_ . sequence . map snd . applyChannels inputs
+                 $ paths
     makeEventNetwork register
 
 -- FIXME: make this faster

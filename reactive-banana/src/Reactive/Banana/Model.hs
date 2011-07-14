@@ -184,6 +184,9 @@ mapAccum :: FRP f => acc -> Event f (acc -> (x,acc)) -> (Event f x, Behavior f a
 mapAccum acc ef = (fst <$> e, stepper acc (snd <$> e))
     where e = accumE (undefined,acc) ((. snd) <$> ef)
 
+
+infixl 4 <@>, <@
+
 -- | Class for overloading the 'apply' function.
 class (Functor f, Functor g) => Apply f g where
     -- | Infix operation for the 'apply' function, similar to '<*>'
