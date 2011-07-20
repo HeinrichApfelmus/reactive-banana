@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.4.1.0
+Version:             0.4.1.1
 Synopsis:            Small but solid library for
                      functional reactive programming (FRP).
 Description:         
@@ -62,6 +62,6 @@ Library
 
 Source-repository head
     type:               git
-    location:           git://github.com/HeinrichApfelmus/Haskell-BlackBoard.git
+    location:           git://github.com/HeinrichApfelmus/reactive-banana.git
     subdir:             reactive-banana/
 

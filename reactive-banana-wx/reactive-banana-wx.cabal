@@ -1,5 +1,5 @@
 Name:                reactive-banana-wx
-Version:             0.4.1.0
+Version:             0.4.1.1
 Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,
@@ -32,20 +32,24 @@ Library
 
 Source-repository    head
     type:            git
-    location:        git://github.com/HeinrichApfelmus/Haskell-BlackBoard.git
+    location:        git://github.com/HeinrichApfelmus/reactive-banana.git
     subdir:          reactive-banana-wx
-
-Executable Counter
-    hs-source-dirs:  src
-    main-is:         Counter.hs
 
 Executable Asteroids
     hs-source-dirs:  src
     main-is:         Asteroids.hs
 
+Executable Counter
+    hs-source-dirs:  src
+    main-is:         Counter.hs
+
 Executable CurrencyConverter
     hs-source-dirs:  src
     main-is:         CurrencyConverter.hs
+
+Executable CRUD
+    hs-source-dirs:  src
+    main-is:         CRUD.hs
 
 Executable NetMonitor
     hs-source-dirs:  src
