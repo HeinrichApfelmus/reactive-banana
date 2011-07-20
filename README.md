@@ -33,8 +33,8 @@ Prerequisites: the wxHaskell package
 
 To build the reactive-banana libraries, type
 
-   cd reactive-banana && cabal configure && cabal build && cd ..
-   cd reactive-banana-wx && cabal configure && cabal build && cd ..
+    cd reactive-banana && cabal configure && cabal build && cd ..
+    cd reactive-banana-wx && cabal configure && cabal build && cd ..
 
 To build the Blackboard application (legacy), type
 
