@@ -31,6 +31,8 @@ Prerequisites: the wxHaskell package
 
     cabal install wx
 
+Note that you will need to have the wxWidgets dev libraries installed before building wx. If you run into `ExitFailure 1` exceptions, please follow the [wxHaskell Quick Start](http://www.haskell.org/haskellwiki/WxHaskell/Building) instructions and try again.
+
 To build the reactive-banana libraries, type
 
     cd reactive-banana && cabal configure && cabal build && cd ..
