@@ -36,13 +36,13 @@ To build the reactive-banana libraries, type
     cd reactive-banana && cabal configure && cabal build && cd ..
     cd reactive-banana-wx && cabal configure && cabal build && cd ..
 
-To build the Blackboard application (legacy), type
+To build the Blackboard application (legacy, doesn't work anymore), type
 
     cd reactive-banana && cabal configure && cd ..
     cd reactive-banana-wx && cabal configure && cd ..
     make BlackBoard
 
-But take note that this probably **only works for MacOS X**! You'll have to change the `Makefile` a bit to make it work on other platforms.
+Note, however, that the BlackBoard application suffers from bitrot and still requires reactive-banana version 0.1. So, compilation will likely fail. Also note that this **only works for MacOS X**! You'll have to change the `Makefile` a bit to make it work on other platforms.
 
 ## Contribute
 
