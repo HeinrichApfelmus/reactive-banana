@@ -15,9 +15,12 @@ import qualified Reactive.Banana.Vault as Vault
 
 
 import Control.Applicative
+import Control.Monad
+import Control.Monad.IO.Class       (liftIO)
+import Control.Monad.Trans.Class    (lift)
 import Control.Monad.Trans.Identity
-import Control.Monad.State
-import Control.Monad.Writer
+import Control.Monad.Trans.State
+import Control.Monad.Trans.Writer
 import Data.Dynamic
 import Data.IORef
 import Data.Maybe

@@ -50,7 +50,7 @@ Library
                         DeriveDataTypeable
     build-depends:
         base >= 4.3 && < 5, containers == 0.4.*,
-        monads-tf == 0.1.*, transformers == 0.2.*,
+        transformers == 0.2.*,
         QuickCheck == 2.4.*
     exposed-modules:    Reactive.Banana,
                         Reactive.Banana.Incremental,

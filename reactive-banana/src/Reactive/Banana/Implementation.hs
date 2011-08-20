@@ -29,11 +29,15 @@ module Reactive.Banana.Implementation (
 
 import Control.Applicative
 import Control.Concurrent
-import Control.Monad.RWS
+import Control.Monad
+import Control.Monad.Fix       (MonadFix(..))
+import Control.Monad.IO.Class  (MonadIO(..))
+import Control.Monad.Trans.RWS
 
 import Data.Dynamic
 import Data.IORef
 import Data.List (nub)
+import Data.Monoid
 import qualified Data.Map as Map
 import Data.Unique
 
