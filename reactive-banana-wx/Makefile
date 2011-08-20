@@ -1,6 +1,6 @@
 .PHONY: all clean open
 
-APPS=Asteroids Counter CRUD CurrencyConverter NetMonitor TwoCounters Wave
+APPS=Asteroids Counter CRUD CurrencyConverter NetMonitor TicTacToe TwoCounters Wave
 OBJ=dist/build
 COMPILE=ghc --make -i$(OBJ) -L/usr/lib -L$(OBJ) -isrc -i../reactive-banana/src
 
@@ -23,6 +23,10 @@ CRUD : src/CRUD.hs src/Reactive/Banana/WX.hs
 	macosx-app $@
 
 CurrencyConverter : src/CurrencyConverter.hs src/Reactive/Banana/WX.hs
+	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/
+	macosx-app $@
+
+TicTacToe : src/TicTacToe.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/
 	macosx-app $@
 

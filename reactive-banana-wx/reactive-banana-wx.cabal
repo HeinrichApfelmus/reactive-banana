@@ -55,6 +55,10 @@ Executable NetMonitor
     hs-source-dirs:  src
     main-is:         NetMonitor.hs
 
+Executable TicTacToe
+    hs-source-dirs:  src
+    main-is:         TicTacToe.hs
+
 Executable TwoCounters
     hs-source-dirs:  src
     main-is:         TwoCounters.hs
