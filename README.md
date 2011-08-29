@@ -9,6 +9,8 @@ See the **[project homepage][homepage]** for **documentation**, **examples** and
 
 I'm writing documentation on a call-by-need basis. So, feel free to write me an email if you want something explained that you don't understand, and I'll explain it to you!
 
+Want to support the project with a tiny donation? [![Flattr this](http://api.flattr.com/button/flattr-badge-large.png)](http://flattr.com/thing/384682/reactive-banana)
+
 ## How is the source code structured?
 
 The project contains three directories:
