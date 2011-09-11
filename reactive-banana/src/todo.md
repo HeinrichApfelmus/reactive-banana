@@ -1,82 +1,60 @@
 Present
 -------
+
+Small fry
+=========
 * Add test cases and examples.
-
 * Consider a better name / overloading the `filterApply` function while we're at it.
-
 * `Discrete`: Investigate use of the `Change` data type for `Discrete`. Will only be relevant in a push-based implementation. Consider overloading the `accumD` function to different types.
 
 
-Examples
-========
-http://comments.gmane.org/gmane.comp.lang.haskell.cafe/90908
-http://www.reddit.com/r/haskell/comments/ijsnv/call_for_gui_examples_any_small_gui_applications/
-http://apfelmus.nfshost.com/blog/2011/07/08-call-for-gui-examples.html
+Interface changes
+=================
+
+### Managing simultaneous events
+
+    -- Collect simultaneous events into a list
+    collect :: Event a -> Event [a]
+    -- collect . spread = id
+    spread :: Event [a] -> Event a
 
 
-### Popular requests
-* Real-time data display (stock market, system data / CPU usage, darcs repos)
+    -- only keep the last event from simultaneous ones
+    calm :: Event a -> Event a
+    calm = fmap last . collect
 
-### Misc
-* GUI for a command line program
-    transformation between files in a directory
-* Chess GUI
-* "Open" systems, i.e. involving external data, like network, file system etc.
-* Color picker, font chooser, file chooser
+### Timing and timers
 
-### Difficult examples
-* CRUD table: create, update, delete records in table (for example Person records), with validating user input, auto-calculated fields (current age by birth date), totals by column, filtering. I think same GUI tasks get solved many GUI developers in imperative style. I hope solution of such day-tasks in FRP will be elegant. Aka databases.
-* small vector drawing application (or GUI designer)
-    events from drawn shapes
+    type Duration = -- time difference in UNIX epoch
 
-* arpeggiator for MIDI events (delay existing events to repeat them in the future)
-* dynamic widgets and windows
+    -- event that happens once (not very useful without dynamic event switching)
+    once :: a -> Duration -> Event era a
 
-### Animations
-* Table of Contents - http://sjoerdvisscher.handcraft.com/treenav
-* Final Fantasy style game
-    You wouldn't need a whole game :) I'm thinking of something like a 50x50 grid map with a 20x20 view portal on it. A character moving around under user control, causing the portal to scroll, and maybe 2 or 3 non user controlled characters moving randomly. The interactions between animation, multiple characters, user input and map scrolling would be very interesting using FRP.
+    -- delay a sequence of events, but cut them off when a new one comes
+    -- very useful when used recursively
+    schedule :: Event (a,Duration) -> Event a
 
+    -- this primitive is all you need to enable continuous time behaviors
+    time :: Behavior Time
 
-Consequences
-============
--- Collect simultaneous events into a list
-collect :: Event a -> Event [a]
+Special support for time because
 
--- only keep the last event from simultaneous ones
-calm :: Event a -> Event a
-calm = fmap last . collect
+* Making sure that scheduling gives *logical* times when observed with  time  that are consistent with real-time.
+** Use concurrency
+** Make sure that external events don't happen before scheduled events,
+    that would be an observable inconsistency.
+    Solution:
+        - Execute any scheduled events whenever the  time  behavior is frozen.
+        - External events never happen simultaneously with anything else
+        - Freeze the  time  behavior to its logical value whenever a scheduled
+          event happens.
+* Debugging/Testing without having to wait the actual times.
 
 
--- The following can be simulated with timers
--- But we probably want some pure representations, too.
+### Dynamic Event Switching
+http://apfelmus.nfshost.com/blog/2011/05/15-frp-dynamic-event-switching.html
 
--- delay all event occurences by an amount of time
--- make sure it doesn't care about execution time
-delay :: Time -> Event a -> Event a
--- or even
-delay :: Behavior Time -> Event a -> Event a
-
--- continuous behaviors
-time :: Behavior Time
-
-
-
-Intermediate
-------------
-Animations
-==========
-* Add timer events/widgets.
-
-    type TimeInteval = Integer -- milliseconds
-    timer :: Reactive TimeInteval -> NetworkDescription (Event ())
-
-They receive a rate as input and generate events in regular intervals.
-
-* Delaying events
-** Very useful for things like an arpeggiator (repeat notes) and general MIDI programming
-* Continuous time is darn handy for animations
-* Dynamic event switching as well
+Found a way to keep the previous interface constant.
 
 
 Efficiency
@@ -108,20 +86,15 @@ Efficiency
 * Make sure space behavior is like demand-driven implementation (for better or worse).
 
 
-
 Future
 ------
-Dynamic Event Switching
-=======================
-http://apfelmus.nfshost.com/blog/2011/05/15-frp-dynamic-event-switching.html
 
 Incremental Computation
 =======================
 Investigate whether there is a general framework behind discrete values, i.e. where the events are efficient diffs.
 
-
-Timing
-======
+Simultaneity
+============
 Think about simultaneous event some more. In particular, investigate "splitting the moment". This might be relevant for modularity, but makes the semantics more complicated.
 
 The event `before e` is guaranteed to execute before any event that occurs simultaneoulsy with the event `e`.
