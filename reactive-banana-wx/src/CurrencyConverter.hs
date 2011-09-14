@@ -7,6 +7,7 @@
 import Data.Bits
 import Data.Maybe
 import Graphics.UI.WX hiding (Event)
+import qualified Graphics.UI.WX.Events
 import Graphics.UI.WXCore hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.WX
@@ -25,7 +26,7 @@ main = start $ do
             column 10 [
                 grid 10 10 [[label "Dollar:", widget dollar],
                             [label "Euro:"  , widget euro  ]]
-            , label "Press enter to convert"
+            , label "Amounts update while typing."
             ]]
 
     network <- compile $ mdo        
@@ -55,11 +56,14 @@ reactimateTextEntry
 reactimateTextEntry entry input = do
     sink entry [ text :== input ]
 
-    -- FIXME: How to do real-time updates?
-    -- The  keyboard  event always lags one character behind.
-    -- Where is wxEVT_COMMAND_TEXT_UPDATED in wxHaskell?
-    e <- event0   entry command
+    -- Real-time text updates.
+    -- Should be  wxEVT_COMMAND_TEXT_UPDATED  , but that's misisng from wxHaskell.
+    e <- event1   entry keyboardUp
     b <- behavior entry text
     return $ b <@ e
 
+-- observe "key up" events (many thanks to Abu Alam)
+-- this should probably be in the wxHaskell library
+keyboardUp  :: Graphics.UI.WX.Events.Event (Window a) (EventKey -> IO ())
+keyboardUp  = newEvent "keyboardUp" windowGetOnKeyUp (windowOnKeyUp)
 
