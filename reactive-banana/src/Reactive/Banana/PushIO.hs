@@ -101,9 +101,9 @@ runRun m cache = do
 -- helper functions for reading and writing keys into the vault cache
 writeVaultKey ref x = do
     vault  <- get
-    vault' <- liftIO $ Vault.insert ref x vault
+    let vault' = Vault.insert ref x vault
     put $ vault'
-readVaultKey ref = liftIO . Vault.lookup ref =<< get
+readVaultKey ref = Vault.lookup ref <$> get
 
 {-----------------------------------------------------------------------------
     Cache, particular reference types
@@ -118,7 +118,7 @@ writeCacheRef :: CacheRef a -> a -> Run ()
 
 newCacheRef      = do
     key <- liftIO $ Vault.newKey
-    registerFinalizer $ put =<< liftIO . Vault.delete key =<< get
+    registerFinalizer $ put . Vault.delete key =<< get
     return key
 readCacheRef  = readVaultKey
 writeCacheRef = writeVaultKey
@@ -133,7 +133,7 @@ updateAccumRef :: AccumRef a -> (a -> a) -> Run a -- strict!
 
 newAccumRef x     = do
     ref    <- liftIO $ Vault.newKey
-    vault2 <- liftIO . Vault.insert ref x . vault =<< get
+    vault2 <- Vault.insert ref x . vault <$> get
     modify $ \cache -> cache { vault = vault2 }
     return ref
 readAccumRef ref  = fromJust <$> readVaultKey ref
