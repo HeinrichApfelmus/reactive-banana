@@ -55,8 +55,8 @@ type Flavor  = Implementation.PushIO
 poll :: IO a -> Model.Behavior Flavor a
 poll = behavior . Poll
 
-input :: Typeable a => Channel -> Model.Event Flavor a
-input = event . Input
+input :: Channel -> Key a -> Model.Event Flavor a
+input c = event . Input c
 
 compileHandlers :: Model.Event Flavor (IO ()) -> IO [(Channel, Universe -> IO ())]
 compileHandlers graph = do
@@ -199,12 +199,13 @@ type AddHandler a = (a -> IO ()) -> IO (IO ())
 -- When the event network is actuated,
 -- this will register a callback function such that
 -- an event will occur whenever the callback function is called.
-fromAddHandler :: Typeable a => AddHandler a -> NetworkDescription (Model.Event PushIO a)
+fromAddHandler :: AddHandler a -> NetworkDescription (Model.Event PushIO a)
 fromAddHandler addHandler = Prepare $ do
         channel <- newChannel
-        let addHandler' k = addHandler $ k . toUniverse channel
+        key     <- liftIO $ newUniverseKey
+        let addHandler' k = addHandler $ k . toUniverse key
         tell ([], [(channel, addHandler')], [])
-        return $ input channel
+        return $ input channel key
     where
     newChannel = do c <- get; put $! c+1; return c
 

@@ -189,7 +189,7 @@ data EventD t :: * -> * where
     Never     :: EventD t a
     
     -- internal combinators
-    Input         :: Typeable a => Channel -> EventD t a
+    Input         :: Channel -> Key a -> EventD t a
     Reactimate    :: Event t (IO ()) -> EventD t ()
     
     ReadCache     :: Channel -> CacheRef a -> EventD t a
@@ -216,16 +216,20 @@ data BehaviorD t a where
     ReadBehavior :: BehaviorRef a -> BehaviorD t a
 
 {-----------------------------------------------------------------------------
-    Dynamic types for input
+    Storing heterogenous input values
 ------------------------------------------------------------------------------}
-type Channel  = Integer
-type Universe = (Channel, Dynamic)
+type Channel  = Integer     -- identifies an input
+type Key      = Vault.Key 
+type Universe = Vault.Vault
 
-fromUniverse :: Typeable a => Channel -> Universe -> Maybe a
-fromUniverse i (j,x) = if i == j then fromDynamic x else Nothing
+newUniverseKey :: IO (Key a)
+newUniverseKey = Vault.newKey
 
-toUniverse :: Typeable a => Channel -> a -> Universe
-toUniverse i x = (i, toDyn x)
+fromUniverse :: Key a -> Universe -> Maybe a
+fromUniverse = Vault.lookup
+
+toUniverse :: Key a -> a -> Universe
+toUniverse k a = Vault.insert k a Vault.empty
 
 {-----------------------------------------------------------------------------
     Compilation
@@ -249,7 +253,7 @@ compileReadBehavior e1 = do
     goE (ref, AccumE x e )      = (ref,) <$> (AccumE x   <$> goE e)
     goE (ref, Reactimate e)     = (ref,) <$> (Reactimate <$> goE e)
     goE (ref, Never)            = (ref,) <$> (pure Never)
-    goE (ref, Input c)          = (ref,) <$> (pure $ Input c)
+    goE (ref, Input c k)        = (ref,) <$> (pure $ Input c k)
 
     -- almost boilerplate traversal for behaviors
     goB :: Behavior Accum a -> CompileReadBehavior (Behavior Shared a)
@@ -295,7 +299,7 @@ compileUnion e = map snd <$> goE e
     goE (_  , Reactimate e)       = map2 (Reactimate)      <$> goE e
     goE (_  , Union e1 e2)        = (++) <$> goE e1 <*> goE e2
     goE (_  , Never      )        = return []
-    goE (_  , Input channel)      = return [(channel, Input channel)]
+    goE (_  , Input channel key)  = return [(channel, Input channel key)]
     
     compileAccumE :: a -> [EventLinear (a -> a)] -> Compile [EventLinear a]
     compileAccumE x es = do
@@ -348,8 +352,8 @@ compilePath e = goE e return
     goE (ReadCache c ref)    k =
             (c, \_ -> readCacheRef ref >>= maybe (return ()) k)
     goE (WriteCache ref e)   k = goE e $ \x -> writeCacheRef ref x >> k x
-    goE (Input channel)      k =
-            (channel, maybe (error "wrong channel") k . fromUniverse channel)
+    goE (Input channel key)  k =
+            (channel, maybe (error "wrong channel") k . fromUniverse key)
     
     goB :: Behavior Linear a -> Run a
     goB = compileBehaviorEvaluation
