@@ -1,8 +1,11 @@
-.PHONY: all clean open
+.PHONY: all clean open cabal
 
 APPS=Asteroids Counter CRUD CurrencyConverter NetMonitor TicTacToe TwoCounters Wave
 OBJ=dist/build
 COMPILE=ghc --make -i$(OBJ) -L/usr/lib -L$(OBJ) -isrc -i../reactive-banana/src
+
+cabal:
+	cabal configure && cabal build --ghc-options=-L/usr/lib
 
 all: $(APPS)
 
