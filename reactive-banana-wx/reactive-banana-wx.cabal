@@ -23,10 +23,12 @@ Extra-source-files:  Makefile
 Library
     hs-source-dirs:  src
     build-depends:   base >= 4.3 && < 5,
-                     cabal-macosx == 0.1.*, random == 1.0.*,
+                     cabal-macosx == 0.1.*,
                      directory == 1.1.*,
                      reactive-banana >= 0.4.1.2 && < 0.5,
-                     wx==0.12.*, wxcore==0.12.*
+                     wx==0.12.*, wxcore==0.12.*,
+                     random == 1.0.*, containers == 0.4.*,
+                     process == 1.0.*, array == 0.3.*
     extensions:      ExistentialQuantification
     exposed-modules: Reactive.Banana.WX
 
