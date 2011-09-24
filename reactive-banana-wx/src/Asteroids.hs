@@ -8,9 +8,14 @@ import Graphics.UI.WX hiding (Event)
 import Graphics.UI.WXCore as WXCore
 import Reactive.Banana
 import Reactive.Banana.WX
-import System.Directory   (getCurrentDirectory, setCurrentDirectory)
 import System.Random
--- import Paths_wxAsteroids  (getDataDir)
+
+-- boring path stuff
+import System.Environment.Executable
+import System.FilePath
+import System.Info
+import System.IO.Unsafe
+import qualified Paths_reactive_banana_wx as Paths (getDataDir)
 
 {-----------------------------------------------------------------------------
     Main
@@ -25,20 +30,21 @@ chance   :: Double
 chance   = 0.1
 
 rock, burning, ship :: Bitmap ()
-rock    = bitmap "data/rock.ico"
-burning = bitmap "data/burning.ico"
-ship    = bitmap "data/ship.ico"
+rock    = bitmap $ dataDir </> "rock.ico"
+burning = bitmap $ dataDir </> "burning.ico"
+ship    = bitmap $ dataDir </> "ship.ico"
 
 explode :: WXCore.Sound ()
-explode = sound  "data/explode.wav" 
+explode = sound $ dataDir </> "explode.wav" 
 
-getDataDir = (++ "/data") <$> getCurrentDirectory
+getDataDir
+    | os == "darwin" =
+        fmap (\x -> takeDirectory x </> ".." </> "Resources") getExecutablePath 
+    | otherwise      = Paths.getDataDir
+dataDir = unsafePerformIO $ getDataDir
 
 main :: IO ()
-main = 
-    -- dataDirectory <- getDataDir
-    -- setCurrentDirectory dataDirectory 
-    start asteroids
+main = start asteroids
 
 {-----------------------------------------------------------------------------
     Game Logic 
