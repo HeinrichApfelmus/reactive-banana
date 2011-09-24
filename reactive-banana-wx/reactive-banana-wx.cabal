@@ -1,5 +1,5 @@
 Name:                reactive-banana-wx
-Version:             0.4.1.2
+Version:             0.4.2.0
 Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,
@@ -20,15 +20,15 @@ Cabal-version:       >=1.6
 Build-type:          Custom
 Extra-source-files:  Makefile
 
+data-dir:            data
+data-files:          *.ico, *.wav
+
 Library
     hs-source-dirs:  src
     build-depends:   base >= 4.3 && < 5,
                      cabal-macosx == 0.1.*,
-                     directory == 1.1.*,
-                     reactive-banana >= 0.4.1.2 && < 0.5,
-                     wx==0.12.*, wxcore==0.12.*,
-                     random == 1.0.*, containers == 0.4.*,
-                     process == 1.0.*, array == 0.3.*
+                     reactive-banana >= 0.4.2.0 && < 0.5,
+                     wx==0.12.*, wxcore==0.12.*
     extensions:      ExistentialQuantification
     exposed-modules: Reactive.Banana.WX
 
@@ -37,8 +37,15 @@ Source-repository    head
     location:        git://github.com/HeinrichApfelmus/reactive-banana.git
     subdir:          reactive-banana-wx
 
+Executable Arithmetic
+    hs-source-dirs:  src
+    main-is:         Arithmetic.hs
+
 Executable Asteroids
     hs-source-dirs:  src
+    build-depends:   random == 1.0.*,
+                     executable-path == 0.0.*, filepath == 1.2.*
+    other-modules:   Paths_reactive_banana_wx
     main-is:         Asteroids.hs
 
 Executable Counter
@@ -51,14 +58,17 @@ Executable CurrencyConverter
 
 Executable CRUD
     hs-source-dirs:  src
+    build-depends:   containers == 0.4.*
     main-is:         CRUD.hs
 
 Executable NetMonitor
     hs-source-dirs:  src
+    build-depends:   process == 1.0.*
     main-is:         NetMonitor.hs
 
 Executable TicTacToe
     hs-source-dirs:  src
+    build-depends:   array == 0.3.*
     main-is:         TicTacToe.hs
 
 Executable TwoCounters

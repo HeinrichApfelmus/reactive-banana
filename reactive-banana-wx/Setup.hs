@@ -14,12 +14,14 @@ guiApps :: [MacApp]
 guiApps = [MacApp "Asteroids"
                   Nothing
                   Nothing -- Build a default Info.plist for the icon.
-                  files -- No other resources.
+                  files   -- bitmaps and .wav
                   [] -- No other binaries.
                   DoNotChase -- Try changing to ChaseWithDefaults
           ] ++ apps
 
-apps = map app $ words "Counter CurrencyConverter TwoCounters Wave"
+apps = map app $
+    words "Arithmetic Counter CurrencyConverter CRUD"
+    ++ words "NetMonitor TicTacToe TwoCounters Wave"
 app name = MacApp name Nothing Nothing [] [] DoNotChase
 
 files = map ("data/" ++) $
