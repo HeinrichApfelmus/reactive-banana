@@ -1,0 +1,46 @@
+Changelog
+---------
+
+version 0.4.2.0
+
+* change type: remove `Typeable` constraint from `fromAddHandler`
+* misc: the `Vault` data type gets its own package
+* misc: reactive-banana-wx now compiles properly with cabal
+* add some more examples to reactive-banana-wx
+
+version 0.4.1.0
+
+* add `<@>` operator for more convenience when using `apply`
+* add support for value recursion to the `NetworkDescription` monad
+* add many examples to reactive-banana-wx
+
+version 0.4.0.0
+http://apfelmus.nfshost.com/blog/2011/07/07-frp-banana-0-4.html
+
+* add function `fromPoll` to obtain behaviors from mutable data
+* change name: `run` is now called `actuate`
+* add derived data type `Discrete`
+* add function `interpretAsHandler`
+
+
+version 0.3.0.0
+http://apfelmus.nfshost.com/blog/2011/06/22-frp-banana-0-3.html
+
+* change: event networks are now first-class values, you can `pause` or `run` them.
+* change type: `AddHandler` now expects a way to unregister event handlers.
+* add example `RunPause.hs`
+
+
+version 0.2.0.0
+http://apfelmus.nfshost.com/blog/2011/06/22-frp-banana-0-2.html
+
+* change: now implements proper semantics as pioneered by Conal Elliott
+* model implementation for semantics
+* push-driven implementation for efficiency
+
+* add example `SlotMachine.hs`
+
+
+version 0.1.0.0
+
+* initial release
