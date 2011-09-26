@@ -10,8 +10,8 @@ module Reactive.Banana.PushIO where
 import Reactive.Banana.Model hiding (Event, Behavior, interpret)
 import qualified Reactive.Banana.Model as Model
 
-import Reactive.Banana.Vault (Vault)
-import qualified Reactive.Banana.Vault as Vault
+import Data.Vault (Vault)
+import qualified Data.Vault as Vault
 
 
 import Control.Applicative

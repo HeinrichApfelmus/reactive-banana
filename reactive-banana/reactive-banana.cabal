@@ -51,14 +51,14 @@ Library
     build-depends:
         base >= 4.3 && < 5, containers == 0.4.*,
         transformers == 0.2.*,
-        QuickCheck == 2.4.*
+        QuickCheck == 2.4.*,
+        vault == 0.1.*
     exposed-modules:    Reactive.Banana,
                         Reactive.Banana.Incremental,
                         Reactive.Banana.Model,
                         Reactive.Banana.Implementation,
                         Reactive.Banana.Tests
-    other-modules:      Reactive.Banana.PushIO,
-                        Reactive.Banana.Vault
+    other-modules:      Reactive.Banana.PushIO
 
 Source-repository head
     type:               git
