@@ -1,5 +1,5 @@
 Name:                reactive-banana-wx
-Version:             0.4.2.0
+Version:             0.4.3.0
 Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,
@@ -27,7 +27,7 @@ Library
     hs-source-dirs:  src
     build-depends:   base >= 4.3 && < 5,
                      cabal-macosx == 0.1.*,
-                     reactive-banana >= 0.4.2.0 && < 0.5,
+                     reactive-banana >= 0.4.3.0 && < 0.5,
                      wx==0.12.*, wxcore==0.12.*
     extensions:      ExistentialQuantification
     exposed-modules: Reactive.Banana.WX

@@ -24,7 +24,7 @@ module Reactive.Banana.Implementation (
     -- $utilities
     newAddHandler,
     
-    module Data.Dynamic,
+    module Data.Dynamic, -- remove this when bumping to 0.5
     ) where
 
 import Control.Applicative
@@ -44,8 +44,6 @@ import Data.Unique
 import Reactive.Banana.PushIO hiding (compile)
 import qualified Reactive.Banana.PushIO as Implementation
 import qualified Reactive.Banana.Model as Model
-
--- debug = putStrLn
 
 {-----------------------------------------------------------------------------
     PushIO specific functions
@@ -292,8 +290,7 @@ makeEventNetwork register = do
     Simple use
 ------------------------------------------------------------------------------}
 -- | Simple way to run an event graph. Very useful for testing.
-interpret :: Typeable a
-    => (Model.Event PushIO a -> Model.Event PushIO b) -> [a] -> IO [[b]]
+interpret :: (Model.Event PushIO a -> Model.Event PushIO b) -> [a] -> IO [[b]]
 interpret f xs = do
     output                    <- newIORef []
     (addHandler, runHandlers) <- newAddHandler
@@ -310,8 +307,8 @@ interpret f xs = do
     return bs
 
 -- | Simple way to write a single event handler with functional reactive programming.
-interpretAsHandler :: Typeable a
-    => (Model.Event PushIO a -> Model.Event PushIO b)
+interpretAsHandler
+    :: (Model.Event PushIO a -> Model.Event PushIO b)
     -> AddHandler a -> AddHandler b
 interpretAsHandler f addHandlerA = \handlerB -> do
     network <- compile $ do
