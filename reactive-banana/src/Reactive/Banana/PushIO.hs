@@ -21,11 +21,12 @@ import Control.Monad.Trans.Class    (lift)
 import Control.Monad.Trans.Identity
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
-import Data.Dynamic
-import Data.IORef
 import Data.Maybe
 import Data.Monoid
 import System.IO.Unsafe
+
+import System.IO
+-- debug s = hPutStrLn stderr s
 
 {-----------------------------------------------------------------------------
     Observable sharing
@@ -36,22 +37,22 @@ import System.IO.Unsafe
     In this case, the environment is passed around by the  Store  monad.
 ------------------------------------------------------------------------------}
 -- store monad
-type Store = IO
+type Store = StateT Vault IO
 -- references to observe sharing
-type Ref a = IORef (Maybe a)
+type Ref a = Vault.Key a
 
 runStore :: Store a -> IO a
-runStore = id
+runStore m = evalStateT m Vault.empty
 
 -- create a new reference.
-newRef   :: Store (Ref a)
+newRef   :: IO (Ref a)
 -- read a reference. Only possible in the  Store  monad.
 readRef  :: Ref a -> Store (Maybe a)
 writeRef :: Ref a -> a -> Store ()
 
-newRef   = newIORef Nothing
-readRef  = readIORef
-writeRef ref = writeIORef ref . Just
+newRef         = Vault.newKey
+readRef ref    = Vault.lookup ref <$> get
+writeRef ref x = modify $ Vault.insert ref x
 
 -- invalid reference that may not store values
 invalidRef = error "Store: invalidRef. This is an internal bug."
@@ -136,12 +137,16 @@ newAccumRef x     = do
     vault2 <- Vault.insert ref x . vault <$> get
     modify $ \cache -> cache { vault = vault2 }
     return ref
-readAccumRef ref  = fromJust <$> readVaultKey ref
+readAccumRef ref  =
+    fromJustError "Reactive.Banana.PushIO.readAccumRef: internal error"
+    <$> readVaultKey ref
 updateAccumRef ref f = do
     Just x <- readVaultKey ref 
     let !y = f x
     writeVaultKey ref y
     return y
+
+fromJustError e = maybe (error e) id
 
 -- BehaviorRef.
 -- Cache and accumulate a value over several phases,
@@ -163,7 +168,9 @@ newBehaviorRefAccum x = do
     acc  <- newAccumRef x
     (_,temp) <- newBehaviorRef $ readAccumRef acc
     return (acc, temp)
-readBehaviorRef   (_, temp)   = fromJust <$> readCacheRef temp
+readBehaviorRef   (_, temp)   =
+    fromJustError "Reactive.Banana.PushIO.readBehaviorRef: internal error"
+    <$> readCacheRef temp
 updateBehaviorRef (acc, temp) = void . updateAccumRef acc
 
 
