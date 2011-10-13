@@ -15,6 +15,7 @@ import qualified Data.Vault as Vault
 
 
 import Control.Applicative
+import Control.Arrow (second)
 import Control.Monad
 import Control.Monad.IO.Class       (liftIO)
 import Control.Monad.Trans.Class    (lift)
@@ -329,7 +330,6 @@ compileUnion e = map snd <$> goE e
                 -- return events that also write to the cache
                 return $ zipWith (second . (WriteCache . snd)) cached es
 
-second f (a,b) = (a, f b)
 map2 = map . second
 
 -- compile a behavior
@@ -344,23 +344,27 @@ compileBehaviorEvaluation = goB
 
 
 -- compile path into an IO action
-type Path = (Channel, Universe -> Run ())
+type Path = (Channel, Universe -> Run (IO ()))
+-- (input_channel, \input_value ->
+--      do change event_graph_state; return (reactimates_to_be_run) )
 
 compilePath :: Event Linear () -> Path
-compilePath e = goE e return
+compilePath e = goE e (const $ return nop)
     where
-    goE :: Event Linear a -> (a -> Run ()) -> (Channel, Universe -> Run ())
-    goE (Filter p e)         k = goE e $ \x -> when (p x) (k x)
+    goE :: Event Linear a -> (a -> Run (IO ())) -> Path
+    goE (Filter p e)         k = goE e $ \x -> if p x then k x else return nop
     goE (ApplyE b e)         k = goE e $ \x -> goB b >>= \f -> k (f x)
     goE (UpdateAccum    r e) k = goE e $ \f -> updateAccumRef r f >>= k
-    goE (UpdateBehavior r e) _ = goE e $ \x -> updateBehaviorRef r x
+    goE (UpdateBehavior r e) _ = goE e $ \x -> do updateBehaviorRef r x; return nop
         -- note: no  k  here because writing behaviors is the end of a path
-    goE (Reactimate e)       _ = goE e $ \x -> liftIO x
+    goE (Reactimate e)       _ = goE e $ \x -> return x
     goE (ReadCache c ref)    k =
-            (c, \_ -> readCacheRef ref >>= maybe (return ()) k)
+            (c, \_ -> readCacheRef ref >>= maybe (return nop) k)
     goE (WriteCache ref e)   k = goE e $ \x -> writeCacheRef ref x >> k x
     goE (Input channel key)  k =
             (channel, maybe (error "wrong channel") k . fromUniverse key)
+    
+    nop = return () :: IO ()
     
     goB :: Behavior Linear a -> Run a
     goB = compileBehaviorEvaluation

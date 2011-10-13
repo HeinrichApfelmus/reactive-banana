@@ -28,6 +28,7 @@ module Reactive.Banana.Implementation (
     ) where
 
 import Control.Applicative
+import Control.Arrow (second)
 import Control.Concurrent
 import Control.Monad
 import Control.Monad.Fix       (MonadFix(..))
@@ -60,28 +61,36 @@ compileHandlers :: Model.Event Flavor (IO ()) -> IO [(Channel, Universe -> IO ()
 compileHandlers graph = do
     -- compile event graph
     let graph' = Implementation.unEvent graph
-    (paths,cache) <- Implementation.compile (invalidRef, Reactimate graph')
-    -- reduce to one path per channel
-    let paths1 = groupChannelsBy (\p q x -> p x >> q x) paths
+    (paths1,cache) <- Implementation.compile (invalidRef, Reactimate graph')
 
     -- prepare threading the cache as state
     rcache <- newEmptyMVar
     putMVar rcache cache
-    let run m = do
-            -- takeMVar  makes sure that network runs are sequential
-            -- In particular, the network will deadlock
-            -- if you try to call an event handler during a  reactimate .
+    let -- run a single path
+        run m = do
+            -- takeMVar  makes sure that event graph updates are sequential.
             cache <- takeMVar rcache
-            (_,cache') <- runRun m cache
+            (reactimates,cache') <- runRun m cache
             putMVar rcache cache'
-        paths2 = map (\(i,p) -> (i, run . p)) $ paths1
+            -- However, the corresponding IO actions are run afterwards,
+            -- and under certain circumstances, they can *interleave*.
+            reactimates
+         
+        appendReactimates
+            :: [Universe -> Run (IO ())]
+            -> (Universe -> Run (IO ()))
+        appendReactimates ps x = do
+            reactimates <- sequence $ map ($ x) ps
+            return $ sequence_ reactimates
+            
+        paths2 = map (second $ (run .) . appendReactimates) $ groupByChannel paths1
     
     return paths2
 
 
 -- FIXME: make this faster
-groupChannelsBy :: (a -> a -> a) -> [(Channel, a)] -> [(Channel, a)]
-groupChannelsBy f xs = [(i, foldr1 f [x | (j,x) <- xs, i == j]) | i <- channels]
+groupByChannel :: [(Channel, a)] -> [(Channel, [a])]
+groupByChannel xs = [(i, [x | (j,x) <- xs, i == j]) | i <- channels]
     where channels = nub . map fst $ xs
 
 {-----------------------------------------------------------------------------
@@ -175,8 +184,25 @@ instance Applicative (NetworkDescription) where
 instance MonadFix (NetworkDescription) where
     mfix f  = Prepare $ mfix (unPrepare . f)
 
--- | Output.
--- Execute the 'IO' action whenever the event occurs.
+{- | Output.
+    Execute the 'IO' action whenever the event occurs.
+    
+    
+    Note: If two events occur very close to each other,
+    there is no guarantee that the @reactimate@s for one 
+    event will have finished before the ones for the next event start executing.
+    This does /not/ affect the values of events and behaviors,
+    it only means that the @reactimate@ for different events may interleave.
+    Fortuantely, this is a very rare occurrence, and only happens if
+    
+    * you call an event handler from inside 'reactimate',
+    
+    * or you use concurrency.
+    
+    In these cases, the @reactimate@s follow the control flow
+    of your event-based framework.
+
+-}
 reactimate :: Model.Event PushIO (IO ()) -> NetworkDescription ()
 reactimate e = Prepare $ tell ([e], [], [])
 
