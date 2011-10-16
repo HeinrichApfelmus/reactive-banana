@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana-wx
     
-    Example: A version of TicTacToe with silly interface elements
+    Example: A version of TicTacToe with eclectic interface elements
     Author:  Gideon Sireling
 ------------------------------------------------------------------------------}
 import Control.Monad
