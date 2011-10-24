@@ -13,11 +13,10 @@ Want to support the project with a tiny donation? [![Flattr this](http://api.fla
 
 ## How is the source code structured?
 
-The project contains three directories:
+The project contains two directories:
 
 * `reactive-banana` - the library itself
 * `reactive-banana-wx` - bindings to [wxHaskell][], includes many examples
-* `BlackBoard` - Legacy, my personal drawing application for slideshows and videos. This will be removed from the repo soon.
 
 At the moment, the reactive-banana library actually contains *two* FRP implementations:
 
@@ -40,15 +39,9 @@ To build the reactive-banana libraries, type
     cd reactive-banana && cabal configure && cabal build && cd ..
     cd reactive-banana-wx && cabal configure && cabal build && cd ..
 
-To build the Blackboard application (legacy, doesn't work anymore), type
-
-    cd reactive-banana && cabal configure && cd ..
-    cd reactive-banana-wx && cabal configure && cd ..
-    make BlackBoard
-
-Note, however, that the BlackBoard application suffers from bitrot and still requires reactive-banana version 0.1. So, compilation will likely fail. Also note that this **only works for MacOS X**! You'll have to change the `Makefile` a bit to make it work on other platforms.
 
 ## Contribute
 
 Send me your examples, bindings, problems, suggestions, etc!
+
 

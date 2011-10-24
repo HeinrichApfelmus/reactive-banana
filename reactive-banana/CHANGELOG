@@ -1,6 +1,13 @@
 Changelog
 ---------
 
+version 0.4.3.0
+
+* change semantics: IO actions from inside `reactimate` may now interleave as dictated by your event-based framework (issue #15)
+* fix bug: compiling a network twice no longer fails due to lingering global state (issue #16)
+* change type: remove `Typeable` constraint from `interpret` and `interpretAsHandler`
+* misc: remove `BlackBoard` application from the repository
+
 version 0.4.2.0
 
 * change type: remove `Typeable` constraint from `fromAddHandler`
