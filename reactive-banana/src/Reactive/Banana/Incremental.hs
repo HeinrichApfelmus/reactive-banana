@@ -9,7 +9,7 @@ module Reactive.Banana.Incremental (
     -- $discrete
     
     -- * Discrete time-varying values
-    Discrete, initial, changes, value, stepperD,
+    DiscreteD, initial, changes, value, stepperD,
     accumD, applyD,
     ) where
 
@@ -65,7 +65,7 @@ But if you are a user, you may want to accept the trade-off for now.
 -- However, unlike 'Behavior',
 -- it also provides a stream of events that indicate when the value has changed.
 -- In other words, we can now observe updates.
-data Discrete f a = D {
+data DiscreteD f a = D {
         -- | Initial value.
         initial :: a,
         -- | Event that records when the value changes.
@@ -79,32 +79,32 @@ data Discrete f a = D {
 
 -- | Construct a discrete time-varying value from an initial value and 
 -- a stream of new values.
-stepperD :: FRP f => a -> Event f a -> Discrete f a
+stepperD :: FRP f => a -> Event f a -> DiscreteD f a
 stepperD x e = D { initial = x, changes = calm e, value = stepper x e}
     where
     -- in case of simultaneous occurence: keep only the last event?
     calm = id
 
 -- | Accumulate a stream of events into a discrete time-varying value.
-accumD :: FRP f => a -> Event f (a -> a) -> Discrete f a
+accumD :: FRP f => a -> Event f (a -> a) -> DiscreteD f a
 accumD x = stepperD x . accumE x
 
 -- | Apply a discrete time-varying value to a stream of events.
 -- 
 -- > applyD = apply . value
-applyD :: FRP f => Discrete f (a -> b) -> Event f a -> Event f b
+applyD :: FRP f => DiscreteD f (a -> b) -> Event f a -> Event f b
 applyD = apply . value
 
 -- | Overloading 'applyD'
-instance FRP f => Apply (Discrete f) (Event f) where
+instance FRP f => Apply (DiscreteD f) (Event f) where
     (<@>) = applyD
 
 -- | Functor instance
-instance FRP f => Functor (Discrete f) where
+instance FRP f => Functor (DiscreteD f) where
     fmap f r = stepperD (f $ initial r) $ fmap f (changes r)
 
 -- | Applicative instance
-instance FRP f => Applicative (Discrete f) where
+instance FRP f => Applicative (DiscreteD f) where
     pure x    = D { initial = x, changes = never, value = pure x }
     df <*> dx = stepperD b e
         where
