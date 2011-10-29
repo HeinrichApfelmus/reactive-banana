@@ -14,8 +14,9 @@ module Reactive.Banana.Model (
     FRP(..),
     Event, Behavior,
     -- $classes
+    
     -- * Derived Combinators
-    whenE, mapAccum, Apply(..),
+    whenE, filterJust, mapAccum, Apply(..),
     
     -- * Model implementation
     Model,
@@ -24,6 +25,7 @@ module Reactive.Banana.Model (
 
 import Control.Applicative
 import qualified Data.List
+import Data.Maybe
 import Prelude hiding (filter)
 import Data.Monoid
 
@@ -178,6 +180,11 @@ instance FRP f => Monoid (Event f a) where
 -- | Variant of 'filterApply'.
 whenE :: FRP f => Behavior f Bool -> Event f a -> Event f a
 whenE bf = filterApply (const <$> bf)
+
+-- | Variant of 'filterE'. Keep only the 'Just' values.
+filterJust :: FRP f => Event f (Maybe a) -> Event f a
+filterJust = fmap (maybe err id) . filterE isJust
+    where err = error "Reactive.Banana.Model.filterJust: Internal error. :("
 
 -- | Efficient combination of 'accumE' and 'accumB'.
 mapAccum :: FRP f => acc -> Event f (acc -> (x,acc)) -> (Event f x, Behavior f acc)
