@@ -5,6 +5,7 @@ Small fry
 =========
 * Add test cases and examples.
 * Consider a better name / overloading the `filterApply` function while we're at it.
+
 * `Discrete`: Investigate use of the `Change` data type for `Discrete`. Will only be relevant in a push-based implementation. Consider overloading the `accumD` function to different types.
 
 
@@ -23,6 +24,14 @@ Interface changes
     calm :: Event a -> Event a
     calm = fmap last . collect
 
+Note: We need to change the `interpret` function to allow for testing this. In particular, it seems like the `interpretTime` function currently doesn't respect simultaneous events.
+
+### Dynamic Event Switching
+http://apfelmus.nfshost.com/blog/2011/05/15-frp-dynamic-event-switching.html
+
+Found a way to keep the previous interface constant.
+
+
 ### Timing and timers
 
     type Duration = -- time difference in UNIX epoch
@@ -40,7 +49,7 @@ Interface changes
 Special support for time because
 
 * Making sure that scheduling gives *logical* times when observed with  time  that are consistent with real-time.
-** Use concurrency
+** Use concurrency -> seems necessary
 ** Make sure that external events don't happen before scheduled events,
     that would be an observable inconsistency.
     Solution:
@@ -49,12 +58,6 @@ Special support for time because
         - Freeze the  time  behavior to its logical value whenever a scheduled
           event happens.
 * Debugging/Testing without having to wait the actual times.
-
-
-### Dynamic Event Switching
-http://apfelmus.nfshost.com/blog/2011/05/15-frp-dynamic-event-switching.html
-
-Found a way to keep the previous interface constant.
 
 
 Efficiency
@@ -71,6 +74,8 @@ Efficiency
 * Polling behaviors from the outside should only be read if we actually need them.
   This is a bit tricky, we may not execute any IO action before doing that,
   because that might change the external behavior.
+    -> This has been solved with the change to IO actions
+  
 * Ponder the difference between internal behaviors and external behaviors
     internal: freeze after we have changed the accum value
         Here we have full control, reactimate can't do anything bad.
@@ -93,9 +98,9 @@ Incremental Computation
 =======================
 Investigate whether there is a general framework behind discrete values, i.e. where the events are efficient diffs.
 
-Simultaneity
-============
-Think about simultaneous event some more. In particular, investigate "splitting the moment". This might be relevant for modularity, but makes the semantics more complicated.
+"Splitting the moment"
+====================
+Think about simultaneous event some more. In particular, investigate "splitting the moment". This might be relevant for modularity, but makes the semantics more complicated. We need infinitesimal delays to allow revents to be defined recursively.
 
 The event `before e` is guaranteed to execute before any event that occurs simultaneoulsy with the event `e`.
 
@@ -121,6 +126,7 @@ Possibility 3:
     -- This probably violates transitivity of  ~ ?
     -- e1 ~ e and e2 ~ e  but  e1 /~ e2
     -- Needs another interpretation for  ~
+
 
 Pure implementation
 ===================
