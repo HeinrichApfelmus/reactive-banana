@@ -1,5 +1,5 @@
 Name:                reactive-banana-wx
-Version:             0.4.3.0
+Version:             0.4.3.1
 Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,
@@ -26,7 +26,7 @@ data-files:          *.ico, *.wav
 Library
     hs-source-dirs:  src
     build-depends:   base >= 4.3 && < 5,
-                     cabal-macosx == 0.1.*,
+                     cabal-macosx >= 0.1 && < 0.3,
                      reactive-banana >= 0.4.3.0 && < 0.5,
                      wx==0.12.*, wxcore==0.12.*
     extensions:      ExistentialQuantification
@@ -63,7 +63,7 @@ Executable CRUD
 
 Executable NetMonitor
     hs-source-dirs:  src
-    build-depends:   process == 1.0.*
+    build-depends:   process >= 1.0 && < 1.2
     main-is:         NetMonitor.hs
 
 Executable TicTacToe
