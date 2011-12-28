@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.4.3.0
+Version:             0.5.0.0
 Synopsis:            Small but solid library for
                      functional reactive programming (FRP).
 Description:         
@@ -54,9 +54,10 @@ Library
         QuickCheck == 2.4.*,
         vault == 0.1.*
     exposed-modules:    Reactive.Banana,
+                        Reactive.Banana.Combinators,
+                        Reactive.Banana.Implementation,
                         Reactive.Banana.Incremental,
                         Reactive.Banana.Model,
-                        Reactive.Banana.Implementation,
                         Reactive.Banana.Tests
     other-modules:      Reactive.Banana.PushIO
 
