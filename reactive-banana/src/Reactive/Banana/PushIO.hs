@@ -378,53 +378,47 @@ compile e = runStore $ runCompile $
 -- debug = liftIO . putStrLn
 
 {-----------------------------------------------------------------------------
-    Class instances
+    Execution
 ------------------------------------------------------------------------------}
--- | The type index 'PushIO' represents the efficient push-driven implementation
--- described here.
--- It implements the same 'FRP' interface as the model implementation
--- represented by 'Model'.
-data PushIO
+-- Run a given list of inputs through the event graph.
+data RunGraph a = RunGraph { step :: [InputValue] -> IO (a, RunGraph a) }
 
--- type Behavior = Model.Behavior PushIO
-newtype instance Model.Behavior PushIO a = Behavior (Behavior Accum a)
+fromStateful :: (s -> [InputValue] -> IO (a,s)) -> s -> RunGraph a
+fromStateful f s = RunGraph $ do
+    (a,s') <- f s
+    return (a, fromStateful f s')
 
--- type Event = Model.Event PushIO
-newtype instance Model.Event PushIO a = Event (Event Accum a)
 
-unEvent (Event e) = e
+compileToRunGraph :: Event Accum (IO ()) -> IO (RunGraph (IO ())
+compileToRunGraph graph = do
+    -- compile event graph
+    (paths1,cache) <- compile (invalidRef, Reactimate graph')
+    let
+        paths2 :: [(Channel, InputValue -> Run (IO ()))]
+        paths2 = map (second $ appendReactimates) $ groupByChannel paths1
 
--- sharing
-behavior :: BehaviorD Accum a -> Model.Behavior PushIO a
-behavior b = Behavior pair
-    where
-    {-# NOINLINE pair #-}
-    -- mention argument to prevent let-floating  
-    pair = unsafePerformIO (fmap (,b) newRef)
-
-event :: EventD Accum a -> Model.Event PushIO a
-event e = Event pair
-    where
-    {-# NOINLINE pair #-}
-    -- mention argument to prevent let-floating
-    pair = unsafePerformIO (fmap (,e) newRef)
-
--- boilerplate class instances
-instance Functor (Model.Event PushIO) where
-    fmap f e = apply (pure f) e
+        step cache inputs = runRun action cache
+            where
+            action = 
+            
+        fromStep :: 
     
-instance Applicative (Model.Behavior PushIO) where
-    pure x = behavior $ Pure x
-    (Behavior bf) <*> (Behavior bx) = behavior $ ApplyB bf bx
+    return $ fromStateful step 
 
-instance Functor (Model.Behavior PushIO) where
-    fmap = liftA
 
-instance FRP PushIO where
-    never = event $ Never
-    union (Event e1) (Event e2) = event $ Union e1 e2
-    filterE p (Event e) = event $ Filter p e
-    apply (Behavior bf) (Event ex) = event $ ApplyE bf ex
-    accumB x (Event e) = behavior $ AccumB x e
-    accumE x (Event e) = event $ AccumE x e
+-- append a list of paths
+appendReactimates :: [InputValue -> Run (IO ())] -> (InputValue -> Run (IO ()))
+appendReactimates ps x = do
+    reactimates <- sequence $ map ($ x) ps
+    return $ sequence_ reactimates
+
+-- FIXME: make this faster
+groupByChannel :: [(Channel, a)] -> [(Channel, [a])]
+groupByChannel xs = [(i, [x | (j,x) <- xs, i == j]) | i <- channels]
+    where channels = nub . map fst $ xs
+
+
+
+
+
 
