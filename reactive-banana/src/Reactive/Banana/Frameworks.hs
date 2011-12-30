@@ -127,6 +127,10 @@ type Preparations t = ([Event t (IO ())], [AddHandler'], [IO ()])
 -- but you might get clever and use 'IORef' to circumvent this.
 -- Don't do that, it won't work and also has a 99,98% chance of 
 -- destroying the earth by summoning time-traveling zygohistomorphisms.
+--
+-- Note: With the new type phantom parameter @t@,
+-- the above note should be superfluous;
+-- the type system now prohibits the problem in question.
 newtype NetworkDescription t a = Prepare { unPrepare :: RWST () (Preparations t) () IO a }
 
 instance Monad (NetworkDescription t) where

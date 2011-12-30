@@ -15,6 +15,7 @@ module Reactive.Banana.Combinators (
     -- * Core Combinators
     module Control.Applicative,
     never, union, apply, filterE, stepper, accumB, accumE,
+    -- $classes
     
     -- * Derived Combinators
     filterJust, filterApply, whenE,
@@ -54,7 +55,7 @@ that are tagged with their corresponding time of occurence,
 
 > type Event t a = [(Time,a)]
 -}
-newtype Event t a = Event (Implementation.Event Accum a)
+newtype Event t a = Event (Implementation.Event Accum a) -- ^ (Internal use.)
 
 -- smart constructor
 event :: Implementation.EventD Accum a -> Event t a
