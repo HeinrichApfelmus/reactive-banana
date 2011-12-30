@@ -7,12 +7,8 @@
      TupleSections, BangPatterns #-}
 module Reactive.Banana.PushIO where
 
-import Reactive.Banana.Model hiding (Event, Behavior, interpret)
-import qualified Reactive.Banana.Model as Model
-
-import Data.Vault (Vault)
-import qualified Data.Vault as Vault
-
+import Reactive.Banana.Automaton
+import Reactive.Banana.Input
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -22,12 +18,14 @@ import Control.Monad.Trans.Class    (lift)
 import Control.Monad.Trans.Identity
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
-import Data.Maybe
-import Data.Monoid
-import System.IO.Unsafe
+
+import qualified Data.Map as Map
+import qualified Data.Vault as Vault
 
 import System.IO
 -- debug s = hPutStrLn stderr s
+
+nop = return () :: IO ()
 
 {-----------------------------------------------------------------------------
     Observable sharing
@@ -38,7 +36,7 @@ import System.IO
     In this case, the environment is passed around by the  Store  monad.
 ------------------------------------------------------------------------------}
 -- store monad
-type Store = StateT Vault IO
+type Store = StateT Vault.Vault IO
 -- references to observe sharing
 type Ref a = Vault.Key a
 
@@ -64,7 +62,7 @@ invalidRef = error "Store: invalidRef. This is an internal bug."
 -- A cache stores values of different types
 -- and finalizers to change them.
 data Cache = Cache {
-              vault :: Vault
+              vault :: Vault.Vault
             , initializers :: [VaultChanger]
             , finalizers   :: [VaultChanger] }
 type VaultChanger = Run ()
@@ -75,7 +73,7 @@ emptyCache = Cache Vault.empty [] []
 -- monad to build the network in
 type Compile = StateT Cache Store
 -- monad to run the network in
-type Run     = StateT Vault IO
+type Run     = StateT Vault.Vault IO
 
 runCompile :: Compile a -> Store (a, Cache)
 runCompile m = runStateT m $ Cache { vault = Vault.empty, initializers = [], finalizers = [] }
@@ -197,7 +195,7 @@ data EventD t :: * -> * where
     Never     :: EventD t a
     
     -- internal combinators
-    Input         :: Channel -> Key a -> EventD t a
+    Input         :: InputChannel a -> EventD t a
     Reactimate    :: Event t (IO ()) -> EventD t ()
     
     ReadCache     :: Channel -> CacheRef a -> EventD t a
@@ -224,22 +222,6 @@ data BehaviorD t a where
     ReadBehavior :: BehaviorRef a -> BehaviorD t a
 
 {-----------------------------------------------------------------------------
-    Storing heterogenous input values
-------------------------------------------------------------------------------}
-type Channel  = Integer     -- identifies an input
-type Key      = Vault.Key 
-type Universe = Vault.Vault
-
-newUniverseKey :: IO (Key a)
-newUniverseKey = Vault.newKey
-
-fromUniverse :: Key a -> Universe -> Maybe a
-fromUniverse = Vault.lookup
-
-toUniverse :: Key a -> a -> Universe
-toUniverse k a = Vault.insert k a Vault.empty
-
-{-----------------------------------------------------------------------------
     Compilation
 ------------------------------------------------------------------------------}
 -- allocated caches for acummulated and external behaviors,
@@ -261,7 +243,7 @@ compileReadBehavior e1 = do
     goE (ref, AccumE x e )      = (ref,) <$> (AccumE x   <$> goE e)
     goE (ref, Reactimate e)     = (ref,) <$> (Reactimate <$> goE e)
     goE (ref, Never)            = (ref,) <$> (pure Never)
-    goE (ref, Input c k)        = (ref,) <$> (pure $ Input c k)
+    goE (ref, Input i)          = (ref,) <$> (pure $ Input i)
 
     -- almost boilerplate traversal for behaviors
     goB :: Behavior Accum a -> CompileReadBehavior (Behavior Shared a)
@@ -307,7 +289,7 @@ compileUnion e = map snd <$> goE e
     goE (_  , Reactimate e)       = map2 (Reactimate)      <$> goE e
     goE (_  , Union e1 e2)        = (++) <$> goE e1 <*> goE e2
     goE (_  , Never      )        = return []
-    goE (_  , Input channel key)  = return [(channel, Input channel key)]
+    goE (_  , Input i)            = return [(getChannel i, Input i)]
     
     compileAccumE :: a -> [EventLinear (a -> a)] -> Compile [EventLinear a]
     compileAccumE x es = do
@@ -344,7 +326,7 @@ compileBehaviorEvaluation = goB
 
 
 -- compile path into an IO action
-type Path = (Channel, Universe -> Run (IO ()))
+type Path = (Channel, InputValue -> Run (IO ()))
 -- (input_channel, \input_value ->
 --      do change event_graph_state; return (reactimates_to_be_run) )
 
@@ -361,17 +343,15 @@ compilePath e = goE e (const $ return nop)
     goE (ReadCache c ref)    k =
             (c, \_ -> readCacheRef ref >>= maybe (return nop) k)
     goE (WriteCache ref e)   k = goE e $ \x -> writeCacheRef ref x >> k x
-    goE (Input channel key)  k =
-            (channel, maybe (error "wrong channel") k . fromUniverse key)
-    
-    nop = return () :: IO ()
+    goE (Input i)            k =
+            (getChannel i, maybe (error "wrong channel") k . fromValue i)
     
     goB :: Behavior Linear a -> Run a
     goB = compileBehaviorEvaluation
 
--- compilation function
-compile :: Event Accum () -> IO ([Path], Cache)
-compile e = runStore $ runCompile $
+-- compilation everything
+compileToPaths :: Event Accum () -> IO ([Path], Cache)
+compileToPaths e = runStore $ runCompile $
     return . map compilePath =<< compileUnion =<< compileReadBehavior e
 
 -- debug :: MonadIO m => String -> m ()
@@ -380,45 +360,30 @@ compile e = runStore $ runCompile $
 {-----------------------------------------------------------------------------
     Execution
 ------------------------------------------------------------------------------}
--- Run a given list of inputs through the event graph.
-data RunGraph a = RunGraph { step :: [InputValue] -> IO (a, RunGraph a) }
-
-fromStateful :: (s -> [InputValue] -> IO (a,s)) -> s -> RunGraph a
-fromStateful f s = RunGraph $ do
-    (a,s') <- f s
-    return (a, fromStateful f s')
-
-
-compileToRunGraph :: Event Accum (IO ()) -> IO (RunGraph (IO ())
-compileToRunGraph graph = do
+compileToAutomaton :: Event Accum (IO ()) -> IO (Automaton (IO ()))
+compileToAutomaton graph = do
     -- compile event graph
-    (paths1,cache) <- compile (invalidRef, Reactimate graph')
-    let
-        paths2 :: [(Channel, InputValue -> Run (IO ()))]
-        paths2 = map (second $ appendReactimates) $ groupByChannel paths1
+    (paths,cache) <- compileToPaths (invalidRef, Reactimate graph)
+    return $ automatonFromPaths paths cache
 
-        step cache inputs = runRun action cache
-            where
-            action = 
-            
-        fromStep :: 
-    
-    return $ fromStateful step 
+-- create an automaton from a list of paths
+automatonFromPaths :: [Path] -> Cache -> Automaton (IO ())
+automatonFromPaths paths = fromStateful $ runRun . step
+    where
+    step :: [InputValue] -> Run (IO ())
+    step inputs = do
+        reactimates <- forM inputs $ \i -> do
+            case Map.lookup (getChannel i) dispatcher of
+                Nothing   -> return $ nop
+                Just path -> path i
+        return $ sequence_ reactimates
 
+    dispatcher = Map.fromListWith append paths
 
--- append a list of paths
-appendReactimates :: [InputValue -> Run (IO ())] -> (InputValue -> Run (IO ()))
-appendReactimates ps x = do
-    reactimates <- sequence $ map ($ x) ps
-    return $ sequence_ reactimates
+type Path' = InputValue -> Run (IO ())
 
--- FIXME: make this faster
-groupByChannel :: [(Channel, a)] -> [(Channel, [a])]
-groupByChannel xs = [(i, [x | (j,x) <- xs, i == j]) | i <- channels]
-    where channels = nub . map fst $ xs
-
-
-
-
-
-
+append :: Path' -> Path' -> Path'
+append f g = \i -> do
+    a <- f i
+    b <- g i
+    return (a >> b)

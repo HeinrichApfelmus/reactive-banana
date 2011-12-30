@@ -15,22 +15,29 @@ module Reactive.Banana.Combinators (
     -- * Core Combinators
     module Control.Applicative,
     never, union, apply, filterE, stepper, accumB, accumE,
+    -- $classes
     
     -- * Derived Combinators
     filterJust, filterApply, whenE,
     mapAccum, Apply(..),
     
     -- * Model implementation
-    Time, interpretTime, interpret,
+    -- Time, interpretTime, interpret,
+    
+    -- * Internal
+    event, behavior, Event(..)
     ) where
 
 import Control.Applicative
 import qualified Data.List
-import Data.Maybe
+import Data.Maybe (isJust)
+import Data.Monoid (Monoid(..))
 import Prelude hiding (filter)
-import Data.Monoid
 
-import qualified Reactive.Banana.PushIO as PushIO
+import Reactive.Banana.PushIO hiding (Event, Behavior)
+import qualified Reactive.Banana.PushIO as Implementation
+
+import System.IO.Unsafe (unsafePerformIO) -- for observable sharing
 
 {-----------------------------------------------------------------------------
     Introduction
@@ -48,10 +55,10 @@ that are tagged with their corresponding time of occurence,
 
 > type Event t a = [(Time,a)]
 -}
-newtype Event = Event (Push.Event Accum a)
+newtype Event t a = Event (Implementation.Event Accum a) -- ^ (Internal use.)
 
 -- smart constructor
-event :: EventD Accum a -> Model.Event PushIO a
+event :: Implementation.EventD Accum a -> Event t a
 event e = Event pair
     where
     {-# NOINLINE pair #-}
@@ -62,10 +69,10 @@ event e = Event pair
 
 > type Behavior t a = Time -> a
 -}
-newtype Behavior t a = Behavior (Push.Behavior Accum a)
+newtype Behavior t a = Behavior (Implementation.Behavior Accum a)
 
 -- smart constructor
-behavior :: BehaviorD Accum a -> Model.Behavior PushIO a
+behavior :: Implementation.BehaviorD Accum a -> Behavior t a
 behavior b = Behavior pair
     where
     {-# NOINLINE pair #-}
