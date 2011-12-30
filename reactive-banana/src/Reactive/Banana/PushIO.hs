@@ -11,7 +11,7 @@ import Reactive.Banana.Model hiding (Event, Behavior, interpret)
 import qualified Reactive.Banana.Model as Model
 
 import qualified Data.Vault as Vault
-
+import Reactive.Banana.Input
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -196,7 +196,7 @@ data EventD t :: * -> * where
     Never     :: EventD t a
     
     -- internal combinators
-    Input         :: Channel -> Key a -> EventD t a
+    Input         :: InputChannel a -> EventD t a
     Reactimate    :: Event t (IO ()) -> EventD t ()
     
     ReadCache     :: Channel -> CacheRef a -> EventD t a
@@ -223,22 +223,6 @@ data BehaviorD t a where
     ReadBehavior :: BehaviorRef a -> BehaviorD t a
 
 {-----------------------------------------------------------------------------
-    Storing heterogenous input values
-------------------------------------------------------------------------------}
-type Channel  = Integer     -- identifies an input
-type Key      = Vault.Key 
-type Universe = Vault.Vault
-
-newUniverseKey :: IO (Key a)
-newUniverseKey = Vault.newKey
-
-fromUniverse :: Key a -> Universe -> Maybe a
-fromUniverse = Vault.lookup
-
-toUniverse :: Key a -> a -> Universe
-toUniverse k a = Vault.insert k a Vault.empty
-
-{-----------------------------------------------------------------------------
     Compilation
 ------------------------------------------------------------------------------}
 -- allocated caches for acummulated and external behaviors,
@@ -260,7 +244,7 @@ compileReadBehavior e1 = do
     goE (ref, AccumE x e )      = (ref,) <$> (AccumE x   <$> goE e)
     goE (ref, Reactimate e)     = (ref,) <$> (Reactimate <$> goE e)
     goE (ref, Never)            = (ref,) <$> (pure Never)
-    goE (ref, Input c k)        = (ref,) <$> (pure $ Input c k)
+    goE (ref, Input i)          = (ref,) <$> (pure $ Input i)
 
     -- almost boilerplate traversal for behaviors
     goB :: Behavior Accum a -> CompileReadBehavior (Behavior Shared a)
@@ -306,7 +290,7 @@ compileUnion e = map snd <$> goE e
     goE (_  , Reactimate e)       = map2 (Reactimate)      <$> goE e
     goE (_  , Union e1 e2)        = (++) <$> goE e1 <*> goE e2
     goE (_  , Never      )        = return []
-    goE (_  , Input channel key)  = return [(channel, Input channel key)]
+    goE (_  , Input i)            = return [(getChannel i, Input i)]
     
     compileAccumE :: a -> [EventLinear (a -> a)] -> Compile [EventLinear a]
     compileAccumE x es = do
@@ -343,7 +327,7 @@ compileBehaviorEvaluation = goB
 
 
 -- compile path into an IO action
-type Path = (Channel, Universe -> Run (IO ()))
+type Path = (Channel, InputValue -> Run (IO ()))
 -- (input_channel, \input_value ->
 --      do change event_graph_state; return (reactimates_to_be_run) )
 
@@ -360,8 +344,8 @@ compilePath e = goE e (const $ return nop)
     goE (ReadCache c ref)    k =
             (c, \_ -> readCacheRef ref >>= maybe (return nop) k)
     goE (WriteCache ref e)   k = goE e $ \x -> writeCacheRef ref x >> k x
-    goE (Input channel key)  k =
-            (channel, maybe (error "wrong channel") k . fromUniverse key)
+    goE (Input i)            k =
+            (getChannel i, maybe (error "wrong channel") k . fromValue i)
     
     nop = return () :: IO ()
     

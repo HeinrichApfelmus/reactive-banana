@@ -4,13 +4,12 @@
     
     Linking the push-based implementation to an event-based framework
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Implementation (
+module Reactive.Banana.Frameworks (
     -- * Synopsis
-    -- | Build event networks using existing event-based frameworks
-    --   and run them.
+    -- | Build event networks using existing event-based frameworks and run them.
     
     -- * Simple use
-    PushIO, interpret, interpretAsHandler,
+    interpret, interpretAsHandler, interpretModel,
 
     -- * Building event networks with input/output
     -- $build
@@ -23,8 +22,6 @@ module Reactive.Banana.Implementation (
     -- * Utilities
     -- $utilities
     newAddHandler,
-    
-    module Data.Dynamic, -- remove this when bumping to 0.5
     ) where
 
 import Control.Applicative
@@ -35,63 +32,37 @@ import Control.Monad.Fix       (MonadFix(..))
 import Control.Monad.IO.Class  (MonadIO(..))
 import Control.Monad.Trans.RWS
 
-import Data.Dynamic
 import Data.IORef
 import Data.List (nub)
 import Data.Monoid
 import qualified Data.Map as Map
 import Data.Unique
 
+import Reactive.Banana.Input
+import qualified Reactive.Banana.Model as Model
 import Reactive.Banana.PushIO hiding (compile)
 import qualified Reactive.Banana.PushIO as Implementation
-import qualified Reactive.Banana.Model as Model
 
 {-----------------------------------------------------------------------------
     PushIO specific functions
 ------------------------------------------------------------------------------}
-type Flavor  = Implementation.PushIO
-
-poll :: IO a -> Model.Behavior Flavor a
+poll :: IO a -> Event t a
 poll = behavior . Poll
 
-input :: Channel -> Key a -> Model.Event Flavor a
+input :: InputChannel a -> Event t a
 input c = event . Input c
 
-compileHandlers :: Model.Event Flavor (IO ()) -> IO [(Channel, Universe -> IO ())]
-compileHandlers graph = do
-    -- compile event graph
-    let graph' = Implementation.unEvent graph
-    (paths1,cache) <- Implementation.compile (invalidRef, Reactimate graph')
+-- do something with the pure event networks
 
-    -- prepare threading the cache as state
-    rcache <- newEmptyMVar
-    putMVar rcache cache
-    let -- run a single path
-        run m = do
-            -- takeMVar  makes sure that event graph updates are sequential.
-            cache <- takeMVar rcache
-            (reactimates,cache') <- runRun m cache
-            putMVar rcache cache'
-            -- However, the corresponding IO actions are run afterwards,
-            -- and under certain circumstances, they can *interleave*.
-            reactimates
-         
-        appendReactimates
-            :: [Universe -> Run (IO ())]
-            -> (Universe -> Run (IO ()))
-        appendReactimates ps x = do
-            reactimates <- sequence $ map ($ x) ps
-            return $ sequence_ reactimates
-            
-        paths2 = map (second $ (run .) . appendReactimates) $ groupByChannel paths1
-    
-    return paths2
-
-
--- FIXME: make this faster
-groupByChannel :: [(Channel, a)] -> [(Channel, [a])]
-groupByChannel xs = [(i, [x | (j,x) <- xs, i == j]) | i <- channels]
-    where channels = nub . map fst $ xs
+let -- run a single path
+    run m = do
+        -- takeMVar  makes sure that event graph updates are sequential.
+        cache <- takeMVar rcache
+        (reactimates,cache') <- runRun m cache
+        putMVar rcache cache'
+        -- However, the corresponding IO actions are run afterwards,
+        -- and under certain circumstances, they can *interleave*.
+        reactimates
 
 {-----------------------------------------------------------------------------
     NetworkDescription, setting up event networks
@@ -156,7 +127,7 @@ groupByChannel xs = [(i, [x | (j,x) <- xs, i == j]) | i <- channels]
 
 -}
 
-type AddHandler'  = (Channel, AddHandler Universe)
+type AddHandler'  = (Channel, AddHandler InputValue)
 type Preparations = ([Model.Event Flavor (IO ())], [AddHandler'], [IO ()])
 
 -- | Monad for describing event networks.
@@ -169,7 +140,7 @@ type Preparations = ([Model.Event Flavor (IO ())], [AddHandler'], [IO ()])
 -- but you might get clever and use 'IORef' to circumvent this.
 -- Don't do that, it won't work and also has a 99,98% chance of 
 -- destroying the earth by summoning time-traveling zygohistomorphisms.
-newtype NetworkDescription a = Prepare { unPrepare :: RWST () Preparations Channel IO a }
+newtype NetworkDescription a = Prepare { unPrepare :: RWST () Preparations () IO a }
 
 instance Monad (NetworkDescription) where
     return  = Prepare . return
@@ -225,13 +196,10 @@ type AddHandler a = (a -> IO ()) -> IO (IO ())
 -- an event will occur whenever the callback function is called.
 fromAddHandler :: AddHandler a -> NetworkDescription (Model.Event PushIO a)
 fromAddHandler addHandler = Prepare $ do
-        channel <- newChannel
-        key     <- liftIO $ newUniverseKey
-        let addHandler' k = addHandler $ k . toUniverse key
-        tell ([], [(channel, addHandler')], [])
-        return $ input channel key
-    where
-    newChannel = do c <- get; put $! c+1; return c
+    i <- liftIO $ newInputChannel
+    let addHandler' k = addHandler $ k . toValue i
+    tell ([], [(getChannel i, addHandler')], [])
+    return $ input i
 
 -- | Input,
 -- obtain a 'Behavior' by polling mutable data, like mutable variables or GUI widgets.
