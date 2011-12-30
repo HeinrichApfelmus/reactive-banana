@@ -121,7 +121,7 @@ interpret :: (Event Model a -> Event Model b) -> [a] -> [[b]]
 interpret f = unE . f . E . map (:[])
 
 -- | Interpreter that corresponds to your mental model.
-interpretTime :: (Event Model a -> Event Model b) -> [(Time,a)] -> [(Time,b)]
+interpretTime :: (Event t a -> Event t b) -> [(Time,a)] -> [(Time,b)]
 interpretTime f xs =
     concat . zipWith tag times . interpret f . map snd $ xs
     where
@@ -131,7 +131,7 @@ interpretTime f xs =
 {-----------------------------------------------------------------------------
     Example: Counter that can be decreased
 ------------------------------------------------------------------------------}
-example :: FRP f => Event f () -> Event f Int
+example :: Event t () -> Event t Int
 example edec = apply ((\c _ -> c) <$> bcounter) ecandecrease
     where
     bcounter     = accumB 10 $ (subtract 1) <$ ecandecrease
@@ -141,7 +141,7 @@ testModel = interpret example $ replicate 15 ()
 -- > testModel
 -- [[10],[9],[8],[7],[6],[5],[4],[3],[2],[1],[],[],[],[],[]]
 
-example2 :: FRP f => Event f () -> Event f Int
+example2 :: Event t () -> Event t Int
 example2 e = apply (const <$> b) e
     where
     b = accumB 0 ((+1) <$ e)

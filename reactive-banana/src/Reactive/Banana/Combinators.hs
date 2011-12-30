@@ -48,12 +48,29 @@ that are tagged with their corresponding time of occurence,
 
 > type Event t a = [(Time,a)]
 -}
-newtype Event
+newtype Event = Event (Push.Event Accum a)
+
+-- smart constructor
+event :: EventD Accum a -> Model.Event PushIO a
+event e = Event pair
+    where
+    {-# NOINLINE pair #-}
+    -- mention argument to prevent let-floating
+    pair = unsafePerformIO (fmap (,e) newRef)
+
 {-| @Behavior t a@ represents a value that varies in time. Think of it as
 
 > type Behavior t a = Time -> a
 -}
-newtype Behavior
+newtype Behavior t a = Behavior (Push.Behavior Accum a)
+
+-- smart constructor
+behavior :: BehaviorD Accum a -> Model.Behavior PushIO a
+behavior b = Behavior pair
+    where
+    {-# NOINLINE pair #-}
+    -- mention argument to prevent let-floating  
+    pair = unsafePerformIO (fmap (,b) newRef)
 
 {-$intro2
 
@@ -149,15 +166,15 @@ accumE x (Event e) = event $ AccumE x e
 
 /Further combinators that Haddock can't document properly./
 
-> instance FRP f => Monoid (Event f a)
+> instance Monoid (Event t a)
 
 The combinators 'never' and 'union' turn 'Event' into a monoid.
 
-> instance FPR f => Applicative (Behavior f)
+> instance Applicative (Behavior t)
 
 'Behavior' is an applicative functor. In particular, we have the following functions.
 
-> pure :: FRP f => a -> Behavior f a
+> pure :: a -> Behavior t a
 
 The constant time-varying value. Think of it as @pure x = \\time -> x@.
 
