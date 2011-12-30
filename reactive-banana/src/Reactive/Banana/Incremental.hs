@@ -14,7 +14,8 @@ module Reactive.Banana.Incremental (
     ) where
 
 import Control.Applicative
-import Reactive.Banana.Model
+
+import Reactive.Banana.Combinators
 
 {-----------------------------------------------------------------------------
     Data Type

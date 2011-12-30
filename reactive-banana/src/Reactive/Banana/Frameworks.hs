@@ -30,6 +30,7 @@ import Control.Monad.Fix       (MonadFix(..))
 import Control.Monad.IO.Class  (MonadIO(..))
 import Control.Monad.Trans.RWS
 
+import Data.Dynamic (Typeable)
 import Data.IORef
 import Data.List (nub)
 import Data.Monoid
@@ -39,16 +40,16 @@ import Data.Unique
 import Reactive.Banana.Automaton
 import Reactive.Banana.Input
 import Reactive.Banana.Combinators
-import Reactive.Banana.PushIO
+import qualified Reactive.Banana.PushIO as Implementation
 
 {-----------------------------------------------------------------------------
     PushIO specific functions
 ------------------------------------------------------------------------------}
-poll :: IO a -> Event t a
-poll = behavior . Poll
+poll :: IO a -> Behavior t a
+poll = behavior . Implementation.Poll
 
 input :: InputChannel a -> Event t a
-input c = event . Input c
+input = event . Implementation.Input
 
 {-----------------------------------------------------------------------------
     NetworkDescription, setting up event networks
@@ -212,30 +213,32 @@ liftIOLater m = Prepare $ tell ([],[], [m])
 -- that you can 'actuate', 'pause' and so on.
 compile :: (forall t. NetworkDescription t ()) -> IO EventNetwork
 compile (Prepare m) = do
-    (_,_,(outputs,inputs,liftIOs)) <- runRWST m () 0
+    (_,_,(outputs,inputs,liftIOs)) <- runRWST m () ()
     sequence_ liftIOs
     
     let -- union of all  reactimates
-        Event graph = mconcat outputs :: Event t (IO ())
+        Event graph = mconcat outputs
     
-    automaton <- compileToAutomaton graph
+    automaton <- Implementation.compileToAutomaton graph
     
     -- allocate new variable for the automaton
-    rautomaton <- newEmptyMVar rautomaton
+    rautomaton <- newEmptyMVar
     putMVar rautomaton automaton
     
     let -- run the graph on a single input value
+        run :: InputValue -> IO ()
         run input = do
             -- takeMVar  makes sure that event graph updates are sequential.
             automaton <- takeMVar rautomaton
-            (reactimates,automaton') <- automaton [input]
+            (reactimates,automaton') <- runStep automaton [input]
             putMVar rautomaton automaton'
             -- However, the corresponding IO actions are run afterwards,
             -- and under certain circumstances, they can *interleave*.
             reactimates
     
         -- register event handlers
-        register = mapM ($ run) . map snd $ inputs
+        register :: IO (IO ())
+        register = fmap sequence_ . sequence . map ($ run) . map snd $ inputs
 
     makeEventNetwork register
 
@@ -307,6 +310,8 @@ interpretAsHandler f addHandlerA = \handlerB -> do
         reactimate $ handlerB <$> f e
     actuate network
     return (pause network)
+
+interpretModel = undefined
 
 {-----------------------------------------------------------------------------
     Utilities

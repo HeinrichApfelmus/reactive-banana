@@ -43,7 +43,8 @@ extra-source-files:  doc/examples/*.hs
 
 Library
     hs-source-dirs:     src
-    extensions:         TypeFamilies, FlexibleContexts,
+    extensions:
+                        TypeFamilies, FlexibleContexts,
                         FlexibleInstances, EmptyDataDecls,
                         GADTs, BangPatterns, TupleSections,
                         Rank2Types, NoMonomorphismRestriction,
@@ -53,13 +54,17 @@ Library
         transformers == 0.2.*,
         QuickCheck == 2.4.*,
         vault == 0.1.*
-    exposed-modules:    Reactive.Banana,
+    exposed-modules:
+                        Reactive.Banana,
                         Reactive.Banana.Combinators,
-                        Reactive.Banana.Implementation,
+                        Reactive.Banana.Frameworks,
                         Reactive.Banana.Incremental,
-                        Reactive.Banana.Model,
-                        Reactive.Banana.Tests
-    other-modules:      Reactive.Banana.PushIO
+                        Reactive.Banana.Model
+                        -- Reactive.Banana.Tests
+    other-modules:
+                        Reactive.Banana.Automaton,
+                        Reactive.Banana.Input,
+                        Reactive.Banana.PushIO
 
 Source-repository head
     type:               git

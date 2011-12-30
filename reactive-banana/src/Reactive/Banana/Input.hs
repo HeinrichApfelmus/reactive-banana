@@ -13,6 +13,7 @@ module Reactive.Banana.Input (
     
     ) where
 
+import Control.Applicative
 
 import qualified Data.Unique as Unique
 import qualified Data.Vault as Vault
@@ -20,12 +21,12 @@ import qualified Data.Vault as Vault
 {-----------------------------------------------------------------------------
     Storing heterogenous input values
 ------------------------------------------------------------------------------}
-type Channel  = Unique      -- identifies an input
-type Key      = Vault.Key   -- key to retrieve a value
-type Value    = Vault.Vault -- value storage
+type Channel  = Unique.Unique   -- identifies an input
+type Key      = Vault.Key       -- key to retrieve a value
+type Value    = Vault.Vault     -- value storage
 
 data InputChannel a  = InputChannel { getChannelC :: Channel, getKey :: Key a }
-type InputValue      = InputValue   { getChannelV :: Channel, getValue :: Value }
+data InputValue      = InputValue   { getChannelV :: Channel, getValue :: Value }
 
 newInputChannel :: IO (InputChannel a)
 newInputChannel = InputChannel <$> Unique.newUnique <*> Vault.newKey

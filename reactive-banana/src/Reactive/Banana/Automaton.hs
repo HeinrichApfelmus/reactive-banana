@@ -10,6 +10,8 @@ module Reactive.Banana.Automaton (
 
     ) where
 
+import Reactive.Banana.Input
+
 {-----------------------------------------------------------------------------
     Stepwise execution
 ------------------------------------------------------------------------------}
@@ -17,6 +19,6 @@ module Reactive.Banana.Automaton (
 data Automaton a = Step { runStep :: [InputValue] -> IO (a, Automaton a) }
 
 fromStateful :: ([InputValue] -> s -> IO (a,s)) -> s -> Automaton a
-fromStateful f s = Step $ do
-    (a,s') <- f s
+fromStateful f s = Step $ \i -> do
+    (a,s') <- f i s
     return (a, fromStateful f s')

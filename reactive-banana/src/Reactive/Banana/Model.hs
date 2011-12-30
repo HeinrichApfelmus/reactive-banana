@@ -1,10 +1,7 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
-    
-    Class interface + Semantic model
 ------------------------------------------------------------------------------}
-{-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances, EmptyDataDecls,
-  MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances, Rank2Types #-}
 module Reactive.Banana.Model (
     -- * Synopsis
     -- | Model implementation. Inspect the source code!
@@ -54,11 +51,11 @@ tailsD = Data.List.tails
 
 -- Stream of events. Simultaneous events are grouped into lists.
 --   e !! i = list of simultaneous event occurences happening at time == i
-newtype EventModel    t a = E { unE :: Discrete [a] } deriving Show
+newtype Event    t a = E { unE :: Discrete [a] } deriving Show
 
 -- Stream of values that the behavior has taken.
 --   b !! i = value of the behavior in the time interval  i-1 < time <= i
-newtype BehaviorModel t a = B { unB :: Discrete a   } deriving Show
+newtype Behavior t a = B { unB :: Discrete a   } deriving Show
 
 
 -- events
@@ -101,6 +98,8 @@ instance Applicative (Behavior t) where
 stepper x = B . scanl go x . unE
     where go x es = last (x:es)
 
+accumB acc = stepper acc . accumE acc
+
 -- apply
 apply b e = E $ zipWith map (unB b) (unE e)
 
@@ -117,16 +116,18 @@ run f input = zip times (f' events)
 
 -- | Slightly simpler interpreter that does not mention 'Time'.
 -- Returns lists of event values that occur simultaneously.
-interpret :: (Event Model a -> Event Model b) -> [a] -> [[b]]
+interpret :: (forall t. Event t a -> Event t b) -> [a] -> [[b]]
 interpret f = unE . f . E . map (:[])
 
 -- | Interpreter that corresponds to your mental model.
+{-
 interpretTime :: (Event t a -> Event t b) -> [(Time,a)] -> [(Time,b)]
 interpretTime f xs =
     concat . zipWith tag times . interpret f . map snd $ xs
     where
     times = map fst xs
     tag t xs = map (\x -> (t,x)) xs
+-}
 
 {-----------------------------------------------------------------------------
     Example: Counter that can be decreased
@@ -136,6 +137,12 @@ example edec = apply ((\c _ -> c) <$> bcounter) ecandecrease
     where
     bcounter     = accumB 10 $ (subtract 1) <$ ecandecrease
     ecandecrease = whenE ((>0) <$> bcounter) edec
+
+filterApply :: Behavior t (a -> Bool) -> Event t a -> Event t a
+filterApply bp = fmap snd . filterE fst . apply ((\p a-> (p a,a)) <$> bp)
+
+whenE :: Behavior t Bool -> Event t a -> Event t a
+whenE bf = filterApply (const <$> bf)
 
 testModel = interpret example $ replicate 15 ()
 -- > testModel

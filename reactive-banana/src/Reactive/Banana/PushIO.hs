@@ -10,8 +10,6 @@ module Reactive.Banana.PushIO where
 import Reactive.Banana.Automaton
 import Reactive.Banana.Input
 
-import qualified Data.Vault as Vault
-
 import Control.Applicative
 import Control.Arrow (second)
 import Control.Monad
@@ -20,12 +18,14 @@ import Control.Monad.Trans.Class    (lift)
 import Control.Monad.Trans.Identity
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
-import Data.Maybe
-import Data.Monoid
-import System.IO.Unsafe
+
+import qualified Data.Map as Map
+import qualified Data.Vault as Vault
 
 import System.IO
 -- debug s = hPutStrLn stderr s
+
+nop = return () :: IO ()
 
 {-----------------------------------------------------------------------------
     Observable sharing
@@ -346,8 +346,6 @@ compilePath e = goE e (const $ return nop)
     goE (Input i)            k =
             (getChannel i, maybe (error "wrong channel") k . fromValue i)
     
-    nop = return () :: IO ()
-    
     goB :: Behavior Linear a -> Run a
     goB = compileBehaviorEvaluation
 
@@ -365,17 +363,17 @@ compileToPaths e = runStore $ runCompile $
 compileToAutomaton :: Event Accum (IO ()) -> IO (Automaton (IO ()))
 compileToAutomaton graph = do
     -- compile event graph
-    (paths,cache) <- compileToPaths (invalidRef, Reactimate graph')
+    (paths,cache) <- compileToPaths (invalidRef, Reactimate graph)
     return $ automatonFromPaths paths cache
 
 -- create an automaton from a list of paths
 automatonFromPaths :: [Path] -> Cache -> Automaton (IO ())
-automatonFromPaths paths = fromStateful $ runRun . stepRun
+automatonFromPaths paths = fromStateful $ runRun . step
     where
     step :: [InputValue] -> Run (IO ())
     step inputs = do
         reactimates <- forM inputs $ \i -> do
-            case Map.lookup (getChannel i) of
+            case Map.lookup (getChannel i) dispatcher of
                 Nothing   -> return $ nop
                 Just path -> path i
         return $ sequence_ reactimates
