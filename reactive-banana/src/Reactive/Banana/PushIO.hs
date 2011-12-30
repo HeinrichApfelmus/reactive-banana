@@ -7,11 +7,10 @@
      TupleSections, BangPatterns #-}
 module Reactive.Banana.PushIO where
 
-import Reactive.Banana.Model hiding (Event, Behavior, interpret)
-import qualified Reactive.Banana.Model as Model
+import Reactive.Banana.Automaton
+import Reactive.Banana.Input
 
 import qualified Data.Vault as Vault
-import Reactive.Banana.Input
 
 import Control.Applicative
 import Control.Arrow (second)
@@ -352,9 +351,9 @@ compilePath e = goE e (const $ return nop)
     goB :: Behavior Linear a -> Run a
     goB = compileBehaviorEvaluation
 
--- compilation function
-compile :: Event Accum () -> IO ([Path], Cache)
-compile e = runStore $ runCompile $
+-- compilation everything
+compileToPaths :: Event Accum () -> IO ([Path], Cache)
+compileToPaths e = runStore $ runCompile $
     return . map compilePath =<< compileUnion =<< compileReadBehavior e
 
 -- debug :: MonadIO m => String -> m ()
@@ -363,45 +362,30 @@ compile e = runStore $ runCompile $
 {-----------------------------------------------------------------------------
     Execution
 ------------------------------------------------------------------------------}
--- Run a given list of inputs through the event graph.
-data RunGraph a = RunGraph { step :: [InputValue] -> IO (a, RunGraph a) }
-
-fromStateful :: (s -> [InputValue] -> IO (a,s)) -> s -> RunGraph a
-fromStateful f s = RunGraph $ do
-    (a,s') <- f s
-    return (a, fromStateful f s')
-
-
-compileToRunGraph :: Event Accum (IO ()) -> IO (RunGraph (IO ())
-compileToRunGraph graph = do
+compileToAutomaton :: Event Accum (IO ()) -> IO (Automaton (IO ()))
+compileToAutomaton graph = do
     -- compile event graph
-    (paths1,cache) <- compile (invalidRef, Reactimate graph')
-    let
-        paths2 :: [(Channel, InputValue -> Run (IO ()))]
-        paths2 = map (second $ appendReactimates) $ groupByChannel paths1
+    (paths,cache) <- compileToPaths (invalidRef, Reactimate graph')
+    return $ automatonFromPaths paths cache
 
-        step cache inputs = runRun action cache
-            where
-            action = 
-            
-        fromStep :: 
-    
-    return $ fromStateful step 
+-- create an automaton from a list of paths
+automatonFromPaths :: [Path] -> Cache -> Automaton (IO ())
+automatonFromPaths paths = fromStateful $ runRun . stepRun
+    where
+    step :: [InputValue] -> Run (IO ())
+    step inputs = do
+        reactimates <- forM inputs $ \i -> do
+            case Map.lookup (getChannel i) of
+                Nothing   -> return $ nop
+                Just path -> path i
+        return $ sequence_ reactimates
 
+    dispatcher = Map.fromListWith append paths
 
--- append a list of paths
-appendReactimates :: [InputValue -> Run (IO ())] -> (InputValue -> Run (IO ()))
-appendReactimates ps x = do
-    reactimates <- sequence $ map ($ x) ps
-    return $ sequence_ reactimates
+type Path' = InputValue -> Run (IO ())
 
--- FIXME: make this faster
-groupByChannel :: [(Channel, a)] -> [(Channel, [a])]
-groupByChannel xs = [(i, [x | (j,x) <- xs, i == j]) | i <- channels]
-    where channels = nub . map fst $ xs
-
-
-
-
-
-
+append :: Path' -> Path' -> Path'
+append f g = \i -> do
+    a <- f i
+    b <- g i
+    return (a >> b)

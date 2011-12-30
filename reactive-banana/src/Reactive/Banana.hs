@@ -7,7 +7,7 @@
 module Reactive.Banana (
     module Reactive.Banana.Incremental,
     module Reactive.Banana.Model,
-    module Reactive.Banana.Implementation,
+    module Reactive.Banana.Frameworks,
 
     Event, Behavior, Discrete,
     ) where

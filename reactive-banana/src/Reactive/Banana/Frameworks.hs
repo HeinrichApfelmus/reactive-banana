@@ -38,10 +38,10 @@ import Data.Monoid
 import qualified Data.Map as Map
 import Data.Unique
 
+import Reactive.Banana.Automaton
 import Reactive.Banana.Input
-import qualified Reactive.Banana.Model as Model
-import Reactive.Banana.PushIO hiding (compile)
-import qualified Reactive.Banana.PushIO as Implementation
+import Reactive.Banana.Combinators
+import Reactive.Banana.PushIO
 
 {-----------------------------------------------------------------------------
     PushIO specific functions
@@ -51,18 +51,6 @@ poll = behavior . Poll
 
 input :: InputChannel a -> Event t a
 input c = event . Input c
-
--- do something with the pure event networks
-
-let -- run a single path
-    run m = do
-        -- takeMVar  makes sure that event graph updates are sequential.
-        cache <- takeMVar rcache
-        (reactimates,cache') <- runRun m cache
-        putMVar rcache cache'
-        -- However, the corresponding IO actions are run afterwards,
-        -- and under certain circumstances, they can *interleave*.
-        reactimates
 
 {-----------------------------------------------------------------------------
     NetworkDescription, setting up event networks
@@ -230,18 +218,29 @@ compile (Prepare m) = do
     sequence_ liftIOs
     
     let -- union of all  reactimates
-        graph = mconcat outputs :: Model.Event Flavor (IO ())
-    paths <- compileHandlers graph
+        Event graph = mconcat outputs :: Event t (IO ())
     
-    let -- register event handlers
-        register = fmap sequence_ . sequence . map snd . applyChannels inputs
-                 $ paths
+    automaton <- compileToAutomaton graph
+    
+    -- allocate new variable for the automaton
+    rautomaton <- newEmptyMVar rautomaton
+    putMVar rautomaton automaton
+    
+    let -- run the graph on a single input value
+        run input = do
+            -- takeMVar  makes sure that event graph updates are sequential.
+            automaton <- takeMVar rautomaton
+            (reactimates,automaton') <- automaton [input]
+            putMVar rautomaton automaton'
+            -- However, the corresponding IO actions are run afterwards,
+            -- and under certain circumstances, they can *interleave*.
+            reactimates
+    
+        -- register event handlers
+        register = mapM ($ run) . map snd $ inputs
+
     makeEventNetwork register
 
--- FIXME: make this faster
-applyChannels :: [(Channel, a -> b)] -> [(Channel, a)] -> [(Channel, b)]
-applyChannels fs xs =
-    [(i, f x) | (i,f) <- fs, (j,x) <- xs, i == j]
 
 {-----------------------------------------------------------------------------
     Running event networks
