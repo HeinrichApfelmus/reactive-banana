@@ -1,8 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, Rank2Types #-}
 {-----------------------------------------------------------------------------
     Reactive Banana
-    
-    Linking the push-based implementation to an event-based framework
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Frameworks (
     -- * Synopsis
@@ -115,8 +113,8 @@ input c = event . Input c
 
 -}
 
-type AddHandler'  = (Channel, AddHandler InputValue)
-type Preparations = ([Model.Event Flavor (IO ())], [AddHandler'], [IO ()])
+type AddHandler'    = (Channel, AddHandler InputValue)
+type Preparations t = ([Event t (IO ())], [AddHandler'], [IO ()])
 
 -- | Monad for describing event networks.
 -- 
@@ -128,19 +126,19 @@ type Preparations = ([Model.Event Flavor (IO ())], [AddHandler'], [IO ()])
 -- but you might get clever and use 'IORef' to circumvent this.
 -- Don't do that, it won't work and also has a 99,98% chance of 
 -- destroying the earth by summoning time-traveling zygohistomorphisms.
-newtype NetworkDescription a = Prepare { unPrepare :: RWST () Preparations () IO a }
+newtype NetworkDescription t a = Prepare { unPrepare :: RWST () (Preparations t) () IO a }
 
-instance Monad (NetworkDescription) where
+instance Monad (NetworkDescription t) where
     return  = Prepare . return
     m >>= k = Prepare $ unPrepare m >>= unPrepare . k
-instance MonadIO (NetworkDescription) where
+instance MonadIO (NetworkDescription t) where
     liftIO  = Prepare . liftIO
-instance Functor (NetworkDescription) where
+instance Functor (NetworkDescription t) where
     fmap f  = Prepare . fmap f . unPrepare
-instance Applicative (NetworkDescription) where
+instance Applicative (NetworkDescription t) where
     pure    = Prepare . pure
     f <*> a = Prepare $ unPrepare f <*> unPrepare a
-instance MonadFix (NetworkDescription) where
+instance MonadFix (NetworkDescription t) where
     mfix f  = Prepare $ mfix (unPrepare . f)
 
 {- | Output.
@@ -162,7 +160,7 @@ instance MonadFix (NetworkDescription) where
     of your event-based framework.
 
 -}
-reactimate :: Model.Event PushIO (IO ()) -> NetworkDescription ()
+reactimate :: Event t (IO ()) -> NetworkDescription t ()
 reactimate e = Prepare $ tell ([e], [], [])
 
 -- | A value of type @AddHandler a@ is just a facility for registering
@@ -182,7 +180,7 @@ type AddHandler a = (a -> IO ()) -> IO (IO ())
 -- When the event network is actuated,
 -- this will register a callback function such that
 -- an event will occur whenever the callback function is called.
-fromAddHandler :: AddHandler a -> NetworkDescription (Model.Event PushIO a)
+fromAddHandler :: AddHandler a -> NetworkDescription t (Event t a)
 fromAddHandler addHandler = Prepare $ do
     i <- liftIO $ newInputChannel
     let addHandler' k = addHandler $ k . toValue i
@@ -201,18 +199,18 @@ fromAddHandler addHandler = Prepare $ do
 -- is well-defined. This snapshot is guaranteed to happen before
 -- any 'reactimate' is performed. The network may omit taking a snapshot altogether
 -- if the behavior is not needed.
-fromPoll :: IO a -> NetworkDescription (Model.Behavior PushIO a)
+fromPoll :: IO a -> NetworkDescription t (Behavior t a)
 fromPoll m = return $ poll m
 
 -- | Lift an 'IO' action into the 'NetworkDescription' monad,
 -- but defer its execution until compilation time.
 -- This can be useful for recursive definitions using 'MonadFix'.
-liftIOLater :: IO () -> NetworkDescription ()
+liftIOLater :: IO () -> NetworkDescription t ()
 liftIOLater m = Prepare $ tell ([],[], [m])
 
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
-compile :: NetworkDescription () -> IO EventNetwork
+compile :: (forall t. NetworkDescription t ()) -> IO EventNetwork
 compile (Prepare m) = do
     (_,_,(outputs,inputs,liftIOs)) <- runRWST m () 0
     sequence_ liftIOs
@@ -283,7 +281,7 @@ makeEventNetwork register = do
     Simple use
 ------------------------------------------------------------------------------}
 -- | Simple way to run an event graph. Very useful for testing.
-interpret :: (Model.Event PushIO a -> Model.Event PushIO b) -> [a] -> IO [[b]]
+interpret :: (forall t. Event t a -> Event t b) -> [a] -> IO [[b]]
 interpret f xs = do
     output                    <- newIORef []
     (addHandler, runHandlers) <- newAddHandler
@@ -301,7 +299,7 @@ interpret f xs = do
 
 -- | Simple way to write a single event handler with functional reactive programming.
 interpretAsHandler
-    :: (Model.Event PushIO a -> Model.Event PushIO b)
+    :: (forall t. Event t a -> Event t b)
     -> AddHandler a -> AddHandler b
 interpretAsHandler f addHandlerA = \handlerB -> do
     network <- compile $ do
