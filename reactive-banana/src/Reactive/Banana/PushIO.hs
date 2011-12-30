@@ -10,7 +10,6 @@ module Reactive.Banana.PushIO where
 import Reactive.Banana.Model hiding (Event, Behavior, interpret)
 import qualified Reactive.Banana.Model as Model
 
-import Data.Vault (Vault)
 import qualified Data.Vault as Vault
 
 
@@ -38,7 +37,7 @@ import System.IO
     In this case, the environment is passed around by the  Store  monad.
 ------------------------------------------------------------------------------}
 -- store monad
-type Store = StateT Vault IO
+type Store = StateT Vault.Vault IO
 -- references to observe sharing
 type Ref a = Vault.Key a
 
@@ -64,7 +63,7 @@ invalidRef = error "Store: invalidRef. This is an internal bug."
 -- A cache stores values of different types
 -- and finalizers to change them.
 data Cache = Cache {
-              vault :: Vault
+              vault :: Vault.Vault
             , initializers :: [VaultChanger]
             , finalizers   :: [VaultChanger] }
 type VaultChanger = Run ()
@@ -75,7 +74,7 @@ emptyCache = Cache Vault.empty [] []
 -- monad to build the network in
 type Compile = StateT Cache Store
 -- monad to run the network in
-type Run     = StateT Vault IO
+type Run     = StateT Vault.Vault IO
 
 runCompile :: Compile a -> Store (a, Cache)
 runCompile m = runStateT m $ Cache { vault = Vault.empty, initializers = [], finalizers = [] }
