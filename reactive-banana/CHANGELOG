@@ -1,6 +1,10 @@
 Changelog
 ---------
 
+version 0.4.3.1
+
+* fix bug: model implementatino of `accumE`
+
 version 0.4.3.0
 
 * change semantics: IO actions from inside `reactimate` may now interleave as dictated by your event-based framework (issue #15)

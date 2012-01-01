@@ -246,8 +246,9 @@ instance FRP Model where
         accumE' acc []     = []
         accumE' acc (e:es) = e' : accumE' acc' es
             where
-            e'   = tail $ scanl' (flip ($)) acc e
-            acc' = last e'
+            vals = scanl' (flip ($)) acc e
+            e'   = tail $ vals
+            acc' = last vals
 
 -- strict version of scanl
 scanl' :: (a -> b -> a) -> a -> [b] -> [a]
