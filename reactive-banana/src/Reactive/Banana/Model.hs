@@ -1,7 +1,8 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE FlexibleInstances, Rank2Types #-}
+{-# LANGUAGE Rank2Types, BangPatterns #-}
+
 module Reactive.Banana.Model (
     -- * Synopsis
     -- | Model implementation. Inspect the source code!

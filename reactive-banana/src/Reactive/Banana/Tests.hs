@@ -4,6 +4,7 @@
     Test cases and examples
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, NoMonomorphismRestriction #-}
+
 module Reactive.Banana.Tests where
 
 import Control.Monad (when)

@@ -1,8 +1,8 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances, EmptyDataDecls,
-  MultiParamTypeClasses #-}
+{-# LANGUAGE Rank2Types, MultiParamTypeClasses, TupleSections #-}
+
 module Reactive.Banana.Combinators (
     -- * Synopsis
     -- | Combinators for building event graphs.

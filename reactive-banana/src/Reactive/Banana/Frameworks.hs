@@ -1,7 +1,8 @@
-{-# LANGUAGE DeriveDataTypeable, Rank2Types #-}
 {-----------------------------------------------------------------------------
     Reactive Banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE Rank2Types, DeriveDataTypeable #-}
+
 module Reactive.Banana.Frameworks (
     -- * Synopsis
     -- | Build event networks using existing event-based frameworks and run them.
