@@ -26,6 +26,7 @@ import qualified Reactive.Banana.Model as Model
 
 import System.IO
 -- debug s = hPutStrLn stderr s
+-- debug s = liftIO $ putStrLn s
 
 nop = return () :: IO ()
 
@@ -396,7 +397,9 @@ automatonFromPaths paths = fromStateful $ runRun . step
                 Just path -> path i
         return $ sequence_ reactimates
 
-    dispatcher = Map.fromListWith append paths
+    -- Note:  fromListWith  appends the elements in reverse order,
+    -- hence the flip.
+    dispatcher = Map.fromListWith (flip append) paths
 
 type Path' = InputValue -> Run (IO ())
 
