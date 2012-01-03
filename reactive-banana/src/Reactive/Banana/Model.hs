@@ -71,7 +71,7 @@ newtype Behavior t a = B { unB :: Discrete a   } deriving Show
 instance Functor (Event t) where
     fmap f = E . fmap (map f) . unE
 
-never       = E $ pure []
+never       = E $ repeat []
 union e1 e2 = E $ zipWith (++) (unE e1) (unE e2)
 
 filterE p = E . fmap (Data.List.filter p) . unE
@@ -79,11 +79,11 @@ filterE p = E . fmap (Data.List.filter p) . unE
 accumE acc = E . accumE' acc . unE
     where
     accumE' !acc []      = []
-    accumE' !acc ([]:es) = [] : accumE' acc  es
     accumE' !acc ( e:es) = e' : accumE' acc' es
         where
-        e'   = tail $ scanl' (flip ($)) acc e
-        acc' = last e'
+        vals = scanl' (flip ($)) acc e
+        e'   = tail vals
+        acc' = last vals
 
 -- strict version of scanl
 scanl' :: (a -> b -> a) -> a -> [b] -> [a]
@@ -101,7 +101,7 @@ instance Functor (Behavior t) where
     fmap f = B . fmap f . unB
 
 instance Applicative (Behavior t) where
-    pure      = B . pure
+    pure      = B . repeat
     bf <*> bx = B $ zipWith ($) (unB bf) (unB bx)
 
 stepper x = B . scanl go x . unE
