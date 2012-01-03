@@ -29,10 +29,18 @@ module Reactive.Banana.Combinators (
     ) where
 
 import Control.Applicative
+import Control.Monad
+import Control.Monad.Fix (mfix)
+import Control.Monad.Trans.State
+
 import qualified Data.List
 import Data.Maybe (isJust)
 import Data.Monoid (Monoid(..))
+import qualified Data.Vault as Vault
 import Prelude hiding (filter)
+
+import Reactive.Banana.Input
+import qualified Reactive.Banana.Model as Model
 
 import Reactive.Banana.PushIO hiding (Event, Behavior)
 import qualified Reactive.Banana.PushIO as Implementation
@@ -63,7 +71,7 @@ event e = Event pair
     where
     {-# NOINLINE pair #-}
     -- mention argument to prevent let-floating
-    pair = unsafePerformIO (fmap (,e) newRef)
+    pair = unsafePerformIO (fmap (,e) newEventNode)
 
 {-| @Behavior t a@ represents a value that varies in time. Think of it as
 
@@ -77,7 +85,7 @@ behavior b = Behavior pair
     where
     {-# NOINLINE pair #-}
     -- mention argument to prevent let-floating  
-    pair = unsafePerformIO (fmap (,b) newRef)
+    pair = unsafePerformIO (fmap (,b) newBehaviorNode)
 
 {-$intro2
 
@@ -244,6 +252,62 @@ class (Functor f, Functor g) => Apply f g where
 
 instance Apply (Behavior t) (Event t) where
     (<@>) = apply
+
+
+{-----------------------------------------------------------------------------
+    Model implementation
+------------------------------------------------------------------------------}
+type Eval = State Vault.Vault
+
+interpretModel :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
+interpretModel f input = do
+    i0 <- newInputChannel
+    
+    let
+        evalE :: EventD Accum a -> Eval (Model.Event t a)
+        evalE (Filter p e )  = Model.filterE p <$> goE e
+        evalE (Union e1 e2)  = Model.union     <$> goE e1 <*> goE e2
+        evalE (ApplyE b e )  = Model.apply     <$> goB b  <*> goE e
+        evalE (AccumE x e )  = Model.accumE x  <$> goE e
+        evalE (Never)        = return $ Model.never
+        evalE (InputPure i)  =
+            return $ maybe err Model.E $ fromValue i (toValue i0 input)
+            where err = error "Reactive.Banana.PushIO.interpretModel: internal error: Input"
+        evalE _              =
+            error "Reactive.Banana.PushIO.interpretModel: internal error: E"
+
+        evalB :: BehaviorD Accum a -> Eval (Model.Behavior t a)
+        evalB (Pure x      ) = return $ pure x
+        evalB (ApplyB bf bx) = (<*>) <$> goB bf <*> goB bx
+        evalB (AccumB x  e ) = Model.accumB x <$> goE e   
+        evalB _              =
+            error "Reactive.Banana.PushIO.interpretModel: internal error: B"
+    
+    
+        goE :: Implementation.Event Accum a -> Eval (Model.Event t a)
+        goE (node, e) = do
+            values <- get
+            Model.E <$> case Vault.lookup (valueE node) values of
+                Nothing -> mfix $ \v -> do
+                    modify $ Vault.insert (valueE node) v
+                    Model.unE <$> evalE e
+                Just v  -> return v
+
+        goB :: Implementation.Behavior Accum a -> Eval (Model.Behavior t a)
+        goB (node, b) = do
+            values <- get
+            Model.B <$> case Vault.lookup (valueB node) values of
+                Nothing -> mfix $ \v -> do
+                    modify $ Vault.insert (valueB node) v
+                    Model.unB <$> evalB b
+                Just v  -> return v
+    
+        unEvent (Event e) = e
+    
+    return
+        $ Model.unE
+        $ evalState (goE . unEvent . f . event $ InputPure i0) Vault.empty
+
 
 
 

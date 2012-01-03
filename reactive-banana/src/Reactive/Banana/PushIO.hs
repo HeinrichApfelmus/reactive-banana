@@ -22,6 +22,8 @@ import Control.Monad.Trans.Writer
 import qualified Data.Map as Map
 import qualified Data.Vault as Vault
 
+import qualified Reactive.Banana.Model as Model
+
 import System.IO
 -- debug s = hPutStrLn stderr s
 
@@ -180,11 +182,19 @@ data Accum
 data Shared
 data Linear
 
+
 type EventStore a = [(Channel, CacheRef a)]
+data EventNode  a = EventNode
+    { storeE :: Ref (EventStore a)
+    , valueE :: Vault.Key (Model.Discrete [a])
+    }
+
+newEventNode = EventNode <$> newRef <*> Vault.newKey
+invalidNodeE = error "Store: invalidNodeE. This is an internal bug."
 
 type family   Event t a
-type instance Event Accum  a = (Ref (EventStore a), EventD Accum a)
-type instance Event Shared a = (Ref (EventStore a), EventD Shared a)
+type instance Event Accum  a = (EventNode a, EventD Accum a)
+type instance Event Shared a = (EventNode a, EventD Shared a)
 type instance Event Linear a = EventD Linear a
 
 data EventD t :: * -> * where
@@ -198,6 +208,8 @@ data EventD t :: * -> * where
     Input         :: InputChannel a -> EventD t a
     Reactimate    :: Event t (IO ()) -> EventD t ()
     
+    InputPure     :: InputChannel [[a]] -> EventD t a
+    
     ReadCache     :: Channel -> CacheRef a -> EventD t a
     WriteCache    :: CacheRef a -> Event t a -> EventD t a
     
@@ -206,11 +218,17 @@ data EventD t :: * -> * where
 
 
 type BehaviorStore a = BehaviorRef a
+data BehaviorNode  a = BehaviorNode
+    { storeB :: Ref (BehaviorStore a)
+    , valueB :: Vault.Key (Model.Discrete a)
+    }
+
+newBehaviorNode = BehaviorNode <$> newRef <*> Vault.newKey
 
 type family   Behavior t a
-type instance Behavior Accum  a = (Ref (BehaviorStore a), BehaviorD Accum  a)
-type instance Behavior Shared a = (Ref (BehaviorStore a), BehaviorD Linear a)
-type instance Behavior Linear a = (Ref (BehaviorStore a), BehaviorD Linear a)
+type instance Behavior Accum  a = (BehaviorNode a, BehaviorD Accum  a)
+type instance Behavior Shared a = (BehaviorNode a, BehaviorD Linear a)
+type instance Behavior Linear a = (BehaviorNode a, BehaviorD Linear a)
 
 data BehaviorD t a where
     Pure         :: a -> BehaviorD t a
@@ -232,47 +250,47 @@ compileReadBehavior :: Event Accum () -> Compile (Event Shared ())
 compileReadBehavior e1 = do
         (e,es) <- runWriterT (goE e1)
         -- include updates to Behavior as additional events
-        let union e1 e2 = (invalidRef, Union e1 e2)
+        let union e1 e2 = (invalidNodeE, Union e1 e2)
         return $ foldr1 union (e:es)
     where    
     -- boilerplate traversal for events
     goE :: Event Accum a -> CompileReadBehavior (Event Shared a)
-    goE (ref, Filter p e )      = (ref,) <$> (Filter p   <$> goE e)
-    goE (ref, Union e1 e2)      = (ref,) <$> (Union      <$> goE e1 <*> goE e2)
-    goE (ref, ApplyE b e )      = (ref,) <$> (ApplyE     <$> goB b  <*> goE e )
-    goE (ref, AccumE x e )      = (ref,) <$> (AccumE x   <$> goE e)
-    goE (ref, Reactimate e)     = (ref,) <$> (Reactimate <$> goE e)
-    goE (ref, Never)            = (ref,) <$> (pure Never)
-    goE (ref, Input i)          = (ref,) <$> (pure $ Input i)
+    goE (node, Filter p e )      = (node,) <$> (Filter p   <$> goE e)
+    goE (node, Union e1 e2)      = (node,) <$> (Union      <$> goE e1 <*> goE e2)
+    goE (node, ApplyE b e )      = (node,) <$> (ApplyE     <$> goB b  <*> goE e )
+    goE (node, AccumE x e )      = (node,) <$> (AccumE x   <$> goE e)
+    goE (node, Reactimate e)     = (node,) <$> (Reactimate <$> goE e)
+    goE (node, Never)            = (node,) <$> (pure Never)
+    goE (node, Input i)          = (node,) <$> (pure $ Input i)
 
     -- almost boilerplate traversal for behaviors
     goB :: Behavior Accum a -> CompileReadBehavior (Behavior Shared a)
-    goB (ref, Pure x      ) = (ref,) <$> (Pure   <$> return x)
-    goB (ref, ApplyB bf bx) = (ref,) <$> (ApplyB <$> goB bf <*> goB bx)
-    goB (ref, Poll io     ) = (ref,) <$> (ReadBehavior <$> makeRef)
+    goB (node, Pure x      ) = (node,) <$> (Pure   <$> return x)
+    goB (node, ApplyB bf bx) = (node,) <$> (ApplyB <$> goB bf <*> goB bx)
+    goB (node, Poll io     ) = (node,) <$> (ReadBehavior <$> makeRef)
         where
         makeRef = do
-            m <- lift . lift $ readRef ref
+            m <- lift . lift $ readRef (storeB node)
             case m of
                 Just r  -> return r
                 Nothing -> do
                     r <- lift $ newBehaviorRefPoll io
-                    lift . lift $ writeRef ref r
+                    lift . lift $ writeRef (storeB node) r
                     return r
-    goB (ref, AccumB x e  ) = (ref,) <$> (ReadBehavior <$> makeRef)
+    goB (node, AccumB x e  ) = (node,) <$> (ReadBehavior <$> makeRef)
         where
         makeRef = do
-            m <- lift . lift $ readRef ref
+            m <- lift . lift $ readRef (storeB node)
             case m of
                 Just r  -> return r
                 Nothing -> do
                     -- create new BehaviorRef and share it
                     r <- lift $ newBehaviorRefAccum x
-                    lift . lift $ writeRef ref r
+                    lift . lift $ writeRef (storeB node) r
 
                     -- remove  accumB  from the other events
                     e <- goE e
-                    tell [(invalidRef, UpdateBehavior r e)]
+                    tell [(invalidNodeE, UpdateBehavior r e)]
                     return r
 
 -- fan out unions into linear paths
@@ -282,24 +300,24 @@ compileUnion :: Event Shared a -> Compile [Event Linear a]
 compileUnion e = map snd <$> goE e
     where
     goE :: Event Shared a -> Compile [EventLinear a]
-    goE (ref, Filter p e )        = cacheEvents ref (map2 (Filter p) <$> goE e)
-    goE (ref, ApplyE b e )        = cacheEvents ref (map2 (ApplyE b) <$> goE e)
-    goE (ref, AccumE x e )        = cacheEvents ref (compileAccumE x =<< goE e)
-    goE (_  , UpdateBehavior b e) = map2 (UpdateBehavior b) <$> goE e
-    goE (_  , Reactimate e)       = map2 (Reactimate)      <$> goE e
-    goE (_  , Union e1 e2)        = (++) <$> goE e1 <*> goE e2
-    goE (_  , Never      )        = return []
-    goE (_  , Input i)            = return [(getChannel i, Input i)]
+    goE (node, Filter p e )        = cacheEvents node (map2 (Filter p) <$> goE e)
+    goE (node, ApplyE b e )        = cacheEvents node (map2 (ApplyE b) <$> goE e)
+    goE (node, AccumE x e )        = cacheEvents node (compileAccumE x =<< goE e)
+    goE (_   , UpdateBehavior b e) = map2 (UpdateBehavior b) <$> goE e
+    goE (_   , Reactimate e)       = map2 (Reactimate)      <$> goE e
+    goE (_   , Union e1 e2)        = (++) <$> goE e1 <*> goE e2
+    goE (_   , Never      )        = return []
+    goE (_   , Input i)            = return [(getChannel i, Input i)]
     
     compileAccumE :: a -> [EventLinear (a -> a)] -> Compile [EventLinear a]
     compileAccumE x es = do
         ref <- newAccumRef x
         return $ map2 (UpdateAccum ref) es
     
-    cacheEvents :: Ref (EventStore a)
+    cacheEvents :: EventNode a
                 -> Compile [EventLinear a] -> Compile [EventLinear a]
-    cacheEvents ref mes = do
-        m <- lift $ readRef ref
+    cacheEvents node mes = do
+        m <- lift $ readRef (storeE node)
         case m of
             Just cached -> do
                 return $ map (\(c,r) -> (c, ReadCache c r)) cached
@@ -308,7 +326,7 @@ compileUnion e = map snd <$> goE e
                 es     <- mes
                 -- allocate corresponding cache references and share them
                 cached <- forM es $ \(c,_) -> do r <- newCacheRef; return (c,r)
-                lift $ writeRef ref cached
+                lift $ writeRef (storeE node) cached
                 -- return events that also write to the cache
                 return $ zipWith (second . (WriteCache . snd)) cached es
 
@@ -320,9 +338,9 @@ compileBehaviorEvaluation :: Behavior Linear a -> Run a
 compileBehaviorEvaluation = goB
     where
     goB :: Behavior Linear a -> Run a
-    goB (ref, Pure x)            = return x
-    goB (ref, ApplyB bf bx)      = goB bf <*> goB bx
-    goB (ref, ReadBehavior refb) = readBehaviorRef refb
+    goB (node, Pure x)            = return x
+    goB (node, ApplyB bf bx)      = goB bf <*> goB bx
+    goB (node, ReadBehavior refb) = readBehaviorRef refb
 
 
 -- compile path into an IO action

@@ -8,6 +8,14 @@ module Reactive.Banana.Model (
     
     -- * Description
     -- $model
+    
+    -- * Combinators
+    module Control.Applicative,
+    Event(..), Behavior(..),
+    never, union, apply, filterE, stepper, accumB, accumE,
+    
+    -- * Internal
+    Discrete,
     ) where
 
 import Control.Applicative
