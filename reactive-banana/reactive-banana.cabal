@@ -59,8 +59,8 @@ Library
                         Reactive.Banana.Combinators,
                         Reactive.Banana.Frameworks,
                         Reactive.Banana.Incremental,
-                        Reactive.Banana.Model
-                        -- Reactive.Banana.Tests
+                        Reactive.Banana.Model,
+                        Reactive.Banana.Tests
     other-modules:
                         Reactive.Banana.Automaton,
                         Reactive.Banana.Input,

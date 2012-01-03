@@ -4,26 +4,28 @@
     Test cases and examples
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, NoMonomorphismRestriction #-}
+
 module Reactive.Banana.Tests where
 
 import Control.Monad (when)
 
-import Reactive.Banana.Model as Model
-import Reactive.Banana.Implementation as Impl
+import Reactive.Banana.Combinators
+import Reactive.Banana.Frameworks
 
 import Test.QuickCheck
 
 {-----------------------------------------------------------------------------
     Testing
 ------------------------------------------------------------------------------}
-matchesModel :: (Typeable a, Show b, Eq b) =>
-    (forall f. FRP f => Event f a -> Event f b) -> [a] -> IO Bool
+matchesModel :: (Show b, Eq b)
+             => (forall t. Event t a -> Event t b) -> [a] -> IO Bool
 matchesModel f = \xs -> do
-        let bs1 = Model.interpret f xs
-        bs2 <- Impl.interpret f xs
+        bs1 <- interpretModel f (map singleton xs)
+        bs2 <- interpret f xs
         when (bs1 /= bs2) $ print bs1 >> print bs2
         return $ bs1 == bs2
 
+singleton x = [x]
 
 testSuite = do
         -- trivial unit tests
@@ -39,14 +41,15 @@ testSuite = do
         --  * larger examples
         --  * quickcheck
     where
-    test :: (Show b, Eq b) => (forall f. FRP f => Event f Int -> Event f b)
-         -> IO ()
+    test :: (Show b, Eq b) => (forall t. Event t Int -> Event t b) -> IO ()
     test f = print =<< matchesModel f [1..8::Int]
 
 {-----------------------------------------------------------------------------
     Examples
 ------------------------------------------------------------------------------}
-test f = Impl.interpret f [1..8::Int]
+testModel, testImpl :: (forall t. Event t Int -> Event t b) -> IO [[b]]
+testModel f = interpretModel f $ map singleton [1..8::Int]
+testImpl  f = interpret      f $ [1..8::Int]
 
 add1      = fmap (+1)
 filtering = filterE (>= 3) . fmap (subtract 1)
@@ -59,14 +62,14 @@ sharing e = union e1 e1
 type Dummy = Int
 
 -- counter that can be decreased as long as it's >= 0
-decrease :: FRP f => Event f Dummy -> Event f Int
+decrease :: Event t Dummy -> Event t Int
 decrease edec = apply (const <$> bcounter) ecandecrease
     where
     bcounter     = accumB 4 $ (subtract 1) <$ ecandecrease
     ecandecrease = whenE ((>0) <$> bcounter) edec
 
--- test accumE vs accumE
-accumBvsE :: FRP f => Event f Dummy -> Event f Int
+-- test accumE vs accumB
+accumBvsE :: Event t Dummy -> Event t Int
 accumBvsE input = e1 `union` e2
     where
     e  = input `union` input

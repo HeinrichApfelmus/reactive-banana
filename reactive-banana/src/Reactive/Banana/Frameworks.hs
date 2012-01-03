@@ -1,7 +1,8 @@
-{-# LANGUAGE DeriveDataTypeable, Rank2Types #-}
 {-----------------------------------------------------------------------------
     Reactive Banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE Rank2Types, DeriveDataTypeable #-}
+
 module Reactive.Banana.Frameworks (
     -- * Synopsis
     -- | Build event networks using existing event-based frameworks and run them.
@@ -288,6 +289,7 @@ makeEventNetwork register = do
     Simple use
 ------------------------------------------------------------------------------}
 -- | Simple way to run an event graph. Very useful for testing.
+-- Uses the efficient push-driven implementation.
 interpret :: (forall t. Event t a -> Event t b) -> [a] -> IO [[b]]
 interpret f xs = do
     output                    <- newIORef []
@@ -315,7 +317,6 @@ interpretAsHandler f addHandlerA = \handlerB -> do
     actuate network
     return (pause network)
 
-interpretModel = undefined
 
 {-----------------------------------------------------------------------------
     Utilities
