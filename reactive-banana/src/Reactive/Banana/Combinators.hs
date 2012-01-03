@@ -11,6 +11,7 @@ module Reactive.Banana.Combinators (
     -- $intro1
     Event, Behavior,
     -- $intro2
+    interpretModel,
     
     -- * Core Combinators
     module Control.Applicative,
@@ -20,9 +21,6 @@ module Reactive.Banana.Combinators (
     -- * Derived Combinators
     filterJust, filterApply, whenE,
     mapAccum, Apply(..),
-    
-    -- * Model implementation
-    -- Time, interpretTime, interpret,
     
     -- * Internal
     event, behavior, Event(..)
@@ -259,6 +257,8 @@ instance Apply (Behavior t) (Event t) where
 ------------------------------------------------------------------------------}
 type Eval = State Vault.Vault
 
+-- | Interpret an event graph with the model implementation.
+-- Mainly useful for testing library internals.
 interpretModel :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
 interpretModel f input = do
     i0 <- newInputChannel
@@ -309,6 +309,7 @@ interpretModel f input = do
         $ evalState (goE . unEvent . f . event $ InputPure i0) Vault.empty
 
 
+-- TODO: test observable sharing (though that should probably work by now)
 
 
 
