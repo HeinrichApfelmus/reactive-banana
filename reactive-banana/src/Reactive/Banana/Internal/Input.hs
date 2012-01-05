@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Input (
+module Reactive.Banana.Internal.Input (
     -- * Synopsis
     -- | Internal module.
     -- Utilities for managing heterogenous input values.

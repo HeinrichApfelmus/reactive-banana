@@ -38,10 +38,10 @@ import Data.Monoid
 import qualified Data.Map as Map
 import Data.Unique
 
-import Reactive.Banana.Automaton
-import Reactive.Banana.Input
+import Reactive.Banana.Internal.Automaton
+import Reactive.Banana.Internal.Input
 import Reactive.Banana.Combinators
-import qualified Reactive.Banana.PushIO as Implementation
+import qualified Reactive.Banana.Internal.PushIO as Implementation
 
 {-----------------------------------------------------------------------------
     PushIO specific functions

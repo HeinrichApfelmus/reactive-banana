@@ -37,11 +37,12 @@ import Data.Monoid (Monoid(..))
 import qualified Data.Vault as Vault
 import Prelude hiding (filter)
 
-import Reactive.Banana.Input
+
 import qualified Reactive.Banana.Model as Model
 
-import Reactive.Banana.PushIO hiding (Event, Behavior)
-import qualified Reactive.Banana.PushIO as Implementation
+import Reactive.Banana.Internal.Input
+import Reactive.Banana.Internal.PushIO hiding (Event, Behavior)
+import qualified Reactive.Banana.Internal.PushIO as Implementation
 
 import System.IO.Unsafe (unsafePerformIO) -- for observable sharing
 

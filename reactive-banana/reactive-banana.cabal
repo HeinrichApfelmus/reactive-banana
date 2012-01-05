@@ -62,9 +62,9 @@ Library
                         Reactive.Banana.Model,
                         Reactive.Banana.Tests
     other-modules:
-                        Reactive.Banana.Automaton,
-                        Reactive.Banana.Input,
-                        Reactive.Banana.PushIO
+                        Reactive.Banana.Internal.Automaton,
+                        Reactive.Banana.Internal.Input,
+                        Reactive.Banana.Internal.PushIO
 
 Source-repository head
     type:               git

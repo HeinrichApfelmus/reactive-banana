@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Automaton (
+module Reactive.Banana.Internal.Automaton (
     -- * Synopsis
     -- | Internal module.
     -- Stepwise execution of an event graph.
@@ -10,7 +10,7 @@ module Reactive.Banana.Automaton (
 
     ) where
 
-import Reactive.Banana.Input
+import Reactive.Banana.Internal.Input
 
 {-----------------------------------------------------------------------------
     Stepwise execution

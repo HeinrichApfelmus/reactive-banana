@@ -5,10 +5,10 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE TypeFamilies, FlexibleInstances, EmptyDataDecls, GADTs,
      TupleSections, BangPatterns #-}
-module Reactive.Banana.PushIO where
+module Reactive.Banana.Internal.PushIO where
 
-import Reactive.Banana.Automaton
-import Reactive.Banana.Input
+import Reactive.Banana.Internal.Automaton
+import Reactive.Banana.Internal.Input
 
 import Control.Applicative
 import Control.Arrow (second)
