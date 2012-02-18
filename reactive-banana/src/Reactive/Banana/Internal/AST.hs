@@ -1,23 +1,10 @@
 {-----------------------------------------------------------------------------
     Reactive-Banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE GADTs, TypeFamilies, EmptyDataDecls #-}
+{-# LANGUAGE GADTs, TypeFamilies, TupleSections, EmptyDataDecls #-}
 
-module Reactive.Banana.Internal.AST (
-    -- * Synopsis
-    -- Abstract syntax tree and assorted data types.
-    
-    -- * Abstract syntax tree
-    EventD(..), BehaviorD(..),
-    -- * Observable sharing
-    Node(..), Expr, Event, Behavior,
-    -- * Smart constructors
-    never, unionWith, filterE, applyE, accumE, inputE, mapE,
-    pureB, applyB, accumB,
-    
-    -- * Types associated to Node
-    
-    ) where
+module Reactive.Banana.Internal.AST where
+-- | Abstract syntax tree and assorted data types.
 
 import Control.Applicative
 import qualified Data.Vault as Vault
@@ -45,12 +32,9 @@ data EventD t :: * -> * where
 
 -- | Constructors for behaviors.
 data BehaviorD t :: * -> * where
-    Pure   :: a -> BehaviorD t a
-    ApplyB :: Behavior t (a -> b) -> Behavior t a -> BehaviorD t b
-    AccumB :: a -> Event t (a -> a) -> BehaviorD t a
+    Stepper :: a -> Event t a -> BehaviorD t a
 
     InputB :: InputChannel a -> BehaviorD t a -- represent external inputs 
-    
 
 {-----------------------------------------------------------------------------
     Observable sharing
@@ -59,19 +43,10 @@ data BehaviorD t :: * -> * where
     The @Node@ serves as a unique identifier and stores various keys
     into various vaults.
 ------------------------------------------------------------------------------}
--- | Unique identifier for an expression.
--- Contains keys for various 'Vault'.
-data Node a
-    = Node
-    { keyValue   :: Vault.Key a
-    , keyFormula :: Vault.Key (FormulaD Graph a)
-    , keyOrder   :: Unique.Unique }
-
 -- | Type index indicating expressions with observable sharing
 data Expr
 type instance Event    Expr a = (Node a, EventD Expr a)
 type instance Behavior Expr a = (Node a, BehaviorD Expr a)
-
 
 -- smart constructor that handles observable sharing
 shareE :: EventD Expr a -> Event Expr a
@@ -87,35 +62,52 @@ shareB b = pair
     {-# NOINLINE pair #-}
     pair = unsafePerformIO (fmap (,b) newNode)
 
-newNode :: IO (Node a)
-newNode = Node <$> Vault.newKey <*> Vault.newKey <*> Unique.newUnique
-
 {-----------------------------------------------------------------------------
     Smart constructors and class instances
 ------------------------------------------------------------------------------}
 unE = id; unB = id
 
-never           = shareE $ Never
-unionWith e1 e2 = shareE $ UnionWith (unE e1) (unE e2)
-filterE p e     = shareE $ FilterE p (unE e)
-applyE b e      = shareE $ ApplyE (unB b) (unE e)
-accumE acc e    = shareE $ AccumE acc (unE e)
-inputE i        = shareE $ InputE i
+never             = shareE $ Never
+unionWith f e1 e2 = shareE $ UnionWith f (unE e1) (unE e2)
+filterE p e       = shareE $ FilterE p (unE e)
+applyE b e        = shareE $ ApplyE (unB b) (unE e)
+accumE acc e      = shareE $ AccumE acc (unE e)
+inputE i          = shareE $ InputE i
 
-pureB x         = shareB $ Pure x
-applyB b1 b2    = shareB $ applyB (unB b1) (unB b2)
-accumB acc e    = shareB $ AccumB acc (unE e)
-inputB i        = shareB $ InputB i
+stepperB acc e    = shareB $ Stepper acc (unE e)
+inputB i          = shareB $ InputB i
 
 {-----------------------------------------------------------------------------
-    Reactive.Banana.Internal.PushDriven
+    Reactive.Banana.Internal.PushGraph
     
-    Various data types mentioned in @Node@ for use
-    with the push-driven implementation
+    We need to define the 'Node' type here.
 ------------------------------------------------------------------------------}
+-- | A 'Node' represents a unique identifier for an expression.
+-- It actually contains keys for various 'Vault'.
+data Node a
+    = Node
+    { keyValue   :: Vault.Key a
+    , keyFormula :: Vault.Key (FormulaD Nodes a)
+    , keyOrder   :: Unique.Unique }
+
+newNode :: IO (Node a)
+newNode = Node <$> Vault.newKey <*> Vault.newKey <*> Unique.newUnique
 
 
+data Nodes
+type instance Event    Nodes a = Node a
+type instance Behavior Nodes a = Node a
 
+-- | Formula that represents events and behaviors as one entity
+data FormulaD t a where
+    E :: EventD t a    -> FormulaD t a
+    B :: BehaviorD t a -> FormulaD t a
 
+caseFormula :: (EventD t a -> c) -> (BehaviorD t a -> c) -> FormulaD t a -> c
+caseFormula e b (E x) = e x
+caseFormula e b (B x) = b x
 
+type family Formula t a
+type instance Formula Expr  a = (Node a, FormulaD Expr a)
+type instance Formula Nodes a = Node a
 
