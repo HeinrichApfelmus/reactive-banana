@@ -111,3 +111,16 @@ type family Formula t a
 type instance Formula Expr  a = (Node a, FormulaD Expr a)
 type instance Formula Nodes a = Node a
 
+-- Helper class for embedding polymorphically in the type index
+class ToFormula t where
+    e :: Event    t a -> Formula t a
+    b :: Behavior t a -> Formula t a
+
+instance ToFormula Expr where
+    e (node, e1) = (node, E e1)
+    b (node, b1) = (node, B b1)
+
+instance ToFormula Nodes where
+    e node = node
+    b node = node
+

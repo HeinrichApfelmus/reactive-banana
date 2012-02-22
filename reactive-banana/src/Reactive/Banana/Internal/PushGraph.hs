@@ -4,7 +4,8 @@
     Push-driven, incremental computations
 ------------------------------------------------------------------------------}
 {-# LANGUAGE GADTs, TypeFamilies, RankNTypes, TypeOperators,
-             TypeSynonymInstances #-}
+             TypeSynonymInstances, FlexibleInstances,
+             ScopedTypeVariables #-}
 
 module Reactive.Banana.Internal.PushGraph (
     -- * Synopsis
@@ -42,9 +43,13 @@ type SomeNode = SomeFormula Nodes
 
 -- instances to store  SomeNode  in efficient maps
 instance Eq SomeNode where
-    (Exists x) == (Exists y) = keyOrder x == keyOrder y
+    x == y = compare x y == EQ 
 instance Ord SomeNode where
     compare (Exists x) (Exists y) = compare (keyOrder x) (keyOrder y)
+instance Eq  (SomeFormula Expr) where
+    x == y = compare x y == EQ
+instance Ord (SomeFormula Expr) where
+    compare (Exists x) (Exists y) = compare (keyOrder $ fst x) (keyOrder $ fst y)
 
 {-----------------------------------------------------------------------------
     Representation of the dependency graph
@@ -53,61 +58,66 @@ instance Ord SomeNode where
 -- Dependency graph
 data Graph
     = Graph
-    { grFormulas  :: Formulas                -- calculation formulas
+    { grFormulas  :: Formulas                -- formulas for calculation
     , grChildren  :: Map SomeNode [SomeNode] -- reverse dependencies
     , grEvalOrder :: EvalOrder               -- evaluation order
-    , grValues    :: Vault.Vault             -- calculated values
     }
 type Formulas  = Vault.Vault          -- mapping from nodes to formulas
 type EvalOrder = TotalOrder SomeNode  -- evaluation order
+type Values    = Vault.Vault          -- current event values
 
--- make lens from a Vault.Key
+-- | Turn a 'Vault.Key' into a lens for the vault
 vaultLens :: Vault.Key a -> (Vault.Vault :-> Maybe a)
 vaultLens key = lens (Vault.lookup key) (adjust)
     where
     adjust Nothing  = Vault.delete key
     adjust (Just x) = Vault.insert key x 
 
--- formula used to calculate the value at a node
+-- | Formula used to calculate the value at a node.
 formula :: Node a -> (Graph :-> Maybe (FormulaD Nodes a))
 formula node = vaultLens (keyFormula node) . formulaLens
     where formulaLens = lens grFormulas (\x g -> g { grFormulas = x})
 
--- value calculated for the node
-value :: Node a -> (Graph :-> Maybe a)
-value node = vaultLens (keyValue node) . valuesLens
-    where valuesLens = lens grValues (\x g -> g { grValues = x})
+-- | All nodes that directly depend on this one via the formula.
+children :: Node a -> (Graph :-> [SomeNode])
+children node = lens (Map.findWithDefault [] (Exists node) . grChildren)
+    (error "TODO: can't set children yet")
 
--- all nodes that directly depend on this one via the formula
-children :: Node a -> Graph -> [SomeNode]
-children node g = Map.findWithDefault [] (Exists node) (grChildren g)
+-- | Current value for a node.
+value :: Node a -> (Values :-> Maybe a)
+value node = vaultLens (keyValue node)
 
 {-----------------------------------------------------------------------------
     Operations specific to the DSL
 ------------------------------------------------------------------------------}
 -- | Extract the dependencies of a node from its formula.
 -- (boilerplate)
-dependencies :: FormulaD t a -> [SomeFormula t]
+dependencies :: forall t a. FormulaD t a -> [SomeFormula t]
 dependencies = caseFormula goE goB
     where
     goE :: EventD t a -> [SomeFormula t]
     goE (Never)             = []
-    goE (UnionWith f e1 e2) = [Exists $ E e1, Exists $ E e2]
-    goE (FilterE _ e)       = [Exists $ E e]
-    goE (ApplyE  b e)       = [Exists $ B b, Exists $ E e]
-    goE (AccumE  _ e)       = [Exists $ E e]
+    goE (UnionWith f e1 e2) = [Exists $ e e1,ee e2]
+    goE (FilterE _ e1)      = [ee e1]
+    goE (ApplyE  b1 e1)     = [bb b1, ee e1]
+    goE (AccumE  _ e1)      = [ee e1]
     goE _                   = []
 
     goB :: BehaviorD t a -> [SomeFormula t]
-    goB (Stepper x e)       = [Exists $ E e]
+    goB (Stepper x e1)      = [ee e1]
     goB _                   = []
 
+ee :: forall t a. Event t a -> SomeFormula t
+ee x = Exists (e x)
+bb :: Behavior t a -> SomeFormula t
+bb = Exists . b
+    
 -- | Nodes whose *current* values are needed to calculate
 -- the current value of the given node.
 -- (boilerplate)
 dependenciesEval :: FormulaD t a -> [SomeFormula t]
-dependenciesEval (B (Stepper x e)) = []
-dependenciesEval formula           = dependencies formula 
+dependenciesEval (E (ApplyE b e)) = [ee e]
+dependenciesEval formula          = dependencies formula 
 
 -- | Replace expressions by nodes.
 -- (boilerplate)
@@ -127,49 +137,64 @@ toFormulaNodes = caseFormula (E . goE) (B . goB)
     goB (InputB x)          = InputB x
 
 
+-- Evaluation
 
 -- | Evaluate the current value of a given event expression.
 calculateE
-    :: (forall e. Node e -> Maybe e)
-    -> (forall b. Node b -> b)
-    -> Maybe a -> EventD Nodes a -> Maybe a
-calculateE valueE valueB valuePrev = goE
+    :: forall a.
+       (forall e. Node e -> Maybe e)  -- retrieve current event values
+    -> (forall b. Node b -> b)        -- retrieve old behavior values
+    -> Node a                         -- node ID
+    -> EventD Nodes a                 -- formula to evaluate
+    -> ( Maybe a                      -- current event value
+       , Graph -> Graph)              -- (maybe) change formulas in the graph 
+calculateE valueE valueB node =
+    maybe (Nothing,id) (\(x,f) -> (Just x, f)) . goE
     where
-    goE :: EventD Nodes a -> Maybe a
-    goE (Never)             = Nothing
+    goE :: EventD Nodes a -> Maybe (a, Graph -> Graph)
+    goE (Never)             = nothing
     goE (UnionWith f e1 e2) = case (valueE e1, valueE e2) of
-        (Just e1, Just e2) -> Just $ f e1 e2
-        (Just e1, Nothing) -> Just e1
-        (Nothing, Just e2) -> Just e2
-        (Nothing, Nothing) -> Nothing
+        (Just e1, Just e2) -> just $ f e1 e2
+        (Just e1, Nothing) -> just e1
+        (Nothing, Just e2) -> just e2
+        (Nothing, Nothing) -> nothing
     goE (FilterE p e)       = valueE e >>=
-        \e -> if p e then Just e else Nothing
-    goE (ApplyE  b e)       = (valueB b  $) <$> valueE e
-    goE (AccumE  x e)       = ($ valuePrev) <$> valueE e
-    goE (InputE x)          = valuePrev
+        \e -> if p e then just e else nothing
+    goE (ApplyE  b e)       = (just . (valueB b $)) =<< valueE e
+    goE (AccumE  x e)       = case valueE e of
+        Nothing -> just x
+        Just f  -> let y = f x in
+            Just (y, set (formula node) . Just $ E (AccumE y e))
+    goE (InputE x)          = error "TODO" -- just x
 
+just x  = Just (x, id)
+nothing = Nothing
+
+-- | Evalute the new value of a given behavior expression
 calculateB
-    :: (forall e. Node e -> Maybe e)
-    -> (forall b. Node b -> b)
-    -> a -> BehaviorD Nodes a -> a
-calculateB valueE _ valueSelf = goB
+    :: forall a.
+       (forall e. Node e -> Maybe e) -- retrieve current event values
+    -> Node a                        -- node ID
+    -> BehaviorD Nodes a             -- formula to evaluate
+    -> Graph -> Graph                -- (maybe) change formulas in the graph
+calculateB valueE node = maybe id id . goB
     where
-    goB :: BehaviorD Nodes a -> a
-    goB (Stepper x e)     = maybe valueSelf id (valueE e)
-    goB (InputB x)        = valueSelf
+    goB :: BehaviorD Nodes a -> Maybe (Graph -> Graph) 
+    goB (Stepper x e)     =
+        (\y -> set (formula node) $ Just $ B (Stepper y e)) <$> valueE e
+    goB (InputB x)        = error "TODO"
 
 
 {-----------------------------------------------------------------------------
     Building the dependency graph
 ------------------------------------------------------------------------------}
--- build full graph from an expression
+-- | Build full graph from an expression.
 buildGraph :: SomeFormula Expr -> Graph
 buildGraph expr
         = Graph
         { grFormulas  = grFormulas
         , grChildren  = buildChildren  root grFormulas
         , grEvalOrder = buildEvalOrder root grFormulas
-        , grValues    = Vault.empty
         }
     where
     grFormulas = buildFormulas expr
@@ -201,12 +226,12 @@ buildChildren root formulas =
 concatenate :: [a -> a] -> (a -> a)
 concatenate = foldr (.) id
 
--- start at some node and update the evaluation order of
--- the node and all of its dependencies
+-- | Start at some node and update the evaluation order of
+-- the node and all of its dependencies.
 updateEvalOrder :: SomeNode -> Formulas -> EvalOrder -> EvalOrder
 updateEvalOrder = error "TODO"
 
--- Build evaluation order from scratch
+-- | Build evaluation order from scratch
 -- = topological sort
 buildEvalOrder :: SomeNode -> Formulas -> EvalOrder
 buildEvalOrder root formulas = 
@@ -219,15 +244,16 @@ buildEvalOrder root formulas =
 {-----------------------------------------------------------------------------
     Generic Graph Traversals
 ------------------------------------------------------------------------------}
--- Dictionary for defining monoids on the fly
+-- | Dictionary for defining monoids on the fly.
 data MonoidDict t = MonoidDict t (t -> t -> t)
 
--- Unfold a graph,
+-- | Unfold a graph,
 -- i.e. unfold a given state  s  into a concatenation of monoid values
 -- while ignoring duplicate states.
 -- Depth-first order.
-unfoldGraphDFSWith :: Ord s => MonoidDict t -> (s -> (t,[s])) -> s -> t
-unfoldGraphDFSWith (MonoidDict empty append ) f = go Set.empty
+unfoldGraphDFSWith
+    :: forall s t. Ord s => MonoidDict t -> (s -> (t,[s])) -> s -> t
+unfoldGraphDFSWith (MonoidDict empty append) f s = go Set.empty [s]
     where
     go :: Set.Set s -> [s] -> t
     go seen []      = empty
@@ -238,15 +264,9 @@ unfoldGraphDFSWith (MonoidDict empty append ) f = go Set.empty
         (t,ys) = f x
 
 
--- monoid of endomorphisms, leftmost function is applied *last*
+-- | Monoid of endomorphisms, leftmost function is applied *last*.
 leftComposition :: MonoidDict (a -> a)
-leftComposition = MonoidDict id (flip (.)) 
-
--- Unfold a graph.
--- Specialize monoid to function composition from left to right
--- unfoldGraphDualEndo :: Ord s => (s -> (a -> a,[s])) -> s -> (a -> a)
--- unfoldGraphDualEndo f = unDual . unEndo . unfoldGraphDFS f'
---    where f' = first (Dual . Endo) . f
+leftComposition = MonoidDict id (flip (.))
 
 {-----------------------------------------------------------------------------
     Reduction and Evaluation
@@ -255,19 +275,54 @@ leftComposition = MonoidDict id (flip (.))
 
 -- | Perform evaluation steps until all values have percolated through the graph.
 evaluate :: Queue q => q SomeNode -> Graph -> Graph
-evaluate q g = snd $ until (isEmpty . fst) evaluationStep (q,g)
+evaluate startQueue startGraph = endGraph
+    where
+    startValues = Vault.empty
+    
+    (_,_,endGraph) =
+        until (isEmpty . queue) step (startQueue,startValues,startGraph)
+    
+    queue (q,_,_) = q
+    step  (q,v,g) = (q',v',f g)
+        where (q',v',f) = evaluationStep startGraph q v
 
 -- | Perform a single evaluation step.
-evaluationStep :: Queue q => (q SomeNode, Graph) -> (q SomeNode, Graph)
-evaluationStep (q,g) = case minView q of
-        Just (Exists node, q) -> go node q
-        Nothing               -> error "reductionStep: internal error"
+evaluationStep
+    :: forall q. Queue q
+    => Graph                        -- initial graph shape
+    -> q SomeNode                   -- queue of nodes to process
+    -> Values                       -- current event values
+    -> (q SomeNode, Values, Graph -> Graph)
+evaluationStep graph queue values = case minView queue of
+        Just (Exists node, queue) -> go node queue
+        Nothing                   -> error "evaluationStep: queue empty"
     where
-    go node q = undefined {- (q',g')
-        where
-        g' = set (value node) $
-            calculate (\n -> get (value n) g) (get (formula node) g)
-        q' = insertList (children node g) q -}
+    go :: forall a. Node a -> q SomeNode -> (q SomeNode, Values, Graph -> Graph)
+    go node queue =
+        let -- lookup functions
+            valueE :: forall e. Node e -> Maybe e
+            valueE node = get (value node) values
+            valueB :: forall b. Node b -> b
+            valueB node = case get (formula node) graph of
+                Just (B (Stepper b _)) -> b
+                _               -> error "evaluationStep: behavior not found"
+
+        in -- evaluation
+            case fromJust $ get (formula node) graph of
+            B formulaB ->   -- evalute behavior
+                (queue, values, calculateB valueE node formulaB)
+            E formulaE ->   -- evaluate event
+                let -- calculate current value
+                    (maybeval, f) = calculateE valueE valueB node formulaE
+                    -- set value if applicable
+                    valuesF = case maybeval of
+                        Just x  -> set (value node) (Just x)
+                        Nothing -> id
+                    -- evaluate children only if node doesn't return Nothing
+                    queueF  = case maybeval of
+                        Just _  -> insertList $ get (children node) graph
+                        Nothing -> id
+                in (queueF queue, valuesF values, f)
 
 {-----------------------------------------------------------------------------
     Convert into an automaton
