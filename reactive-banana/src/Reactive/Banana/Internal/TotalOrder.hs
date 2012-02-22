@@ -4,7 +4,14 @@
     Type representating a total order
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, BangPatterns #-}
-module Reactive.Banana.Internal.TotalOrder where
+module Reactive.Banana.Internal.TotalOrder (
+    -- * TotalOrder
+    TotalOrder, TotalOrderZipper,
+    open, close, fromAscList, ascend, descend, insertBeforeFocus, delete,
+    
+    -- * Queue
+    Queue(..), insertList, isEmpty
+    ) where
 
 
 import Control.Applicative

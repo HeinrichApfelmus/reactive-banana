@@ -1,7 +1,8 @@
 {-----------------------------------------------------------------------------
     Reactive-Banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE GADTs, TypeFamilies, TupleSections, EmptyDataDecls #-}
+{-# LANGUAGE GADTs, TypeFamilies, TupleSections, EmptyDataDecls,
+    TypeSynonymInstances, FlexibleInstances #-}
 
 module Reactive.Banana.Internal.AST where
 -- | Abstract syntax tree and assorted data types.
@@ -17,8 +18,8 @@ import Reactive.Banana.Internal.Input
     Abstract syntax tree
 ------------------------------------------------------------------------------}
 -- Type families allow us to support multiple tags in the AST
-type family   Event t a
-type family   Behavior t a
+type family   Event    t :: * -> *
+type family   Behavior t :: * -> *
 
 -- | Constructors for events.
 data EventD t :: * -> * where
@@ -43,10 +44,15 @@ data BehaviorD t :: * -> * where
     The @Node@ serves as a unique identifier and stores various keys
     into various vaults.
 ------------------------------------------------------------------------------}
+data Pair f g a = Pair (f a) (g a)
+
+fstPair :: Pair f g a -> f a
+fstPair (Pair x y) = x
+
 -- | Type index indicating expressions with observable sharing
 data Expr
-type instance Event    Expr a = (Node a, EventD Expr a)
-type instance Behavior Expr a = (Node a, BehaviorD Expr a)
+type instance Event    Expr = Pair Node (EventD    Expr)
+type instance Behavior Expr = Pair Node (BehaviorD Expr)
 
 -- smart constructor that handles observable sharing
 shareE :: EventD Expr a -> Event Expr a
@@ -54,13 +60,13 @@ shareE e = pair
     where
     {-# NOINLINE pair #-}
     -- mention argument to prevent let-floating
-    pair = unsafePerformIO (fmap (,e) newNode)
+    pair = unsafePerformIO (fmap (flip Pair e) newNode)
 
 shareB :: BehaviorD Expr a -> Behavior Expr a
 shareB b = pair
     where
     {-# NOINLINE pair #-}
-    pair = unsafePerformIO (fmap (,b) newNode)
+    pair = unsafePerformIO (fmap (flip Pair b) newNode)
 
 {-----------------------------------------------------------------------------
     Smart constructors and class instances
@@ -95,8 +101,8 @@ newNode = Node <$> Vault.newKey <*> Vault.newKey <*> Unique.newUnique
 
 
 data Nodes
-type instance Event    Nodes a = Node a
-type instance Behavior Nodes a = Node a
+type instance Event    Nodes = Node
+type instance Behavior Nodes = Node
 
 -- | Formula that represents events and behaviors as one entity
 data FormulaD t a where
@@ -107,20 +113,39 @@ caseFormula :: (EventD t a -> c) -> (BehaviorD t a -> c) -> FormulaD t a -> c
 caseFormula e b (E x) = e x
 caseFormula e b (B x) = b x
 
-type family Formula t a
-type instance Formula Expr  a = (Node a, FormulaD Expr a)
-type instance Formula Nodes a = Node a
+type family Formula t :: * -> *
+type instance Formula Expr  = Pair Node (FormulaD Expr)
+type instance Formula Nodes = Node
 
 -- Helper class for embedding polymorphically in the type index
 class ToFormula t where
-    e :: Event    t a -> Formula t a
-    b :: Behavior t a -> Formula t a
+    -- e :: Event    t a -> Formula t a
+    -- b :: Behavior t a -> Formula t a
+    
+    ee :: Event t a    -> SomeFormula t
+    bb :: Behavior t a -> SomeFormula t
 
 instance ToFormula Expr where
-    e (node, e1) = (node, E e1)
-    b (node, b1) = (node, B b1)
+    ee (Pair node e1) = Exists (Pair node $ E e1)
+    bb (Pair node b1) = Exists (Pair node $ B b1)
 
 instance ToFormula Nodes where
-    e node = node
-    b node = node
+    ee node = Exists node
+    bb node = Exists node
 
+
+-- | Formula, existentially quantified over the result type
+data SomeFormula t where
+    Exists :: Formula t a -> SomeFormula t
+type SomeNode = SomeFormula Nodes
+
+-- instances to store  SomeNode  in efficient maps
+instance Eq SomeNode where
+    x == y = compare x y == EQ 
+instance Ord SomeNode where
+    compare (Exists x) (Exists y) = compare (keyOrder x) (keyOrder y)
+instance Eq  (SomeFormula Expr) where
+    x == y = compare x y == EQ
+instance Ord (SomeFormula Expr) where
+    compare (Exists (Pair x _)) (Exists (Pair y _)) =
+        compare (keyOrder x) (keyOrder y)

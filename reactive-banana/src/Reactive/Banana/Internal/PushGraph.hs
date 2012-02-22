@@ -32,25 +32,6 @@ import Reactive.Banana.Internal.AST
 import Reactive.Banana.Internal.Automaton
 import Reactive.Banana.Internal.TotalOrder as TotalOrder
 
-
-{-----------------------------------------------------------------------------
-    Existential quantification
-------------------------------------------------------------------------------}
--- | Formula, existentially quantified over the result type
-data SomeFormula t where
-    Exists :: Formula t a -> SomeFormula t
-type SomeNode = SomeFormula Nodes
-
--- instances to store  SomeNode  in efficient maps
-instance Eq SomeNode where
-    x == y = compare x y == EQ 
-instance Ord SomeNode where
-    compare (Exists x) (Exists y) = compare (keyOrder x) (keyOrder y)
-instance Eq  (SomeFormula Expr) where
-    x == y = compare x y == EQ
-instance Ord (SomeFormula Expr) where
-    compare (Exists x) (Exists y) = compare (keyOrder $ fst x) (keyOrder $ fst y)
-
 {-----------------------------------------------------------------------------
     Representation of the dependency graph
     and associated lenses
@@ -92,30 +73,25 @@ value node = vaultLens (keyValue node)
 ------------------------------------------------------------------------------}
 -- | Extract the dependencies of a node from its formula.
 -- (boilerplate)
-dependencies :: forall t a. FormulaD t a -> [SomeFormula t]
+dependencies :: ToFormula t => FormulaD t a -> [SomeFormula t]
 dependencies = caseFormula goE goB
     where
-    goE :: EventD t a -> [SomeFormula t]
+    goE :: ToFormula t => EventD t a -> [SomeFormula t]
     goE (Never)             = []
-    goE (UnionWith f e1 e2) = [Exists $ e e1,ee e2]
+    goE (UnionWith f e1 e2) = [ee e1,ee e2]
     goE (FilterE _ e1)      = [ee e1]
     goE (ApplyE  b1 e1)     = [bb b1, ee e1]
     goE (AccumE  _ e1)      = [ee e1]
     goE _                   = []
 
-    goB :: BehaviorD t a -> [SomeFormula t]
+    goB :: ToFormula t => BehaviorD t a -> [SomeFormula t]
     goB (Stepper x e1)      = [ee e1]
     goB _                   = []
 
-ee :: forall t a. Event t a -> SomeFormula t
-ee x = Exists (e x)
-bb :: Behavior t a -> SomeFormula t
-bb = Exists . b
-    
 -- | Nodes whose *current* values are needed to calculate
 -- the current value of the given node.
 -- (boilerplate)
-dependenciesEval :: FormulaD t a -> [SomeFormula t]
+dependenciesEval :: ToFormula t => FormulaD t a -> [SomeFormula t]
 dependenciesEval (E (ApplyE b e)) = [ee e]
 dependenciesEval formula          = dependencies formula 
 
@@ -124,16 +100,19 @@ dependenciesEval formula          = dependencies formula
 toFormulaNodes :: FormulaD Expr a -> FormulaD Nodes a
 toFormulaNodes = caseFormula (E . goE) (B . goB)
     where
-    goE :: EventD Expr a -> EventD Nodes a
+    node :: Pair Node f a -> Node a
+    node = fstPair
+    
+    goE :: forall a. EventD Expr a -> EventD Nodes a
     goE (Never)             = Never
-    goE (UnionWith f e1 e2) = UnionWith f (fst e1) (fst e2)
-    goE (FilterE p e)       = FilterE p (fst e)
-    goE (ApplyE  b e)       = ApplyE (fst b) (fst e)
-    goE (AccumE  x e)       = AccumE x (fst e)
+    goE (UnionWith f e1 e2) = UnionWith f (node e1) (node e2)
+    goE (FilterE p e)       = FilterE p (node e)
+    goE (ApplyE  b e)       = ApplyE (node b) (node e)
+    goE (AccumE  x e)       = AccumE x (node e)
     goE (InputE x)          = InputE x
 
     goB :: BehaviorD Expr a -> BehaviorD Nodes a
-    goB (Stepper x e)       = Stepper x (fst e)
+    goB (Stepper x e)       = Stepper x (node e)
     goB (InputB x)          = InputB x
 
 
@@ -198,14 +177,14 @@ buildGraph expr
         }
     where
     grFormulas = buildFormulas expr
-    root       = case expr of Exists e -> Exists $ fst e
+    root       = case expr of Exists e -> Exists $ fstPair e
 
 -- | Build a graph of formulas from an expression
 buildFormulas :: SomeFormula Expr -> Formulas
 buildFormulas expr =
     unfoldGraphDFSWith leftComposition f expr $ Vault.empty
     where
-    f (Exists (node, formula)) =
+    f (Exists (Pair node formula)) =
         ( \formulas -> Vault.insert (keyFormula node) formula' formulas
         , dependencies formula )
         where
