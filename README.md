@@ -1,5 +1,7 @@
 ## What is reactive-banana?
 
+<div style="float:left;"><img src="banana.png" /></div>
+
 Reactive-banana is a library for [Functional Reactive Programming (FRP)][frp], written in Haskell.
 
 Support the project with a small donation: [![Flattr this](http://api.flattr.com/button/flattr-badge-large.png)](http://flattr.com/thing/384682/reactive-banana)
