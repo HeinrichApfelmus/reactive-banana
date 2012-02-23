@@ -115,7 +115,7 @@ input = event . Implementation.Input
 
 -}
 
-type AddHandler'    = (Channel, AddHandler InputValue)
+type AddHandler'    = AddHandler InputValue
 type Preparations t = ([Event t (IO ())], [AddHandler'], [IO ()])
 
 -- | Monad for describing event networks.
@@ -190,7 +190,7 @@ fromAddHandler :: AddHandler a -> NetworkDescription t (Event t a)
 fromAddHandler addHandler = Prepare $ do
     i <- liftIO $ newInputChannel
     let addHandler' k = addHandler $ k . toValue i
-    tell ([], [(getChannel i, addHandler')], [])
+    tell ([], [addHandler'], [])
     return $ input i
 
 -- | Input,
@@ -243,7 +243,7 @@ compile (Prepare m) = do
     
         -- register event handlers
         register :: IO (IO ())
-        register = fmap sequence_ . sequence . map ($ run) . map snd $ inputs
+        register = fmap sequence_ . sequence . map ($ run) $ inputs
 
     makeEventNetwork register
 
