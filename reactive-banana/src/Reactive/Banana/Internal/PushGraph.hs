@@ -40,14 +40,16 @@ import Reactive.Banana.Internal.TotalOrder as TotalOrder
 -- Dependency graph
 data Graph b
     = Graph
-    { grRoot      :: Node b                  -- root node
-    , grFormulas  :: Formulas                -- formulas for calculation
+    { grFormulas  :: Formulas                -- formulas for calculation
     , grChildren  :: Map SomeNode [SomeNode] -- reverse dependencies
     , grEvalOrder :: EvalOrder               -- evaluation order
+    , grOutput    :: Node b                  -- root node
+    , grInputs    :: Inputs                  -- input dispatcher
     }
-type Formulas  = Vault.Vault          -- mapping from nodes to formulas
-type EvalOrder = TotalOrder SomeNode  -- evaluation order
-type Values    = Vault.Vault          -- current event values
+type Formulas  = Vault.Vault            -- mapping from nodes to formulas
+type EvalOrder = TotalOrder SomeNode    -- evaluation order
+type Values    = Vault.Vault            -- current event values
+type Inputs    = Map Channel [SomeNode] -- mapping from input channels to nodes
 
 -- | Turn a 'Vault.Key' into a lens for the vault
 vaultLens :: Vault.Key a -> (Vault.Vault :-> Maybe a)
@@ -146,7 +148,8 @@ calculateE valueE valueB node =
         Nothing -> just x
         Just f  -> let y = f x in
             Just (y, set (formula node) . Just $ E (AccumE y e))
-    goE (InputE x)          = error "TODO" -- just x
+    goE (InputE _)          = -- input values can be retrieved by node
+        just =<< valueE node
 
 just x  = Just (x, id)
 nothing = Nothing
@@ -173,10 +176,11 @@ calculateB valueE node = maybe id id . goB
 buildGraph :: Formula Expr b -> Graph b
 buildGraph expr
         = Graph
-        { grRoot      = root
-        , grFormulas  = grFormulas
+        { grFormulas  = grFormulas
         , grChildren  = buildChildren  (Exists root) grFormulas
         , grEvalOrder = buildEvalOrder (Exists root) grFormulas
+        , grOutput    = root
+        , grInputs    = buildInputs    (Exists root) grFormulas
         }
     where
     grFormulas = buildFormulas (Exists expr)
@@ -223,6 +227,19 @@ buildEvalOrder root formulas =
         where
         formula' = fromJust $ Vault.lookup (keyFormula node) formulas
 
+-- | Build collection of input nodes from scratch
+buildInputs :: SomeNode -> Formulas -> Inputs
+buildInputs root formulas = 
+    unfoldGraphDFSWith leftComposition f root Map.empty
+    where
+    f (Exists node) = (addInput, dependencies formula')
+        where
+        formula' = fromJust $ Vault.lookup (keyFormula node) formulas
+        addInput :: Inputs -> Inputs
+        addInput = case formula' of
+            E (InputE i) -> Map.insertWith (++) (getChannel i) [Exists node]
+            _            -> id
+        
 {-----------------------------------------------------------------------------
     Generic Graph Traversals
 ------------------------------------------------------------------------------}
@@ -261,12 +278,10 @@ testDFS = unfoldGraphDFSWith (MonoidDict [] (++)) go
 -- type Queue = [SomeNode]
 
 -- | Perform evaluation steps until all values have percolated through the graph.
-evaluate :: Queue q => q SomeNode -> Graph b -> (Maybe b, Graph b)
-evaluate startQueue startGraph =
-    (get (value (grRoot startGraph)) endValues, endGraph)
-    where
-    startValues = Vault.empty
-    
+evaluate :: Queue q => q SomeNode -> Graph b -> Values -> (Maybe b, Graph b)
+evaluate startQueue startGraph startValues =
+    (get (value (grOutput startGraph)) endValues, endGraph)
+    where    
     (_,endValues,endGraph) =
         until (isEmpty . queue) step (startQueue,startValues,startGraph)
     
@@ -322,22 +337,40 @@ compileToAutomaton expr = fromStateful automatonStep $ buildGraph (e expr)
     e :: Event Expr b -> Formula Expr b
     e (Pair n x) = Pair n (E x)
     
--- TODO
--- TODO - extra parameter for the root node of the graph data type
-automatonStep :: [InputValue] -> Graph b -> IO (b, Graph b)
-automatonStep = undefined
-{-
+-- single step function of the automaton
+automatonStep :: [InputValue] -> Graph b -> IO (Maybe b, Graph b)
 automatonStep inputs graph = return (b, graph')
-    where
-    -- figure out start nodes
-    nodes = catMaybes [Map.lookup (channel i) (grInputs graph) | i <- inputs]
-    -- fill up values for start nodes
+    where    
+    -- figure out nodes corresponding to input values
+    inputNodes :: [(InputValue, SomeNode)]
+    inputNodes =
+        [ (i, node)
+        | i <- inputs
+        , let Just nodes = Map.lookup (getChannel i) (grInputs graph)
+        , node <- nodes]
+
+    -- fill up values for start/input nodes
+    startValues = foldr insertInput Vault.empty inputNodes
+    -- insert a single input into the start values
+    insertInput :: (InputValue, SomeNode) -> Values -> Values
+    insertInput (i,somenode) = maybe id id $
+        withInputNode somenode (\node channel ->
+            maybe id (Vault.insert (keyValue node)) $ fromValue channel i
+            )  
+
+    -- unpack  InputE  node if applicable
+    withInputNode :: SomeNode
+        -> (forall a. Node a -> InputChannel a -> b) -> Maybe b
+    withInputNode somenode f = case somenode of
+        Exists node ->
+            let theformula = get (formula node) graph
+            in case theformula of
+                Just (E (InputE channel)) -> Just $ f node channel
+                _ -> Nothing
     
     -- perform evaluation
     (b,graph') = withTotalOrder (grEvalOrder graph) $ \qempty ->
-        evaluate graph (insertList nodes qempty)
-    
--}
+        evaluate (insertList (map snd inputNodes) qempty) graph startValues
 
 
 

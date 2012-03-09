@@ -16,9 +16,9 @@ import Reactive.Banana.Internal.Input
     Stepwise execution
 ------------------------------------------------------------------------------}
 -- Automaton that takes input values and produces a result
-data Automaton a = Step { runStep :: [InputValue] -> IO (a, Automaton a) }
+data Automaton a = Step { runStep :: [InputValue] -> IO (Maybe a, Automaton a) }
 
-fromStateful :: ([InputValue] -> s -> IO (a,s)) -> s -> Automaton a
+fromStateful :: ([InputValue] -> s -> IO (Maybe a,s)) -> s -> Automaton a
 fromStateful f s = Step $ \i -> do
     (a,s') <- f i s
     return (a, fromStateful f s')
