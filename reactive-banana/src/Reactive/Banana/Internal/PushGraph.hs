@@ -30,6 +30,7 @@ import Data.Unique
 
 import Reactive.Banana.Internal.AST
 import Reactive.Banana.Internal.Automaton
+import Reactive.Banana.Internal.Input
 import Reactive.Banana.Internal.TotalOrder as TotalOrder
 
 {-----------------------------------------------------------------------------
@@ -37,9 +38,10 @@ import Reactive.Banana.Internal.TotalOrder as TotalOrder
     and associated lenses
 ------------------------------------------------------------------------------}
 -- Dependency graph
-data Graph
+data Graph b
     = Graph
-    { grFormulas  :: Formulas                -- formulas for calculation
+    { grRoot      :: Node b                  -- root node
+    , grFormulas  :: Formulas                -- formulas for calculation
     , grChildren  :: Map SomeNode [SomeNode] -- reverse dependencies
     , grEvalOrder :: EvalOrder               -- evaluation order
     }
@@ -55,12 +57,12 @@ vaultLens key = lens (Vault.lookup key) (adjust)
     adjust (Just x) = Vault.insert key x 
 
 -- | Formula used to calculate the value at a node.
-formula :: Node a -> (Graph :-> Maybe (FormulaD Nodes a))
+formula :: Node a -> (Graph b :-> Maybe (FormulaD Nodes a))
 formula node = vaultLens (keyFormula node) . formulaLens
     where formulaLens = lens grFormulas (\x g -> g { grFormulas = x})
 
 -- | All nodes that directly depend on this one via the formula.
-children :: Node a -> (Graph :-> [SomeNode])
+children :: Node a -> (Graph b :-> [SomeNode])
 children node = lens (Map.findWithDefault [] (Exists node) . grChildren)
     (error "TODO: can't set children yet")
 
@@ -120,17 +122,17 @@ toFormulaNodes = caseFormula (E . goE) (B . goB)
 
 -- | Evaluate the current value of a given event expression.
 calculateE
-    :: forall a.
+    :: forall a b.
        (forall e. Node e -> Maybe e)  -- retrieve current event values
     -> (forall b. Node b -> b)        -- retrieve old behavior values
     -> Node a                         -- node ID
     -> EventD Nodes a                 -- formula to evaluate
     -> ( Maybe a                      -- current event value
-       , Graph -> Graph)              -- (maybe) change formulas in the graph 
+       , Graph b -> Graph b)          -- (maybe) change formulas in the graph 
 calculateE valueE valueB node =
     maybe (Nothing,id) (\(x,f) -> (Just x, f)) . goE
     where
-    goE :: EventD Nodes a -> Maybe (a, Graph -> Graph)
+    goE :: EventD Nodes a -> Maybe (a, Graph b -> Graph b)
     goE (Never)             = nothing
     goE (UnionWith f e1 e2) = case (valueE e1, valueE e2) of
         (Just e1, Just e2) -> just $ f e1 e2
@@ -151,14 +153,14 @@ nothing = Nothing
 
 -- | Evalute the new value of a given behavior expression
 calculateB
-    :: forall a.
+    :: forall a b.
        (forall e. Node e -> Maybe e) -- retrieve current event values
     -> Node a                        -- node ID
     -> BehaviorD Nodes a             -- formula to evaluate
-    -> Graph -> Graph                -- (maybe) change formulas in the graph
+    -> Graph b -> Graph b            -- (maybe) change formulas in the graph
 calculateB valueE node = maybe id id . goB
     where
-    goB :: BehaviorD Nodes a -> Maybe (Graph -> Graph) 
+    goB :: BehaviorD Nodes a -> Maybe (Graph b -> Graph b) 
     goB (Stepper x e)     =
         (\y -> set (formula node) $ Just $ B (Stepper y e)) <$> valueE e
     goB (InputB x)        = error "TODO"
@@ -168,16 +170,17 @@ calculateB valueE node = maybe id id . goB
     Building the dependency graph
 ------------------------------------------------------------------------------}
 -- | Build full graph from an expression.
-buildGraph :: SomeFormula Expr -> Graph
+buildGraph :: Formula Expr b -> Graph b
 buildGraph expr
         = Graph
-        { grFormulas  = grFormulas
-        , grChildren  = buildChildren  root grFormulas
-        , grEvalOrder = buildEvalOrder root grFormulas
+        { grRoot      = root
+        , grFormulas  = grFormulas
+        , grChildren  = buildChildren  (Exists root) grFormulas
+        , grEvalOrder = buildEvalOrder (Exists root) grFormulas
         }
     where
-    grFormulas = buildFormulas expr
-    root       = case expr of Exists e -> Exists $ fstPair e
+    grFormulas = buildFormulas (Exists expr)
+    root       = fstPair expr
 
 -- | Build a graph of formulas from an expression
 buildFormulas :: SomeFormula Expr -> Formulas
@@ -242,10 +245,15 @@ unfoldGraphDFSWith (MonoidDict empty append) f s = go Set.empty [s]
         where
         (t,ys) = f x
 
-
 -- | Monoid of endomorphisms, leftmost function is applied *last*.
 leftComposition :: MonoidDict (a -> a)
 leftComposition = MonoidDict id (flip (.))
+
+{-
+testDFS :: Int -> [Int]
+testDFS = unfoldGraphDFSWith (MonoidDict [] (++)) go
+    where go n = ([n],if n <= 0 then [] else [n-2,n-1])
+-}
 
 {-----------------------------------------------------------------------------
     Reduction and Evaluation
@@ -253,12 +261,13 @@ leftComposition = MonoidDict id (flip (.))
 -- type Queue = [SomeNode]
 
 -- | Perform evaluation steps until all values have percolated through the graph.
-evaluate :: Queue q => q SomeNode -> Graph -> Graph
-evaluate startQueue startGraph = endGraph
+evaluate :: Queue q => q SomeNode -> Graph b -> (Maybe b, Graph b)
+evaluate startQueue startGraph =
+    (get (value (grRoot startGraph)) endValues, endGraph)
     where
     startValues = Vault.empty
     
-    (_,_,endGraph) =
+    (_,endValues,endGraph) =
         until (isEmpty . queue) step (startQueue,startValues,startGraph)
     
     queue (q,_,_) = q
@@ -267,16 +276,17 @@ evaluate startQueue startGraph = endGraph
 
 -- | Perform a single evaluation step.
 evaluationStep
-    :: forall q. Queue q
-    => Graph                        -- initial graph shape
+    :: forall q b. Queue q
+    => Graph b                      -- initial graph shape
     -> q SomeNode                   -- queue of nodes to process
     -> Values                       -- current event values
-    -> (q SomeNode, Values, Graph -> Graph)
+    -> (q SomeNode, Values, Graph b -> Graph b)
 evaluationStep graph queue values = case minView queue of
         Just (Exists node, queue) -> go node queue
         Nothing                   -> error "evaluationStep: queue empty"
     where
-    go :: forall a. Node a -> q SomeNode -> (q SomeNode, Values, Graph -> Graph)
+    go :: forall a b.
+        Node a -> q SomeNode -> (q SomeNode, Values, Graph b -> Graph b)
     go node queue =
         let -- lookup functions
             valueE :: forall e. Node e -> Maybe e
@@ -307,13 +317,27 @@ evaluationStep graph queue values = case minView queue of
     Convert into an automaton
 ------------------------------------------------------------------------------}
 compileToAutomaton :: Event Expr b -> Automaton b
-compileToAutomaton = undefined
-
+compileToAutomaton expr = fromStateful automatonStep $ buildGraph (e expr)
+    where
+    e :: Event Expr b -> Formula Expr b
+    e (Pair n x) = Pair n (E x)
+    
 -- TODO
 -- TODO - extra parameter for the root node of the graph data type
-toAutomaton :: Graph -> Automaton b
-toAutomaton = undefined
-
+automatonStep :: [InputValue] -> Graph b -> IO (b, Graph b)
+automatonStep = undefined
+{-
+automatonStep inputs graph = return (b, graph')
+    where
+    -- figure out start nodes
+    nodes = catMaybes [Map.lookup (channel i) (grInputs graph) | i <- inputs]
+    -- fill up values for start nodes
+    
+    -- perform evaluation
+    (b,graph') = withTotalOrder (grEvalOrder graph) $ \qempty ->
+        evaluate graph (insertList nodes qempty)
+    
+-}
 
 
 

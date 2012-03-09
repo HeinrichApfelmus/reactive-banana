@@ -8,9 +8,10 @@ module Reactive.Banana.Internal.TotalOrder (
     -- * TotalOrder
     TotalOrder, TotalOrderZipper,
     open, close, fromAscList, ascend, descend, insertBeforeFocus, delete,
+    withTotalOrder,
     
     -- * Queue
-    Queue(..), insertList, isEmpty
+    Queue(..), insertList, isEmpty,
     ) where
 
 
