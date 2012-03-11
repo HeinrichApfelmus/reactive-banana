@@ -32,7 +32,22 @@ import Data.Monoid
 {-----------------------------------------------------------------------------
     Class interface
 ------------------------------------------------------------------------------}
+{- | @Event f a@ represents a stream of events as they occur in time.
+Semantically, you can think of @Event f a@ as an infinite list of values
+that are tagged with their corresponding time of occurence,
+
+> type Event f a = [(Time,a)]
+
+See the typeclass 'FRP' for more details.
+-}
 data family Event f    :: * -> *
+
+{- | Behavior f a represents a value that varies in time. Think of it as
+
+> type Behavior f a = Time -> a
+
+See the typeclass 'FRP' for more details.
+-}
 data family Behavior f :: * -> *
 
 {- | The 'FRP' class defines the primitive API for functional reactive programming.
