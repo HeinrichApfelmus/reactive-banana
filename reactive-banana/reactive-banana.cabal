@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.4.3.1
+Version:             0.4.3.2
 Synopsis:            Small but solid library for
                      functional reactive programming (FRP).
 Description:         
@@ -49,9 +49,9 @@ Library
                         Rank2Types, NoMonomorphismRestriction,
                         DeriveDataTypeable
     build-depends:
-        base >= 4.3 && < 5, containers == 0.4.*,
+        base >= 4.2 && < 5, containers >= 0.3 && < 0.5,
         transformers == 0.2.*,
-        QuickCheck == 2.4.*,
+        QuickCheck >= 1.2 && < 2.5,
         vault == 0.1.*
     exposed-modules:    Reactive.Banana,
                         Reactive.Banana.Incremental,

@@ -1,5 +1,5 @@
 Name:                reactive-banana-wx
-Version:             0.4.3.1
+Version:             0.4.3.2
 Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,
@@ -7,6 +7,12 @@ Description:
     .
     Note: You need to install the (platform independent)
     @cabal-macosx@ library before you can configure/build and install this library.
+    .
+    Note: This library contains examples, but they are not built by default.
+    To build and install the example, use the @buildExamples@ flag like this
+    .
+    @cabal install reactive-banana-wx -fbuildExamples@
+    .
 
 Homepage:            http://haskell.org/haskellwiki/Reactive-banana
 License:             BSD3
@@ -23,9 +29,13 @@ Extra-source-files:  Makefile
 data-dir:            data
 data-files:          *.ico, *.wav
 
+flag buildExamples
+  description: Build example executables
+  default:     False
+
 Library
     hs-source-dirs:  src
-    build-depends:   base >= 4.3 && < 5,
+    build-depends:   base >= 4.2 && < 5,
                      cabal-macosx >= 0.1 && < 0.3,
                      reactive-banana >= 0.4.3.0 && < 0.5,
                      wx==0.12.*, wxcore==0.12.*
@@ -38,44 +48,69 @@ Source-repository    head
     subdir:          reactive-banana-wx
 
 Executable Arithmetic
+    if !flag(buildExamples)
+        buildable: False
     hs-source-dirs:  src
     main-is:         Arithmetic.hs
 
 Executable Asteroids
+    if flag(buildExamples)
+        build-depends:
+            random == 1.0.*,
+            executable-path == 0.0.*,
+            filepath >= 1.1 && <= 1.4
+    else
+        buildable: False
     hs-source-dirs:  src
-    build-depends:   random == 1.0.*,
-                     executable-path == 0.0.*, filepath == 1.2.*
     other-modules:   Paths_reactive_banana_wx
     main-is:         Asteroids.hs
 
 Executable Counter
+    if !flag(buildExamples)
+        buildable: False
     hs-source-dirs:  src
     main-is:         Counter.hs
 
 Executable CurrencyConverter
+    if flag(buildExamples)
+        build-depends: process >= 1.0.1 && < 1.2
+    else
+        buildable: False
     hs-source-dirs:  src
     main-is:         CurrencyConverter.hs
 
 Executable CRUD
+    if flag(buildExamples)
+        build-depends: containers >= 0.3 && < 0.5
+    else
+        buildable: False
     hs-source-dirs:  src
-    build-depends:   containers == 0.4.*
     main-is:         CRUD.hs
 
 Executable NetMonitor
+    if flag(buildExamples)
+        build-depends: process >= 1.0 && < 1.2
+    else
+        buildable: False
     hs-source-dirs:  src
-    build-depends:   process >= 1.0 && < 1.2
     main-is:         NetMonitor.hs
 
 Executable TicTacToe
+    if flag(buildExamples)
+        build-depends: array >= 0.3 && < 0.5
+    else
+        buildable: False
     hs-source-dirs:  src
-    build-depends:   array == 0.3.*
     main-is:         TicTacToe.hs
 
 Executable TwoCounters
+    if !flag(buildExamples)
+        buildable: False
     hs-source-dirs:  src
     main-is:         TwoCounters.hs
 
 Executable Wave
+    if !flag(buildExamples)
+        buildable: False
     hs-source-dirs:  src
     main-is:         Wave.hs
-

@@ -47,4 +47,11 @@ To build the reactive-banana libraries, type
 
 Send me your examples, bindings, problems, suggestions, etc!
 
+With contributions from
 
+* Kevin Cantu
+* Gregory Crosswhite
+* Elliott Hird
+* John Lato
+* Henning Thielemann
+* Daniel Werner
