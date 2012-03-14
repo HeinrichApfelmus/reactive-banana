@@ -1,7 +1,5 @@
 {-----------------------------------------------------------------------------
     Reactive-Banana
-    
-    Push-driven, incremental computations
 ------------------------------------------------------------------------------}
 {-# LANGUAGE GADTs, TypeFamilies, RankNTypes, TypeOperators,
              TypeSynonymInstances, FlexibleInstances,
@@ -9,7 +7,7 @@
 
 module Reactive.Banana.Internal.PushGraph (
     -- * Synopsis
-    -- | Push-driven implementation
+    -- | Push-driven implementation.
 
     compileToAutomaton
     ) where

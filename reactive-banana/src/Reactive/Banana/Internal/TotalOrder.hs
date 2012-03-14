@@ -1,10 +1,11 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
-    
-    Type representating a total order
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, BangPatterns #-}
 module Reactive.Banana.Internal.TotalOrder (
+    -- * Synopsis
+    -- | Data structure that represents a total order.
+    
     -- * TotalOrder
     TotalOrder, TotalOrderZipper,
     open, close, fromAscList, ascend, descend, insertBeforeFocus, delete,

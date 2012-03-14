@@ -3,8 +3,7 @@
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Internal.InputOutput (
     -- * Synopsis
-    -- | Internal module.
-    -- Manage the input and output of event graphs.
+    -- | Manage the input and output of event graphs.
     
     -- * Input
     -- | Utilities for managing heterogenous input values.
