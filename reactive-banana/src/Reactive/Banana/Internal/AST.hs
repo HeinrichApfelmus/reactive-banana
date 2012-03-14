@@ -29,7 +29,9 @@ data EventD t :: * -> * where
     ApplyE    :: Behavior t (a -> b) -> Event t a -> EventD t b
     AccumE    :: a -> Event t (a -> a) -> EventD t a
     
-    InputE    :: InputChannel a -> EventD t a -- represent external inputs
+    InputE    :: InputChannel a   -> EventD t a   -- represent external inputs
+    InputPure :: InputChannel (EventModel a)
+              -> EventD t a                       -- input for model implementation
 
 -- | Constructors for behaviors.
 data BehaviorD t :: * -> * where
@@ -79,27 +81,42 @@ filterE p e       = shareE $ FilterE p (unE e)
 applyE b e        = shareE $ ApplyE (unB b) (unE e)
 accumE acc e      = shareE $ AccumE acc (unE e)
 inputE i          = shareE $ InputE i
+inputPure i       = shareE $ InputPure i
 
 stepperB acc e    = shareB $ Stepper acc (unE e)
 inputB i          = shareB $ InputB i
 
 {-----------------------------------------------------------------------------
-    Reactive.Banana.Internal.PushGraph
-    
-    We need to define the 'Node' type here.
+    The 'Node' type is used for observable sharing and must be defined here.
 ------------------------------------------------------------------------------}
 -- | A 'Node' represents a unique identifier for an expression.
 -- It actually contains keys for various 'Vault'.
 data Node a
     = Node
-    { keyValue   :: Vault.Key a
+    { -- use for Reactive.Banana.Internal.PushGraph
+      keyValue   :: Vault.Key a
     , keyFormula :: Vault.Key (FormulaD Nodes a)
-    , keyOrder   :: Unique.Unique }
+    , keyOrder   :: Unique.Unique
+      -- use for Reactive.Banana.Internal.Model
+    , keyModelE  :: Vault.Key (EventModel a)
+    , keyModelB  :: Vault.Key (BehaviorModel a)
+    }
 
 newNode :: IO (Node a)
-newNode = Node <$> Vault.newKey <*> Vault.newKey <*> Unique.newUnique
+newNode = Node
+    <$> Vault.newKey <*> Vault.newKey <*> Unique.newUnique
+    <*> Vault.newKey <*> Vault.newKey
 
+{-----------------------------------------------------------------------------
+    Reactive.Banana.Internal.Model
+------------------------------------------------------------------------------}
+-- we have to define the interpretation types here
+type EventModel a    = [Maybe a]
+data BehaviorModel a = StepperB a (EventModel a)
 
+{-----------------------------------------------------------------------------
+    Reactive.Banana.Internal.PushGraph
+------------------------------------------------------------------------------}
 data Nodes
 type instance Event    Nodes = Node
 type instance Behavior Nodes = Node
