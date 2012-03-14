@@ -86,6 +86,25 @@ inputPure i       = shareE $ InputPure i
 stepperB acc e    = shareB $ Stepper acc (unE e)
 inputB i          = shareB $ InputB i
 
+mapE f  = applyE (pureB f)
+pureB x = stepperB x never
+
+applyB :: Behavior Expr (a -> b) -> Behavior Expr a -> Behavior Expr b
+applyB (Pair _ (Stepper f fe)) (Pair _ (Stepper x xe)) =
+    stepperB (f x) $ mapE (uncurry ($)) pair
+    where
+    pair = accumE (f,x) $ unionWith (.) (mapE changeL fe) (mapE changeR xe)
+    changeL f (_,x) = (f,x)
+    changeR x (f,_) = (f,x)
+applyB _ _ = error "TODO: Don't know what to do with external behaviors."
+
+-- instance Functor (Event Expr) where
+instance Functor (Pair Node (EventD Expr)) where
+    fmap   = mapE
+-- instance Functor (Behavior Expr) where
+instance Functor (Pair Node (BehaviorD Expr)) where
+    fmap f = applyB (pureB f)
+
 {-----------------------------------------------------------------------------
     The 'Node' type is used for observable sharing and must be defined here.
 ------------------------------------------------------------------------------}
