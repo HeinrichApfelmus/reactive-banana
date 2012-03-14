@@ -29,8 +29,7 @@ import qualified Data.Vault as Vault
 import Data.Unique
 
 import Reactive.Banana.Internal.AST
-import Reactive.Banana.Internal.Automaton
-import Reactive.Banana.Internal.Input
+import Reactive.Banana.Internal.InputOutput
 import Reactive.Banana.Internal.TotalOrder as TotalOrder
 
 {-----------------------------------------------------------------------------

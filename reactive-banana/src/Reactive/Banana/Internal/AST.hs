@@ -12,7 +12,7 @@ import qualified Data.Vault as Vault
 import qualified Data.Unique as Unique
 import System.IO.Unsafe
 
-import Reactive.Banana.Internal.Input
+import Reactive.Banana.Internal.InputOutput
 
 {-----------------------------------------------------------------------------
     Abstract syntax tree

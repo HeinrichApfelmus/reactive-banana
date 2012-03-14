@@ -1,22 +1,28 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Internal.Input (
+module Reactive.Banana.Internal.InputOutput (
     -- * Synopsis
     -- | Internal module.
-    -- Utilities for managing heterogenous input values.
+    -- Manage the input and output of event graphs.
     
+    -- * Input
+    -- | Utilities for managing heterogenous input values.
     Channel, InputChannel, InputValue,
     
     newInputChannel, getChannel,
-    fromValue, toValue
+    fromValue, toValue,
     
+    -- * Output
+    -- | Stepwise execution of an event graph.
+    Automaton(..), fromStateful,
+
     ) where
 
 import Control.Applicative
 
 import qualified Data.Unique as Unique
-import qualified Data.Vault as Vault
+import qualified Data.Vault  as Vault
 
 {-----------------------------------------------------------------------------
     Storing heterogenous input values
@@ -42,4 +48,17 @@ class HasChannel a where
     getChannel :: a -> Channel
 instance HasChannel (InputChannel a) where getChannel = getChannelC
 instance HasChannel (InputValue) where getChannel = getChannelV
+
+
+{-----------------------------------------------------------------------------
+    Stepwise execution
+------------------------------------------------------------------------------}
+-- Automaton that takes input values and produces a result
+data Automaton a = Step { runStep :: [InputValue] -> IO (Maybe a, Automaton a) }
+
+fromStateful :: ([InputValue] -> s -> IO (Maybe a,s)) -> s -> Automaton a
+fromStateful f s = Step $ \i -> do
+    (a,s') <- f i s
+    return (a, fromStateful f s')
+
 
