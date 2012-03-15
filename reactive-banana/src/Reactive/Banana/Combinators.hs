@@ -11,7 +11,7 @@ module Reactive.Banana.Combinators (
     -- $intro1
     Event, Behavior,
     -- $intro2
-    interpretModel,
+    interpretModel, interpretPushGraph,
     
     -- * Core Combinators
     module Control.Applicative,
@@ -24,7 +24,7 @@ module Reactive.Banana.Combinators (
     mapAccum, Apply(..),
     
     -- * Internal
-    event, behavior, Event(..)
+    Event(..), Behavior(..),
     ) where
 
 import Control.Applicative
@@ -41,7 +41,8 @@ import Prelude hiding (filter)
 
 import Reactive.Banana.Internal.InputOutput
 import qualified Reactive.Banana.Internal.AST as AST
-import Reactive.Banana.Internal.Model (interpretModel)
+import qualified Reactive.Banana.Internal.Model as Model
+import Reactive.Banana.Internal.PushGraph
 
 {-----------------------------------------------------------------------------
     Introduction
@@ -81,6 +82,27 @@ To remedy this, the library provides a very simple but authoritative
 model implementation. See 'Reactive.Banana.Model' for more.
 
 -}
+
+{-----------------------------------------------------------------------------
+    Interpetation
+------------------------------------------------------------------------------}
+-- | Interpret with model implementation.
+-- Useful for testing.
+interpretModel :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
+interpretModel f xs =
+    map toList <$> Model.interpretModel (unE . f . E) (map Just xs)
+
+-- | Interpret with push-based implementation.
+-- Useful for testing.
+interpretPushGraph :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
+interpretPushGraph f xs = do
+    i <- newInputChannel
+    let automaton = compileToAutomaton (unE . f . E $ AST.inputE i)
+    map toList <$> unfoldAutomaton automaton i xs
+
+toList :: Maybe [a] -> [a]
+toList Nothing   = []
+toList (Just xs) = xs
 
 {-----------------------------------------------------------------------------
     Basic combinators

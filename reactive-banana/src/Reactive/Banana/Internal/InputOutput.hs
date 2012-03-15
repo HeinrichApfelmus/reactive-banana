@@ -14,7 +14,7 @@ module Reactive.Banana.Internal.InputOutput (
     
     -- * Output
     -- | Stepwise execution of an event graph.
-    Automaton(..), fromStateful,
+    Automaton(..), fromStateful, unfoldAutomaton,
 
     ) where
 
@@ -60,4 +60,11 @@ fromStateful f s = Step $ \i -> do
     (a,s') <- f i s
     return (a, fromStateful f s')
 
-
+-- | Apply an automaton to a list of input values
+unfoldAutomaton :: Automaton b -> InputChannel a -> [a] -> IO [Maybe b]
+unfoldAutomaton _    _ []     = return []
+unfoldAutomaton auto i (x:xs) = do
+    (b, auto) <- runStep auto $ [toValue i x]
+    bs        <- unfoldAutomaton auto i xs
+    return (b:bs)
+    
