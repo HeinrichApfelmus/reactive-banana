@@ -347,8 +347,8 @@ automatonStep inputs graph = return (b, graph')
     inputNodes =
         [ (i, node)
         | i <- inputs
-        , let Just nodes = Map.lookup (getChannel i) (grInputs graph)
-        , node <- nodes]
+        , nodes <- maybeToList $ Map.lookup (getChannel i) (grInputs graph)
+        , node  <- nodes]
 
     -- fill up values for start/input nodes
     startValues = foldr insertInput Vault.empty inputNodes
