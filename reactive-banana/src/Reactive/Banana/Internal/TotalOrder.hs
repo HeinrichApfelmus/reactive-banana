@@ -79,6 +79,7 @@ withTotalOrder order f = f empty
 class Queue q where
     insert  :: Ord a => a -> q a -> q a
     minView :: q a -> Maybe (a, q a)
+    size    :: q a -> Int
 
 -- | Check whether a queue is empty.
 isEmpty :: Queue q => q a -> Bool
@@ -104,12 +105,14 @@ setQueue q b = q { queue = b }
 
 -- find the index of a particular element in a Total Order
 position :: Ord a => TotalOrder a -> a -> Int
-position (TO order) x = fromJust $ Map.lookup x order
+position (TO order) x = pos
+    where Just pos = Map.lookup x order
 
 instance Queue MyQueue where
     insert x q = q { queue = Set.insert (Pair pos x) (queue q) }
         where pos = position (order q) x
     minView  q = f <$> Set.minView (queue q)
         where f (Pair _ a,set) = (a, setQueue q set)
+    size     q = Set.size (queue q)
 
 

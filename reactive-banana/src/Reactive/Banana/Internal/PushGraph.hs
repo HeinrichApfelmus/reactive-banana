@@ -202,9 +202,11 @@ buildChildren root formulas =
     f (Exists node) = (addChild deps, deps)
         where
         addChild    = concatenate . map (Map.update $ Just . (child:))
-        child       = Exists node :: SomeNode
-        formula'    = fromJust $ Vault.lookup (keyFormula node) formulas
-        deps        = dependencies formula'
+        child         = Exists node :: SomeNode
+        Just formula' = getFormula' node formulas
+        deps          = dependencies formula'
+
+getFormula' node formulas = Vault.lookup (keyFormula node) formulas
 
 concatenate :: [a -> a] -> (a -> a)
 concatenate = foldr (.) id
@@ -218,11 +220,12 @@ updateEvalOrder = error "TODO"
 -- = topological sort
 buildEvalOrder :: SomeNode -> Formulas -> EvalOrder
 buildEvalOrder root formulas = 
-    TotalOrder.fromAscList $ unfoldGraphDFSWith leftComposition f root []
+    TotalOrder.fromAscList $
+        unfoldGraphDFSWith leftComposition f root []
     where
     f (Exists node) = ((Exists node:), dependenciesEval formula')
         where
-        formula' = fromJust $ Vault.lookup (keyFormula node) formulas
+        Just formula' = getFormula' node formulas
 
 -- | Build collection of input nodes from scratch
 buildInputs :: SomeNode -> Formulas -> Inputs
@@ -231,7 +234,7 @@ buildInputs root formulas =
     where
     f (Exists node) = (addInput, dependencies formula')
         where
-        formula' = fromJust $ Vault.lookup (keyFormula node) formulas
+        Just formula' = getFormula' node formulas
         addInput :: Inputs -> Inputs
         addInput = case formula' of
             E (InputE i) -> Map.insertWith (++) (getChannel i) [Exists node]
@@ -308,8 +311,9 @@ evaluationStep graph queue values = case minView queue of
                 Just (B (Stepper b _)) -> b
                 _               -> error "evaluationStep: behavior not found"
 
+            err = error "evaluationStep: formula not found"
         in -- evaluation
-            case fromJust $ get (formula node) graph of
+            case maybe err id $ get (formula node) graph of
             B formulaB ->   -- evalute behavior
                 (queue, values, calculateB valueE node formulaB)
             E formulaE ->   -- evaluate event
