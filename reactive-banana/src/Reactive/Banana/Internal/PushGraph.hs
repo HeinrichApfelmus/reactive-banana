@@ -201,7 +201,7 @@ buildChildren root formulas =
     where
     f (Exists node) = (addChild deps, deps)
         where
-        addChild    = concatenate . map (Map.update $ Just . (child:))
+        addChild      = concatenate . map (\node -> Map.insertWith (++) node [child])
         child         = Exists node :: SomeNode
         Just formula' = getFormula' node formulas
         deps          = dependencies formula'
