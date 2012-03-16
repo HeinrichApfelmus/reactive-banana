@@ -21,7 +21,7 @@ import Data.Label
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Maybe
-import Data.Monoid (Dual, Endo)
+import Data.Monoid (Dual, Endo, Monoid(..))
 import qualified Data.Set as Set
 import qualified Data.Vault as Vault
 import Data.Unique
@@ -171,11 +171,12 @@ calculateB valueE node = maybe id id . goB
 ------------------------------------------------------------------------------}
 -- | Build full graph from an expression.
 buildGraph :: Formula Expr b -> Graph b
-buildGraph expr
-        = Graph
+buildGraph expr = graph
+    where
+    graph = Graph
         { grFormulas  = grFormulas
         , grChildren  = buildChildren  (Exists root) grFormulas
-        , grEvalOrder = buildEvalOrder (Exists root) grFormulas
+        , grEvalOrder = buildEvalOrder graph
         , grOutput    = root
         , grInputs    = buildInputs    (Exists root) grFormulas
         }
@@ -218,18 +219,29 @@ updateEvalOrder = error "TODO"
 
 -- | Build evaluation order from scratch
 -- = topological sort
-buildEvalOrder :: SomeNode -> Formulas -> EvalOrder
-buildEvalOrder root formulas = 
+buildEvalOrder :: Graph a -> EvalOrder
+buildEvalOrder graph =
+    -- we have to build an evaluation order for the root node
+    -- and for all the dependencies of a behavior
     TotalOrder.fromAscList $
-        unfoldGraphDFSWith leftComposition f root []
+        concatMap (\x -> unfoldGraphDFSWith leftComposition f x [])
+                  (root:findBehaviors)
     where
+    root = Exists $ grOutput graph
     f (Exists node) = ((Exists node:), dependenciesEval formula')
+        where Just formula' = get (formula node) graph
+    
+    -- find all the behavior nodes in the graph
+    findBehaviors :: [SomeNode]
+    findBehaviors = traverseNodes g graph
         where
-        Just formula' = getFormula' node formulas
+        g :: Node a -> FormulaD Nodes a -> [SomeNode]
+        g node (B _) = [Exists node]
+        g _    _     = []
 
 -- | Build collection of input nodes from scratch
 buildInputs :: SomeNode -> Formulas -> Inputs
-buildInputs root formulas = 
+buildInputs root formulas =
     unfoldGraphDFSWith leftComposition f root Map.empty
     where
     f (Exists node) = (addInput, dependencies formula')
@@ -239,12 +251,28 @@ buildInputs root formulas =
         addInput = case formula' of
             E (InputE i) -> Map.insertWith (++) (getChannel i) [Exists node]
             _            -> id
-        
+
+-- | Traverse all nodes of the graph.
+-- The order in which this happens is left unspecified.
+traverseNodes
+    :: Monoid t
+    => (forall a. Node a -> FormulaD Nodes a -> t) -- map nodes to monoid values
+    -> Graph b
+    -> t
+traverseNodes f graph =
+    unfoldGraphDFSWith reifyMonoid g (Exists $ grOutput graph)
+    where
+    g (Exists node) = (f node formula', dependencies formula')
+        where Just formula' = get (formula node) graph
+
 {-----------------------------------------------------------------------------
     Generic Graph Traversals
 ------------------------------------------------------------------------------}
 -- | Dictionary for defining monoids on the fly.
 data MonoidDict t = MonoidDict t (t -> t -> t)
+
+reifyMonoid :: Monoid t => MonoidDict t
+reifyMonoid = MonoidDict mempty mappend
 
 -- | Unfold a graph,
 -- i.e. unfold a given state  s  into a concatenation of monoid values
