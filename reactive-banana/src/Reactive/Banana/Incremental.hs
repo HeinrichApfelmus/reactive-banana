@@ -82,9 +82,6 @@ data Discrete t a = D {
 -- a stream of new values.
 stepperD :: a -> Event t a -> Discrete t a
 stepperD x e = D { initial = x, changes = calm e, value = stepper x e}
-    where
-    -- in case of simultaneous occurence: keep only the last event?
-    calm = id
 
 -- | Accumulate a stream of events into a discrete time-varying value.
 accumD :: a -> Event t (a -> a) -> Discrete t a

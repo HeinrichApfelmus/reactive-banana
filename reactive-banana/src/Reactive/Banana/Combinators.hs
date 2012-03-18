@@ -20,7 +20,7 @@ module Reactive.Banana.Combinators (
     -- $classes
     
     -- * Derived Combinators
-    filterJust, filterApply, whenE,
+    filterJust, filterApply, whenE, calm,
     mapAccum, Apply(..),
     
     -- * Internal
@@ -276,6 +276,10 @@ filterApply bp = fmap snd . filterE fst . apply ((\p a-> (p a,a)) <$> bp)
 -- Variant of 'filterApply'.
 whenE :: Behavior t Bool -> Event t a -> Event t a
 whenE bf = filterApply (const <$> bf)
+
+-- | Keep only the last occurrence when simultaneous occurrences happen.
+calm :: Event t a -> Event t a
+calm = fmap last . collect
 
 -- | Efficient combination of 'accumE' and 'accumB'.
 mapAccum :: acc -> Event t (acc -> (x,acc)) -> (Event t x, Behavior t acc)
