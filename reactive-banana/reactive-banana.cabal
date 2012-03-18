@@ -53,7 +53,8 @@ Library
         base >= 4.3 && < 5, containers == 0.4.*,
         transformers == 0.2.*,
         QuickCheck == 2.4.*,
-        vault == 0.1.*
+        vault == 0.1.*, unordered-containers == 0.2.*,
+        fclabels == 1.1.*
     exposed-modules:
                         Reactive.Banana,
                         Reactive.Banana.Combinators,
