@@ -105,6 +105,7 @@ interpretModel f input = do
                 Just v  -> return v
     
     return $
-        evalState (goE $ f $ AST.inputPure i0) Vault.empty
-
+        zipWith const
+            (evalState (goE $ f $ AST.inputPure i0) Vault.empty)
+            input
 
