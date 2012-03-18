@@ -9,8 +9,9 @@ module Reactive.Banana.Internal.AST where
 
 import Control.Applicative
 import qualified Data.Vault as Vault
-import qualified Data.Unique as Unique
 import System.IO.Unsafe
+
+import Data.Hashable
 
 import Reactive.Banana.Internal.InputOutput
 
@@ -46,7 +47,7 @@ data BehaviorD t :: * -> * where
     The @Node@ serves as a unique identifier and stores various keys
     into various vaults.
 ------------------------------------------------------------------------------}
-data Pair f g a = Pair (f a) (g a)
+data Pair f g a = Pair !(f a) (g a)
 
 fstPair :: Pair f g a -> f a
 fstPair (Pair x y) = x
@@ -75,7 +76,36 @@ shareB b = pair
 ------------------------------------------------------------------------------}
 unE = id; unB = id
 
+{- Note:
+There is a fundamental problem with using Unique's for observable sharing.
+
+The problem is the following:
+
+    module Test where ..
+    module Implementation where never = sharedE $ Never
+    module Data.Unique
+
+Imagine that the  Test  module contains an expression that contains sharing.
+The  never  value contains a constant  Unique , which is evaluated as
+soon as you evaluate  Test.expression  .
+Now, reload the  Test  module. This will reset the counter for Data.Unique,
+but it will *not* reset the Unique that is already contained in  never ,
+because the CAF  never  itself will not be reset. This invariably leads to
+a  Unique  being reused, leading to a program crash.
+
+We solve the problem in Reactive.Banana.InputOutput
+by using a better implementation of  Unique .
+
+-}
+{- Note:
+
+Another good reason for not sharing `never` is that 
+it is *polymorphic*. The shared value may be instantiated to different types,
+which is really bad.
+
+-}
 never             = shareE $ Never
+
 unionWith f e1 e2 = shareE $ UnionWith f (unE e1) (unE e2)
 filterE p e       = shareE $ FilterE p (unE e)
 applyE b e        = shareE $ ApplyE (unB b) (unE e)
@@ -110,20 +140,23 @@ instance Functor (Pair Node (BehaviorD Expr)) where
 ------------------------------------------------------------------------------}
 -- | A 'Node' represents a unique identifier for an expression.
 -- It actually contains keys for various 'Vault'.
+--
+-- TODO: Make a special case for the 'Never' constructor,
+-- which cannot be shared.
 data Node a
     = Node
     { -- use for Reactive.Banana.Internal.PushGraph
-      keyValue   :: Vault.Key a
-    , keyFormula :: Vault.Key (FormulaD Nodes a)
-    , keyOrder   :: Unique.Unique
+      keyValue   :: !(Vault.Key a)
+    , keyFormula :: !(Vault.Key (FormulaD Nodes a))
+    , keyOrder   :: !Unique
       -- use for Reactive.Banana.Internal.Model
-    , keyModelE  :: Vault.Key (EventModel a)
-    , keyModelB  :: Vault.Key (BehaviorModel a)
+    , keyModelE  :: !(Vault.Key (EventModel a))
+    , keyModelB  :: !(Vault.Key (BehaviorModel a))
     }
 
 newNode :: IO (Node a)
 newNode = Node
-    <$> Vault.newKey <*> Vault.newKey <*> Unique.newUnique
+    <$> Vault.newKey <*> Vault.newKey <*> newUnique
     <*> Vault.newKey <*> Vault.newKey
 
 {-----------------------------------------------------------------------------
@@ -177,11 +210,13 @@ type SomeNode = SomeFormula Nodes
 
 -- instances to store  SomeNode  in efficient maps
 instance Eq SomeNode where
-    x == y = compare x y == EQ 
-instance Ord SomeNode where
-    compare (Exists x) (Exists y) = compare (keyOrder x) (keyOrder y)
-instance Eq  (SomeFormula Expr) where
-    x == y = compare x y == EQ
-instance Ord (SomeFormula Expr) where
-    compare (Exists (Pair x _)) (Exists (Pair y _)) =
-        compare (keyOrder x) (keyOrder y)
+    (Exists x) == (Exists y) = (keyOrder x) == (keyOrder y)
+instance Hashable SomeNode where
+    hash (Exists x) = hash (keyOrder x)
+
+instance Eq (SomeFormula Expr) where
+    (Exists (Pair x _)) == (Exists (Pair y _)) = (keyOrder x) == (keyOrder y)
+instance Hashable (SomeFormula Expr) where
+    hash (Exists (Pair x _)) = hash (keyOrder x)
+
+

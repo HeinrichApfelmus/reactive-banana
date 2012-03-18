@@ -16,17 +16,38 @@ module Reactive.Banana.Internal.InputOutput (
     -- | Stepwise execution of an event graph.
     Automaton(..), fromStateful, unfoldAutomaton,
 
+    -- * Uniques
+    -- | Doesn't belong here, but we also have some stuff about uniques
+    -- that we use for observable sharing.
+    Unique, newUnique,
     ) where
 
 import Control.Applicative
+import Control.Exception (evaluate)
 
 import qualified Data.Unique as Unique
 import qualified Data.Vault  as Vault
+import Data.Hashable
+import System.Mem.StableName
+
+{-----------------------------------------------------------------------------
+    Better Uniques
+------------------------------------------------------------------------------}
+type ReallyUnique = StableName Unique.Unique
+type Unique = ReallyUnique
+
+-- instance Hashable Unique
+
+newUnique :: IO Unique
+newUnique = do
+    x <- Unique.newUnique
+    evaluate x
+    makeStableName x
 
 {-----------------------------------------------------------------------------
     Storing heterogenous input values
 ------------------------------------------------------------------------------}
-type Channel  = Unique.Unique   -- identifies an input
+type Channel  = ReallyUnique    -- identifies an input
 type Key      = Vault.Key       -- key to retrieve a value
 type Value    = Vault.Vault     -- value storage
 
@@ -34,7 +55,7 @@ data InputChannel a  = InputChannel { getChannelC :: Channel, getKey :: Key a }
 data InputValue      = InputValue   { getChannelV :: Channel, getValue :: Value }
 
 newInputChannel :: IO (InputChannel a)
-newInputChannel = InputChannel <$> Unique.newUnique <*> Vault.newKey
+newInputChannel = InputChannel <$> newUnique <*> Vault.newKey
 
 fromValue :: InputChannel a -> InputValue -> Maybe a
 fromValue i v = Vault.lookup (getKey i) (getValue v)

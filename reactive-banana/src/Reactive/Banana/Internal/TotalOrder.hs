@@ -20,17 +20,22 @@ import Control.Applicative
 import Control.Arrow (second)
 
 import qualified Data.List
-import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Set as Set
 import Data.Ord
+
+import Data.Hashable
+import qualified Data.HashMap.Strict as Map
+import qualified Data.Set as Set
+
+type Map = Map.HashMap
+type Set = Set.Set
 
 {-----------------------------------------------------------------------------
     Total Order implementation
 ------------------------------------------------------------------------------}
 -- Data type representing a total order between elements
 -- It's simply an ordered list of elements
-newtype TotalOrder a = TO { unTO :: Map.Map a Int }
+newtype TotalOrder a = TO { unTO :: Map a Int }
 
 -- Zipper variant of a total order.
 data TotalOrderZipper a = TOZ { down :: [a], up :: [a] }
@@ -38,10 +43,10 @@ data TotalOrderZipper a = TOZ { down :: [a], up :: [a] }
 open  :: TotalOrder a -> TotalOrderZipper a
 open (TO order) = TOZ { down = [], up = Map.keys order }
 
-close :: Ord a => TotalOrderZipper a -> TotalOrder a
+close :: (Hashable a, Eq a) => TotalOrderZipper a -> TotalOrder a
 close order = TO $ Map.fromList $ zip (reverse (down order) ++ up order) [1..]
 
-fromAscList :: Ord a => [a] -> TotalOrder a
+fromAscList :: (Hashable a, Eq a) => [a] -> TotalOrder a
 fromAscList xs = close $ TOZ { down = [], up = xs }
 
 
@@ -60,7 +65,7 @@ insertBeforeFocus :: a -> TotalOrderZipper a -> TotalOrderZipper a
 insertBeforeFocus x (TOZ xs ys) = TOZ (x:xs) ys
 
 -- delete an element from a total order
-delete       :: Ord a => a -> TotalOrderZipper a -> TotalOrderZipper a
+delete       :: Eq a => a -> TotalOrderZipper a -> TotalOrderZipper a
 delete x (TOZ xs ys) = TOZ (delete' x xs) (delete' x ys)
     where delete' = Data.List.delete
 
@@ -77,7 +82,7 @@ withTotalOrder order f = f empty
 
 -- public interface
 class Queue q where
-    insert  :: Ord a => a -> q a -> q a
+    insert  :: (Hashable a, Eq a) => a -> q a -> q a
     minView :: q a -> Maybe (a, q a)
     size    :: q a -> Int
 
@@ -86,11 +91,11 @@ isEmpty :: Queue q => q a -> Bool
 isEmpty = isNothing . minView
 
 -- | Insert a collection of elements
-insertList :: (Queue q, Ord a) => [a] -> q a -> q a
+insertList :: (Queue q, Hashable a, Eq a) => [a] -> q a -> q a
 insertList xs q = foldl (flip insert) q xs
 
 -- concrete implementation
-data MyQueue a = Q { order :: TotalOrder a, queue :: Set.Set (Pair Int a) }
+data MyQueue a = Q { order :: TotalOrder a, queue :: Set (Pair Int a) }
 
 data Pair a b = Pair !a b
 fstPair (Pair a _) = a
@@ -100,11 +105,11 @@ instance Ord a => Ord (Pair a b) where
     compare = comparing fstPair
 
 -- set the queue field
-setQueue :: MyQueue a -> Set.Set (Pair Int a) -> MyQueue a
+setQueue :: MyQueue a -> Set (Pair Int a) -> MyQueue a
 setQueue q b = q { queue = b }
 
 -- find the index of a particular element in a Total Order
-position :: Ord a => TotalOrder a -> a -> Int
+position :: (Hashable a, Eq a) => TotalOrder a -> a -> Int
 position (TO order) x = pos
     where Just pos = Map.lookup x order
 

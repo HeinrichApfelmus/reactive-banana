@@ -18,17 +18,22 @@ import Control.Category
 import Prelude hiding ((.),id)
 
 import Data.Label
-import qualified Data.Map as Map
-import Data.Map (Map)
 import Data.Maybe
 import Data.Monoid (Dual, Endo, Monoid(..))
-import qualified Data.Set as Set
 import qualified Data.Vault as Vault
-import Data.Unique
+
+import Data.Hashable
+import qualified Data.HashMap.Strict as Map
+import qualified Data.HashSet as Set
 
 import Reactive.Banana.Internal.AST
 import Reactive.Banana.Internal.InputOutput
 import Reactive.Banana.Internal.TotalOrder as TotalOrder
+
+import Debug.Trace
+
+type Map = Map.HashMap
+type Set = Set.HashSet
 
 {-----------------------------------------------------------------------------
     Representation of the dependency graph
@@ -62,7 +67,7 @@ formula node = vaultLens (keyFormula node) . formulaLens
 
 -- | All nodes that directly depend on this one via the formula.
 children :: Node a -> (Graph b :-> [SomeNode])
-children node = lens (Map.findWithDefault [] (Exists node) . grChildren)
+children node = lens (Map.lookupDefault [] (Exists node) . grChildren)
     (error "TODO: can't set children yet")
 
 -- | Current value for a node.
@@ -180,7 +185,6 @@ buildGraph expr = graph
         , grOutput    = root
         , grInputs    = buildInputs    (Exists root) grFormulas
         }
-    where
     grFormulas = buildFormulas (Exists expr)
     root       = fstPair expr
 
@@ -196,7 +200,7 @@ buildFormulas expr =
         formula' = toFormulaNodes formula
 
 -- | Build reverse dependencies, starting from one node.
-buildChildren :: SomeNode -> Formulas -> Map.Map SomeNode [SomeNode]
+buildChildren :: SomeNode -> Formulas -> Map SomeNode [SomeNode]
 buildChildren root formulas =
     unfoldGraphDFSWith leftComposition f root $ Map.empty
     where
@@ -279,10 +283,10 @@ reifyMonoid = MonoidDict mempty mappend
 -- while ignoring duplicate states.
 -- Depth-first order.
 unfoldGraphDFSWith
-    :: forall s t. Ord s => MonoidDict t -> (s -> (t,[s])) -> s -> t
+    :: forall s t. (Hashable s, Eq s) => MonoidDict t -> (s -> (t,[s])) -> s -> t
 unfoldGraphDFSWith (MonoidDict empty append) f s = go Set.empty [s]
     where
-    go :: Set.Set s -> [s] -> t
+    go :: Set s -> [s] -> t
     go seen []      = empty
     go seen (x:xs)
         | x `Set.member` seen = go seen xs
@@ -346,16 +350,17 @@ evaluationStep graph queue values = case minView queue of
                 (queue, values, calculateB valueE node formulaB)
             E formulaE ->   -- evaluate event
                 let -- calculate current value
-                    (maybeval, f) = calculateE valueE valueB node formulaE
+                    (maybeval, f) =
+                        calculateE valueE valueB node formulaE
                     -- set value if applicable
-                    valuesF = case maybeval of
+                    setValue = case maybeval of
                         Just x  -> set (value node) (Just x)
                         Nothing -> id
                     -- evaluate children only if node doesn't return Nothing
-                    queueF  = case maybeval of
+                    setQueue = case maybeval of
                         Just _  -> insertList $ get (children node) graph
                         Nothing -> id
-                in (queueF queue, valuesF values, f)
+                in (setQueue queue, setValue values, f)
 
 {-----------------------------------------------------------------------------
     Convert into an automaton
