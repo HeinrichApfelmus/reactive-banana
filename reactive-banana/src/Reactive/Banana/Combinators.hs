@@ -97,7 +97,7 @@ interpretModel f xs =
 interpretPushGraph :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
 interpretPushGraph f xs = do
     i <- newInputChannel
-    let automaton = compileToAutomaton (unE . f . E $ AST.inputE i)
+    automaton <- compileToAutomaton (unE . f . E $ AST.inputE i)
     map toList <$> unfoldAutomaton automaton i xs
 
 toList :: Maybe [a] -> [a]

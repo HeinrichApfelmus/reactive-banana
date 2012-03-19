@@ -8,7 +8,7 @@ module Reactive.Banana.Frameworks (
     -- | Build event networks using existing event-based frameworks and run them.
     
     -- * Simple use
-    interpret, interpretAsHandler, interpretModel,
+    interpret, interpretAsHandler,
 
     -- * Building event networks with input/output
     -- $build
@@ -35,22 +35,21 @@ import Data.Dynamic (Typeable)
 import Data.IORef
 import Data.List (nub)
 import Data.Monoid
-import qualified Data.Map as Map
-import Data.Unique
 
-import Reactive.Banana.Internal.Automaton
-import Reactive.Banana.Internal.Input
+import qualified Data.HashMap.Strict as Map
+
+import Reactive.Banana.Internal.InputOutput
 import Reactive.Banana.Combinators
-import qualified Reactive.Banana.Internal.PushIO as Implementation
+import qualified Reactive.Banana.Internal.AST as AST
+import qualified Reactive.Banana.Internal.PushGraph as Implementation
+
+type Map = Map.HashMap
 
 {-----------------------------------------------------------------------------
-    PushIO specific functions
+    AST specific functions
 ------------------------------------------------------------------------------}
-poll :: IO a -> Behavior t a
-poll = behavior . Implementation.Poll
-
-input :: InputChannel a -> Event t a
-input = event . Implementation.Input
+inputE :: InputChannel [a] -> Event t a
+inputE = E . AST.inputE
 
 {-----------------------------------------------------------------------------
     NetworkDescription, setting up event networks
@@ -132,7 +131,8 @@ type Preparations t = ([Event t (IO ())], [AddHandler'], [IO ()])
 -- Note: With the new type phantom parameter @t@,
 -- the above note should be superfluous;
 -- the type system now prohibits the problem in question.
-newtype NetworkDescription t a = Prepare { unPrepare :: RWST () (Preparations t) () IO a }
+newtype NetworkDescription t a
+    = Prepare { unPrepare :: RWST () (Preparations t) () IO a }
 
 instance Monad (NetworkDescription t) where
     return  = Prepare . return
@@ -189,9 +189,9 @@ type AddHandler a = (a -> IO ()) -> IO (IO ())
 fromAddHandler :: AddHandler a -> NetworkDescription t (Event t a)
 fromAddHandler addHandler = Prepare $ do
     i <- liftIO $ newInputChannel
-    let addHandler' k = addHandler $ k . toValue i
+    let addHandler' k = addHandler $ k . toValue i . (\x -> [x])
     tell ([], [addHandler'], [])
-    return $ input i
+    return $ inputE i
 
 -- | Input,
 -- obtain a 'Behavior' by polling mutable data, like mutable variables or GUI widgets.
@@ -222,7 +222,7 @@ compile (Prepare m) = do
     sequence_ liftIOs
     
     let -- union of all  reactimates
-        Event graph = mconcat outputs
+        E graph = foldr union never outputs
     
     automaton <- Implementation.compileToAutomaton graph
     
@@ -239,7 +239,9 @@ compile (Prepare m) = do
             putMVar rautomaton automaton'
             -- However, the corresponding IO actions are run afterwards,
             -- and under certain circumstances, they can *interleave*.
-            reactimates
+            case reactimates of
+                Just actions -> sequence_ actions
+                Nothing      -> return ()
     
         -- register event handlers
         register :: IO (IO ())

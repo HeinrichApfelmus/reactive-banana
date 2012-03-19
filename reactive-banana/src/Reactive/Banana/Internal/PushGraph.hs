@@ -365,8 +365,8 @@ evaluationStep graph queue values = case minView queue of
 {-----------------------------------------------------------------------------
     Convert into an automaton
 ------------------------------------------------------------------------------}
-compileToAutomaton :: Event Expr b -> Automaton b
-compileToAutomaton expr = fromStateful automatonStep $ buildGraph (e expr)
+compileToAutomaton :: Event Expr b -> IO (Automaton b)
+compileToAutomaton expr = return $ fromStateful automatonStep $ buildGraph (e expr)
     where
     e :: Event Expr b -> Formula Expr b
     e (Pair n x) = Pair n (E x)
