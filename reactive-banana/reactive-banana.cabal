@@ -50,10 +50,10 @@ Library
                         Rank2Types, NoMonomorphismRestriction,
                         DeriveDataTypeable
     build-depends:
-        base >= 4.3 && < 5, containers == 0.4.*,
+        base >= 4.2 && < 5, containers >= 0.3 && < 0.5,
         transformers == 0.2.*,
         QuickCheck == 2.4.*,
-        vault == 0.1.*, unordered-containers == 0.2.*,
+        vault == 0.1.*, unordered-containers == 0.2.*, hashable == 1.1.*,
         fclabels == 1.1.*
     exposed-modules:
                         Reactive.Banana,
@@ -63,9 +63,11 @@ Library
                         Reactive.Banana.Model,
                         Reactive.Banana.Tests
     other-modules:
-                        Reactive.Banana.Internal.Automaton,
-                        Reactive.Banana.Internal.Input,
-                        Reactive.Banana.Internal.PushIO
+                        Reactive.Banana.Internal.AST,
+                        Reactive.Banana.Internal.Model,
+                        Reactive.Banana.Internal.InputOutput,
+                        Reactive.Banana.Internal.PushGraph,
+                        Reactive.Banana.Internal.TotalOrder
 
 Source-repository head
     type:               git
