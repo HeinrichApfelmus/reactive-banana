@@ -1,12 +1,17 @@
 {-----------------------------------------------------------------------------
     reactive-banana-wx
     
-    Example: Guitar chord simulation
+    Example: Emit a wave of lights.
+        Demonstrates that reactive-banana is capable of emitting timed events,
+        even though it has no built-in notion of time.
 ------------------------------------------------------------------------------}
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+
 import Control.Monad
 import qualified Data.List as List
 import Data.Maybe
 import Data.Ord
+
 import Graphics.UI.WX hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.WX
@@ -33,26 +38,30 @@ main = start $ do
     -- we're going to need a timer
     t  <- timer f []
     
-    network <- compile $ do
-        eLeft  <- event0 left command
-        eRight <- event0 right command
-        
-        -- event describing all the lights
-        eWave  <- scheduleQueue t $ (waveLeft  <$ eLeft ) `union` 
-                                    (waveRight <$ eRight)
-        
-        -- animate the lights
-        forM_ [1 .. lightCount] $ \k -> do
-            let
-                bulb  = lights !! (k-1)
-                dBulb = stepperD False $ snd <$> filterE ((== k) . fst) eWave
-                
-                colorize True  = red
-                colorize False = black
-                
-            sink bulb [ color :== colorize <$> dBulb ]        
+    let networkDescription :: forall t. NetworkDescription t ()
+        networkDescription = do
 
+            eLeft  <- event0 left command
+            eRight <- event0 right command
+        
+            -- event describing all the lights
+            eWave  <- scheduleQueue t $ (waveLeft  <$ eLeft ) `union` 
+                                        (waveRight <$ eRight)
+        
+            -- animate the lights
+            forM_ [1 .. lightCount] $ \k -> do
+                let
+                    bulb  = lights !! (k-1)
+                    bBulb = stepper False $ snd <$> filterE ((== k) . fst) eWave
+                
+                    colorize True  = red
+                    colorize False = black
+                
+                sink bulb [ color :== colorize <$> bBulb ]        
+
+    network <- compile networkDescription    
     actuate network
+
 
 type Index  = Int
 type Action = (Index, Bool)
@@ -81,7 +90,7 @@ type Enqueue a = Queue a
 
 -- Schedule events to happen after a given duration from their occurrence
 -- However, new events will *not* be scheduled before the old ones have finished.
-scheduleQueue :: Timer -> Event (Enqueue a) -> NetworkDescription (Event a)
+scheduleQueue :: Timer -> Event t (Enqueue a) -> NetworkDescription t (Event t a)
 scheduleQueue t e = do
     liftIO $ set t [ enabled := False ]
     eAlarm <- event0 t command

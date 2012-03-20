@@ -3,7 +3,10 @@
     
     Example: Two Counters.
 ------------------------------------------------------------------------------}
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+
 import Control.Monad
+
 import Graphics.UI.WX hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.WX
@@ -24,26 +27,30 @@ main = start $ do
                       grid 5 5 [[label "First Counter:" , widget out1]
                                ,[label "Second Counter:", widget out2]]]]
     
-    network <- compile $ do
-        eup     <- event0 bup   command
-        edown   <- event0 bdown command
-        eswitch <- event0 bswitch command
+    let networkDescription :: forall t. NetworkDescription t ()
+        networkDescription = do
+
+            eup     <- event0 bup     command
+            edown   <- event0 bdown   command
+            eswitch <- event0 bswitch command
         
-        let
-            -- do we act on the left button?
-            firstcounter :: Behavior Bool
-            firstcounter = accumB True $ not <$ eswitch
+            let
+                -- do we act on the left button?
+                firstcounter :: Behavior t Bool
+                firstcounter = accumB True $ not <$ eswitch
         
-            -- joined state of the two counters
-            counters :: Discrete (Int, Int)
-            counters = accumD (0,0) $
-                union ((increment <$> firstcounter) `apply` eup)
-                      ((decrement <$> firstcounter) `apply` edown)
+                -- joined state of the two counters
+                counters :: Behavior t (Int, Int)
+                counters = accumB (0,0) $
+                    union ((increment <$> firstcounter) `apply` eup)
+                          ((decrement <$> firstcounter) `apply` edown)
             
-            increment left _ (x,y) = if left then (x+1,y) else (x,y+1)
-            decrement left _ (x,y) = if left then (x-1,y) else (x,y-1)
+                increment left _ (x,y) = if left then (x+1,y) else (x,y+1)
+                decrement left _ (x,y) = if left then (x-1,y) else (x,y-1)
     
-        sink out1 [text :== show . fst <$> counters]
-        sink out2 [text :== show . snd <$> counters]
+            sink out1 [text :== show . fst <$> counters]
+            sink out2 [text :== show . snd <$> counters]
     
+    network <- compile networkDescription    
     actuate network
+

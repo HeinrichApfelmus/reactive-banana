@@ -3,7 +3,10 @@
     
     Example: Counter
 ------------------------------------------------------------------------------}
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+
 import Control.Monad
+
 import Graphics.UI.WX hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.WX
@@ -19,15 +22,18 @@ main = start $ do
     
     set f [layout := margin 10 $
             column 5 [widget bup, widget bdown, widget output]]
-    
-    network <- compile $ do
+
+    let networkDescription :: forall t. NetworkDescription t ()
+        networkDescription = do
+        
         eup   <- event0 bup   command
         edown <- event0 bdown command
         
         let
-            counter :: Discrete Int
-            counter = accumD 0 $ ((+1) <$ eup) `union` (subtract 1 <$ edown)
+            counter :: Behavior t Int
+            counter = accumB 0 $ ((+1) <$ eup) `union` (subtract 1 <$ edown)
     
-        sink output [text :== show <$> counter]
-    
+        sink output [text :== show <$> counter] 
+
+    network <- compile networkDescription    
     actuate network

@@ -2,8 +2,10 @@
     reactive-banana-wx
     
     Example: A version of TicTacToe with eclectic interface elements
-    Author:  Gideon Sireling
+    Original Author: Gideon Sireling
 ------------------------------------------------------------------------------}
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+
 import Control.Monad
 import Data.Array
 import Data.List hiding (union)
@@ -22,10 +24,10 @@ import Reactive.Banana.WX
 main = start $ do
     -- create the main window
     window <- frame [text := "OX"]
-    label <- staticText window [text := "Move: X"]
+    label  <- staticText window [text := "Move: X"]
         -- overwritten by FRP, here to ensure correct positioning
-    btns <- replicateM 3 $ button window [size := sz 40 40]
-    radios <- replicateM 3 $ radioBox window Vertical ["", "?"] []
+    btns   <- replicateM 3 $ button window [size := sz 40 40]
+    radios <- replicateM 3 $ radioBox window Vertical ["", " "] []
     checks <- replicateM 3 $ checkBox window [text := "  "]
         -- reserve space for X/O in label
     
@@ -33,55 +35,56 @@ main = start $ do
                     [map widget btns, map widget radios, map widget checks]
                     , floatCenter $ widget label]]
 
-    network <- compile $ do
-        -- convert WxHaskell events to FRP events
-        let event0s widgets event = forM widgets $ \x -> event0 x event
-        events <- liftM concat $ sequence
-            [event0s btns command, event0s radios select, event0s checks command]
+    let networkDescription :: forall t. NetworkDescription t ()
+        networkDescription = do
+            -- convert WxHaskell events to FRP events
+            let event0s widgets event = forM widgets $ \x -> event0 x event
+            events <- liftM concat $ sequence
+                [event0s btns command, event0s radios select, event0s checks command]
         
-        let
-            moves :: Event (State -> State)
-            moves = foldl1 union $ zipWith (\e s -> play s <$ e) events
-                    [(x,y) | y <- [1..3], x <- [1..3]]
-                    where play square (game, _) = move game square
+            let
+                moves :: Event t (Game -> Game)
+                moves = foldl1 union $ zipWith (\e s -> move s <$ e) events
+                        [(x,y) | y <- [1..3], x <- [1..3]]
             
-            state :: Discrete State
-            state = accumD (newGame, Nothing) moves
+                state :: Behavior t Game
+                state = accumB newGame moves
             
-            player :: Discrete String
-            player = (\(Game player _, _) -> show player) <$> state
+                currentPlayer :: Behavior t String
+                currentPlayer = (show . player) <$> state
             
-            tokens :: [Discrete String]
-            tokens = map (\e -> stepperD "" (player <@ e)) events
+                tokens :: [Behavior t String]
+                tokens = map (\e -> stepper "" (currentPlayer <@ e)) events
         
-        -- wire up the widget event handlers
-        zipWithM_ (\b e -> sink b [text :== e, enabled :== null <$> e])
-                  (map objectCast btns
-                  ++ map objectCast radios
-                  ++ map objectCast checks :: [Control ()])
-                  tokens
+            -- wire up the widget event handlers
+            zipWithM_ (\b e -> sink b [text :== e, enabled :== null <$> e])
+                      (map objectCast btns
+                      ++ map objectCast radios
+                      ++ map objectCast checks :: [Control ()])
+                      tokens
         
-        sink label [text :== ("Move: " ++) <$> player]
-        
-        -- end game event handler
-        reactimate $ (end window . fromJust) <$>
-            filterE isJust (changes $ snd <$> state)
+            sink label [text :== ("Move: " ++) <$> currentPlayer]
+            
+            -- end game event handler
+            eState <- changes state
+            reactimate $ end window <$> filterJust (isGameEnd . board <$> eState)
     
+    network <- compile networkDescription    
     actuate network
+
 
 end :: Frame () -> Token -> IO ()
 end window result = do
-    infoDialog window "" $ case result of
-                              X -> "X won!"
-                              O -> "O won!"
-                              None -> "Draw!"
+    infoDialog window "" $
+        case result of
+            X    -> "X won!"
+            O    -> "O won!"
+            None -> "Draw!"
     close window
 
 {-----------------------------------------------------------------------------
     Game Logic
 ------------------------------------------------------------------------------}
-type State = (Game, Maybe Token)
-
 data Token = None | X | O
     deriving Eq
 
@@ -105,8 +108,8 @@ setSquare board square token =
 -- |Determine if the 'Board' is in an end state.
 --  Returns 'Just' 'Token' if the game has been won,
 -- 'Just' 'None' for a draw, otherwise 'Nothing'.
-endGame :: Board -> Maybe Token
-endGame board
+isGameEnd :: Board -> Maybe Token
+isGameEnd board
     | Just X `elem` maybeWins = Just X
     | Just O `elem` maybeWins = Just O
     | None `notElem` elems board = Just None
@@ -131,7 +134,7 @@ endGame board
           maybeWins = map isWin rows2tokens
 
 -- |The state of a game, i.e. the player who's turn it is, and the current board.
-data Game = Game Token Board
+data Game = Game { player :: Token, board :: Board }
 
 newGame :: Game
 newGame = Game X newBoard
@@ -139,11 +142,11 @@ newGame = Game X newBoard
 -- |Puts the player's token on the specified square.
 -- Returns 'Just' 'Token' if the game has been won,
 -- 'Just' 'None' for a draw, otherwise 'Nothing'.
-move :: Game -> Square -> (Game, Maybe Token)
-move (Game player board) square =
-    let board' = setSquare board square player
-        player' = case player of {X -> O; O -> X}
-    in (Game player' board', endGame board')
+move :: Square -> Game -> Game
+move square (Game player board) = Game player' board'
+    where
+    board'  = setSquare board square player
+    player' = case player of {X -> O; O -> X}
 
 {-----------------------------------------------------------------------------
     Show instances
