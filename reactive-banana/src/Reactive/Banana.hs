@@ -7,9 +7,7 @@
 module Reactive.Banana (
     module Reactive.Banana.Combinators,
     module Reactive.Banana.Frameworks,
-    module Reactive.Banana.Incremental
     ) where
 
 import Reactive.Banana.Combinators
 import Reactive.Banana.Frameworks
-import Reactive.Banana.Incremental

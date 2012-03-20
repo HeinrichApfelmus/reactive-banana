@@ -13,7 +13,9 @@ module Reactive.Banana.Frameworks (
     -- * Building event networks with input/output
     -- $build
     NetworkDescription, compile,
-    AddHandler, fromAddHandler, fromPoll, reactimate, liftIO, liftIOLater,
+    AddHandler, fromAddHandler, fromChanges, fromPoll,
+    reactimate, initial, changes,
+    liftIO, liftIOLater,
     
     -- * Running event networks
     EventNetwork, actuate, pause,
@@ -84,27 +86,31 @@ inputE = E . AST.inputE
 >   window <- newWindow
 >   ...
 >
->   -- build the event network
->   network <- compile $ do
->       -- input: obtain  Event  from functions that register event handlers
->       emouse    <- fromAddHandler $ registerMouseEvent window
->       ekeyboard <- fromAddHandler $ registerKeyEvent window
->       -- input: obtain  Behavior  from mutable data by polling
->       btext     <- fromPoll       $ getTextValue editBox
->       bdie      <- fromPoll       $ randomRIO (1,6)
+>   -- describe the event network
+>   let networkDescription :: forall t. NetworkDescription t ()
+>       networkDescription = do
+>           -- input: obtain  Event  from functions that register event handlers
+>           emouse    <- fromAddHandler $ registerMouseEvent window
+>           ekeyboard <- fromAddHandler $ registerKeyEvent window
+>           -- input: obtain  Behavior  from changes
+>           btext     <- fromChanges    "" $ registerTextChange editBox
+>           -- input: obtain  Behavior  from mutable data by polling
+>           bdie      <- fromPoll       $ randomRIO (1,6)
 >
->       -- express event graph
->       let
->           behavior1 = accumB ...
->           ...
->           event15 = union event13 event14
+>           -- express event graph
+>           let
+>               behavior1 = accumB ...
+>               ...
+>               event15 = union event13 event14
 >   
->       -- output: animate some event occurences
->       reactimate $ fmap print event15
->       reactimate $ fmap drawCircle eventCircle
+>           -- output: animate some event occurences
+>           reactimate $ fmap print event15
+>           reactimate $ fmap drawCircle eventCircle
 >
->   -- register handlers and start producing outputs
->   actuate network
+>       -- compile network description into a network
+>       network <- compile networkDescription
+>       -- register handlers and start producing outputs
+>       actuate network
 
     In short, you use 'fromAddHandler' to obtain /input/ events.
     The library uses this to register event handlers
@@ -114,23 +120,22 @@ inputE = E . AST.inputE
 
 -}
 
-type AddHandler'    = AddHandler InputValue
-type Preparations t = ([Event t (IO ())], [AddHandler'], [IO ()])
+type AddHandler'     = AddHandler InputValue
+type Preparations t  =
+    ( [Event t (IO ())]     -- reactimate outputs
+    , [AddHandler']         -- fromAddHandler events 
+    , [IO InputValue]       -- fromPoll events
+    , [IO ()]               -- liftIOLater
+    )
 
 -- | Monad for describing event networks.
 -- 
 -- The 'NetworkDescription' monad is an instance of 'MonadIO',
 -- so 'IO' is allowed inside.
 -- 
--- Note: It is forbidden to smuggle values of types 'Event' or 'Behavior'
--- outside the 'NetworkDescription' monad. This shouldn't be possible by default,
--- but you might get clever and use 'IORef' to circumvent this.
--- Don't do that, it won't work and also has a 99,98% chance of 
--- destroying the earth by summoning time-traveling zygohistomorphisms.
---
--- Note: With the new type phantom parameter @t@,
--- the above note should be superfluous;
--- the type system now prohibits the problem in question.
+-- Note: The phantom type @t@ prevents you from smuggling
+-- values of types 'Event' or 'Behavior'
+-- outside the 'NetworkDescription' monad.
 newtype NetworkDescription t a
     = Prepare { unPrepare :: RWST () (Preparations t) () IO a }
 
@@ -167,7 +172,7 @@ instance MonadFix (NetworkDescription t) where
 
 -}
 reactimate :: Event t (IO ()) -> NetworkDescription t ()
-reactimate e = Prepare $ tell ([e], [], [])
+reactimate e = Prepare $ tell ([e],[],[],[])
 
 -- | A value of type @AddHandler a@ is just a facility for registering
 -- callback functions, also known as event handlers.
@@ -190,35 +195,71 @@ fromAddHandler :: AddHandler a -> NetworkDescription t (Event t a)
 fromAddHandler addHandler = Prepare $ do
     i <- liftIO $ newInputChannel
     let addHandler' k = addHandler $ k . toValue i . (\x -> [x])
-    tell ([], [addHandler'], [])
+    tell ([],[addHandler'],[],[])
     return $ inputE i
 
 -- | Input,
--- obtain a 'Behavior' by polling mutable data, like mutable variables or GUI widgets.
+-- obtain a 'Behavior' by frequently polling mutable data, like the current time.
+--
+-- The resulting 'Behavior' will be updated on whenever the event
+-- network processes an input event.
+--
+-- This function is occasionally useful, but
+-- the recommended way to obtain 'Behaviors' is by using 'fromChanges'.
 -- 
 -- Ideally, the argument IO action just polls a mutable variable,
 -- it should not perform expensive computations.
 -- Neither should its side effects affect the event network significantly.
--- 
--- Internally, the event network will take a snapshot of each mutable
--- datum before processing an input event, so that the obtained behavior
--- is well-defined. This snapshot is guaranteed to happen before
--- any 'reactimate' is performed. The network may omit taking a snapshot altogether
--- if the behavior is not needed.
 fromPoll :: IO a -> NetworkDescription t (Behavior t a)
-fromPoll m = return $ poll m
+fromPoll poll = Prepare $ do
+    i <- liftIO $ newInputChannel
+    let poll' = toValue i . (:[]) <$> poll
+    tell ([],[],[poll'],[])
+    initial <- liftIO $ poll
+    return $ stepper initial (inputE i)
+
+-- | Input,
+-- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
+-- 
+-- This is essentially just an application of the 'stepper' combinator.
+fromChanges :: a -> AddHandler a -> NetworkDescription t (Behavior t a)
+fromChanges initial changes = stepper initial <$> fromAddHandler changes
+
+-- | Output,
+-- observe when a 'Behavior' changes.
+-- 
+-- Strictly speaking, a 'Behavior' denotes a value that varies *continuously* in time,
+-- so there is no well-defined event which indicates when the behavior changes.
+-- 
+-- Still, for reasons of efficiency, the library provides a way to observe
+-- changes when the behavior is a step function, for instance as 
+-- created by 'stepper'. There are no formal guarantees,
+-- but the idea is that
+--
+-- > changes (stepper x e) = return (calm e)
+changes :: Behavior t a -> NetworkDescription t (Event t a)
+changes (B (AST.Pair _ (AST.Stepper x e))) = return $ E $ fmap (:[]) e
+
+-- | Output,
+-- observe the initial value contained in a 'Behavior'.
+--
+-- Similar to 'updates', this function is not well-defined,
+-- but exists for reasons of efficiency.
+initial :: Behavior t a -> NetworkDescription t a
+initial (B (AST.Pair _ (AST.Stepper x e))) = return x
 
 -- | Lift an 'IO' action into the 'NetworkDescription' monad,
 -- but defer its execution until compilation time.
 -- This can be useful for recursive definitions using 'MonadFix'.
 liftIOLater :: IO () -> NetworkDescription t ()
-liftIOLater m = Prepare $ tell ([],[], [m])
+liftIOLater m = Prepare $ tell ([],[],[],[m])
 
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
 compile :: (forall t. NetworkDescription t ()) -> IO EventNetwork
 compile (Prepare m) = do
-    (_,_,(outputs,inputs,liftIOs)) <- runRWST m () ()
+    -- execute the NetworkDescription monad
+    (_,_,(outputs,inputs,polls,liftIOs)) <- runRWST m () ()
     sequence_ liftIOs
     
     let -- union of all  reactimates
@@ -234,11 +275,14 @@ compile (Prepare m) = do
         run :: InputValue -> IO ()
         run input = do
             -- takeMVar  makes sure that event graph updates are sequential.
-            automaton <- takeMVar rautomaton
-            (reactimates,automaton') <- runStep automaton [input]
+            automaton  <- takeMVar rautomaton
+            -- poll mutable data
+            pollValues <- sequence polls
+            -- percolate inputs through event graph
+            (reactimates,automaton') <- runStep automaton $ input:pollValues
             putMVar rautomaton automaton'
-            -- However, the corresponding IO actions are run afterwards,
-            -- and under certain circumstances, they can *interleave*.
+            -- Run corresponding IO actions afterwards.
+            -- Under certain circumstances, they can *interleave*.
             case reactimates of
                 Just actions -> sequence_ actions
                 Nothing      -> return ()
