@@ -34,15 +34,9 @@ module Reactive.Banana.Combinators (
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Fix (mfix)
-import Control.Monad.Trans.State
 
-import qualified Data.List
 import Data.Maybe (isJust)
 import Data.Monoid (Monoid(..))
-import qualified Data.Vault as Vault
-import Prelude hiding (filter)
-
 
 import Reactive.Banana.Internal.InputOutput
 import qualified Reactive.Banana.Internal.AST as AST
@@ -134,19 +128,12 @@ never = E $ singleton <$> AST.never
 union    :: Event t a -> Event t a -> Event t a
 union e1 e2 = E $ AST.unionWith (++) (unE e1) (unE e2)
 
--- | Apply a time-varying function to a stream of events.
--- Think of it as
--- 
--- > apply bf ex = [(time, bf time x) | (time, x) <- ex]
-apply    :: Behavior t (a -> b) -> Event t a -> Event t b
-apply bf ex = E $ AST.applyE (map <$> unB bf) (unE ex)
-
 -- | Allow all events that fulfill the predicate, discard the rest.
 -- Think of it as
 -- 
 -- > filterE p es = [(time,a) | (time,a) <- es, p a]
 filterE   :: (a -> Bool) -> Event t a -> Event t a
-filterE p = E . AST.filterE (not . null) . (Data.List.filter p <$>) . unE
+filterE p = E . AST.filterE (not . null) . (filter p <$>) . unE
 
 -- | Collect simultaneous event occurences.
 -- The result will never contain an empty list.
@@ -176,20 +163,6 @@ spill e = E $ concat <$> unE e
 -- only the last one is kept.
 stepper :: a -> Event t a -> Behavior t a
 stepper x e = B $ AST.stepperB x (last <$> unE e)
--- stepper acc = accumB acc . fmap const
-
--- | The 'accumB' function is similar to a /strict/ left fold, 'foldl''.
--- It starts with an initial value and combines it with incoming events.
--- For example, think
---
--- > accumB "x" [(time1,(++"y")),(time2,(++"z"))]
--- >    = stepper "x" [(time1,"xy"),(time2,"xyz")]
--- 
--- Note that the value of the behavior changes \"slightly after\"
--- the events occur. This allows for recursive definitions.
-accumB   :: a -> Event t (a -> a) -> Behavior t a
--- accumB x (Event e) = behavior $ AccumB x e
-accumB  acc = stepper acc . accumE acc
 
 -- | The 'accumE' function accumulates a stream of events.
 -- Example:
@@ -214,6 +187,13 @@ scanl' :: (a -> b -> a) -> a -> [b] -> [a]
 scanl' f x ys = x : case ys of
     []   -> []
     y:ys -> let z = f x y in z `seq` scanl' f z ys
+
+-- | Apply a time-varying function to a stream of events.
+-- Think of it as
+-- 
+-- > apply bf ex = [(time, bf time x) | (time, x) <- ex]
+apply    :: Behavior t (a -> b) -> Event t a -> Event t b
+apply bf ex = E $ AST.applyE (map <$> unB bf) (unE ex)
 
 {-$classes
 
@@ -301,6 +281,19 @@ calm = fmap last . collect
 -- $Accumulation.
 -- Note: all accumulation functions are strict in the accumulated value!
 -- acc -> (x,acc) is the order used by 'unfoldr' and 'State'.
+
+-- | The 'accumB' function is similar to a /strict/ left fold, 'foldl''.
+-- It starts with an initial value and combines it with incoming events.
+-- For example, think
+--
+-- > accumB "x" [(time1,(++"y")),(time2,(++"z"))]
+-- >    = stepper "x" [(time1,"xy"),(time2,"xyz")]
+-- 
+-- Note that the value of the behavior changes \"slightly after\"
+-- the events occur. This allows for recursive definitions.
+accumB   :: a -> Event t (a -> a) -> Behavior t a
+-- accumB x (Event e) = behavior $ AccumB x e
+accumB  acc = stepper acc . accumE acc
 
 -- | Efficient combination of 'accumE' and 'accumB'.
 mapAccum :: acc -> Event t (acc -> (x,acc)) -> (Event t x, Behavior t acc)

@@ -5,7 +5,7 @@
     TypeSynonymInstances, FlexibleInstances #-}
 
 module Reactive.Banana.Internal.AST where
--- | Abstract syntax tree and assorted data types.
+-- Abstract syntax tree and assorted data types.
 
 import Control.Applicative
 import qualified Data.Vault as Vault

@@ -60,14 +60,15 @@ Library
                         Reactive.Banana.Combinators,
                         Reactive.Banana.Frameworks,
                         Reactive.Banana.Incremental,
-                        Reactive.Banana.Model,
-                        Reactive.Banana.Tests
+                        Reactive.Banana.Model
     other-modules:
                         Reactive.Banana.Internal.AST,
                         Reactive.Banana.Internal.Model,
                         Reactive.Banana.Internal.InputOutput,
                         Reactive.Banana.Internal.PushGraph,
-                        Reactive.Banana.Internal.TotalOrder
+                        Reactive.Banana.Internal.TotalOrder,
+                        Reactive.Banana.Tests
+
 
 Source-repository head
     type:               git
