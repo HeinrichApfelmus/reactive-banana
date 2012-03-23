@@ -59,7 +59,8 @@ Library
                         Reactive.Banana,
                         Reactive.Banana.Combinators,
                         Reactive.Banana.Frameworks,
-                        Reactive.Banana.Incremental,
+                        Reactive.Banana.Experimental.Calm,
+                        Reactive.Banana.Experimental.Incremental,
                         Reactive.Banana.Model
     other-modules:
                         Reactive.Banana.Internal.AST,
