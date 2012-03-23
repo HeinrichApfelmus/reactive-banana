@@ -22,7 +22,7 @@ module Reactive.Banana.Frameworks (
     
     -- * Utilities
     -- $utilities
-    newAddHandler,
+    newAddHandler, newEvent,
     ) where
 
 import Control.Applicative
@@ -238,7 +238,7 @@ fromChanges initial changes = stepper initial <$> fromAddHandler changes
 --
 -- > changes (stepper x e) = return (calm e)
 changes :: Behavior t a -> NetworkDescription t (Event t a)
-changes (B (AST.Pair _ (AST.Stepper x e))) = return $ E $ fmap (:[]) e
+changes ~(B (AST.Pair _ (AST.Stepper x e))) = return $ E $ fmap (:[]) e
 
 -- | Output,
 -- observe the initial value contained in a 'Behavior'.
@@ -246,7 +246,7 @@ changes (B (AST.Pair _ (AST.Stepper x e))) = return $ E $ fmap (:[]) e
 -- Similar to 'updates', this function is not well-defined,
 -- but exists for reasons of efficiency.
 initial :: Behavior t a -> NetworkDescription t a
-initial (B (AST.Pair _ (AST.Stepper x e))) = return x
+initial ~(B (AST.Pair _ (AST.Stepper x e))) = return x
 
 -- | Lift an 'IO' action into the 'NetworkDescription' monad,
 -- but defer its execution until compilation time.
@@ -390,3 +390,14 @@ newAddHandler = do
             mapM_ ($ x) . map snd . Map.toList =<< readIORef handlers
     return (addHandler, runHandlers)
 
+
+-- | Build an 'Event' together with an 'IO' action that can 
+-- fire occurrences of this event. Variant of 'newAddHandler'.
+-- 
+-- This function is mainly useful for passing callback functions
+-- inside a 'reactimate'.
+newEvent :: NetworkDescription t (Event t a, a -> IO ())
+newEvent = do
+    (addHandler, fire) <- liftIO $ newAddHandler
+    e <- fromAddHandler addHandler
+    return (e,fire)

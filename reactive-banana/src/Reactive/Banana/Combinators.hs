@@ -9,22 +9,27 @@ module Reactive.Banana.Combinators (
     
     -- * Introduction
     -- $intro1
-    Event, Behavior,
+    Event(..), Behavior(..),
     -- $intro2
     interpretModel, interpretPushGraph,
     
     -- * Core Combinators
     module Control.Applicative,
-    never, union, unionWith, filterE, collect, spill, accumE,
-    apply, stepper, accumB,
+    module Data.Monoid,
+    never, union, filterE, collect, spill, accumE,
+    apply, stepper,
     -- $classes
     
     -- * Derived Combinators
-    filterJust, filterApply, whenE, calm,
-    mapAccum, Apply(..),
-    
-    -- * Internal
-    Event(..), Behavior(..),
+    -- ** Filtering
+    filterJust, filterApply, whenE, split,
+    -- ** Accumulation
+    -- $Accumulation.
+    accumB, mapAccum,
+    -- ** Simultaneous event occurrences
+    calm, unionWith,
+    -- ** Apply class
+    Apply(..),
     ) where
 
 import Control.Applicative
@@ -60,13 +65,15 @@ that are tagged with their corresponding time of occurence,
 
 > type Event t a = [(Time,a)]
 -}
-newtype Event t a = E { unE :: AST.Event AST.Expr [a] } -- ^ (Internal use.)
+newtype Event t a = E { unE :: AST.Event AST.Expr [a] }
+    -- ^ (Constructor exported for internal use only.)
 
 {-| @Behavior t a@ represents a value that varies in time. Think of it as
 
 > type Behavior t a = Time -> a
 -}
 newtype Behavior t a = B { unB :: AST.Behavior AST.Expr a }
+    -- ^ (Constructor exported for internal use only.)
 
 {-$intro2
 
@@ -127,11 +134,6 @@ never = E $ singleton <$> AST.never
 union    :: Event t a -> Event t a -> Event t a
 union e1 e2 = E $ AST.unionWith (++) (unE e1) (unE e2)
 
--- | TODO
-unionWith :: (a -> a -> a) -> Event t a -> Event t a -> Event t a
-unionWith f e1 e2 = E $ AST.unionWith g (unE e1) (unE e2)
-    where g xs ys = singleton $ foldr1 f (xs ++ ys)
-
 -- | Apply a time-varying function to a stream of events.
 -- Think of it as
 -- 
@@ -160,10 +162,6 @@ collect e = E $ singleton <$> unE e
 -- > spill . collect = id
 spill :: Event t [a] -> Event t a
 spill e = E $ concat <$> unE e
-
--- | Accumulation.
--- Note: all accumulation functions are strict in the accumulated value!
--- acc -> (x,acc) is the order used by  unfoldr  and  State
 
 -- | Construct a time-varying function from an initial value and 
 -- a stream of new values. Think of it as
@@ -277,9 +275,32 @@ filterApply bp = fmap snd . filterE fst . apply ((\p a-> (p a,a)) <$> bp)
 whenE :: Behavior t Bool -> Event t a -> Event t a
 whenE bf = filterApply (const <$> bf)
 
+-- | Split event occurrences according to a tag.
+split :: Event t (Either a b) -> (Event t a, Event t b)
+split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
+    where
+    fromLeft  (Left  a) = Just a
+    fromLeft  (Right b) = Nothing
+    fromRight (Left  a) = Nothing
+    fromright (Right b) = Just b
+
+
+-- | Combine simultaneous event occurrences into a single occurrence.
+--
+-- > unionWith f e1 e2 = fmap (foldr1 f) <$> collect (e1 `union` e2)
+unionWith :: (a -> a -> a) -> Event t a -> Event t a -> Event t a
+unionWith f e1 e2 = E $ AST.unionWith g (unE e1) (unE e2)
+    where g xs ys = singleton $ foldr1 f (xs ++ ys)
+
 -- | Keep only the last occurrence when simultaneous occurrences happen.
 calm :: Event t a -> Event t a
 calm = fmap last . collect
+
+
+
+-- $Accumulation.
+-- Note: all accumulation functions are strict in the accumulated value!
+-- acc -> (x,acc) is the order used by 'unfoldr' and 'State'.
 
 -- | Efficient combination of 'accumE' and 'accumB'.
 mapAccum :: acc -> Event t (acc -> (x,acc)) -> (Event t x, Behavior t acc)
