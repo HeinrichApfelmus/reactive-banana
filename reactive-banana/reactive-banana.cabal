@@ -1,32 +1,18 @@
 Name:                reactive-banana
 Version:             0.5.0.0
-Synopsis:            Small but solid library for
-                     functional reactive programming (FRP).
+Synopsis:            Practical library for functional reactive programming (FRP).
 Description:         
-    A small but solid library for functional reactive programming (FRP).
+    Reactive-banana is a practical library for Functional Reactive Programming (FRP).
     .
-    The current focus of this library is to implement
-    a subset of the semantic model for functional reactive programming
-    pioneered by Conal Elliott.
+    FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. Thus, the reactive-banana library promises to avoid the spagethetti code commonly used in traditional GUI technologies.
     .
-    Moreover, this library can hooked into /any/
-    existing event-based framework.
-    It is especially useful in conjunction with existing
-    GUI frameworks like @wxHaskell@ or @gtk2hs@.
-    .
-    This also means that your code can be a mix of FRP and imperative parts.
-    Bored of programming imperative GUIs? Write some parts with FRP!
-    Don't know how to express something with FRP?
-    Switch back to imperative style!
-    .
-    In the spectrum of possible FRP implementations,
-    this one features simple semantics but modest expressivity.
-    Predicting space & time usage should be easy.
+    See the project homepage <http://haskell.org/haskellwiki/Reactive-banana>
+    for a more detailed introduction and features.
     .
     Stability forecast:
-    Known inefficiencies that will be addressed.
     No semantic bugs expected.
-    Significant API changes are likely in future versions.
+    Significant API changes are likely in future versions,
+    though the main interface is beginning to stabilize.
 
 Homepage:            http://haskell.org/haskellwiki/Reactive-banana
 License:             BSD3
@@ -60,11 +46,9 @@ Library
                         Reactive.Banana.Combinators,
                         Reactive.Banana.Frameworks,
                         Reactive.Banana.Experimental.Calm,
-                        Reactive.Banana.Experimental.Incremental,
-                        Reactive.Banana.Model
+                        Reactive.Banana.Internal.Model
     other-modules:
                         Reactive.Banana.Internal.AST,
-                        Reactive.Banana.Internal.Model,
                         Reactive.Banana.Internal.InputOutput,
                         Reactive.Banana.Internal.PushGraph,
                         Reactive.Banana.Internal.TotalOrder,

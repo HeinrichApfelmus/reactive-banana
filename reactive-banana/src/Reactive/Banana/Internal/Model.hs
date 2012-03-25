@@ -5,8 +5,16 @@
 module Reactive.Banana.Internal.Model (
     -- * Synopsis
     -- | Model implementation of the abstract syntax tree.
+    
+    -- * Description
+    -- $model
 
-    interpretModel
+    -- Combinators
+    -- Event(..), Behavior(..),
+    -- never, filterE, unionWith, applyE, accumE, stepper,
+   
+    -- * Interpretation
+    interpretModel,
     ) where
 
 import Control.Applicative
@@ -18,10 +26,32 @@ import qualified Data.Vault as Vault
 import qualified Reactive.Banana.Internal.AST as AST
 import Reactive.Banana.Internal.InputOutput
 
+{-$model
+
+This module contains the model implementation for the primitive combinators
+defined "Reactive.Banana.Internal.AST"
+which in turn are the basis for the official combinators
+documented in "Reactive.Banana.Combinators".
+
+This module does not export any combinators,
+you have to look at the source code to make use of it.
+(If there is no link to the source code at every type signature,
+then you have to run cabal with --hyperlink-source flag.)
+
+This model is /authoritative/: when observed with the 'interpretModel' function,
+both the actual implementation and its model /must/ agree on the result.
+Note that this must also hold for recursive and partial definitions
+(at least in spirit, I'm not going to split hairs over @_|_@ vs @\\_ -> _|_@).
+
+Concerning time and space complexity, the model is not authoritative, however.
+Implementations are free to be much more efficient.
+-}
+
 {-----------------------------------------------------------------------------
     Combinators
 ------------------------------------------------------------------------------}
--- due to observable sharing, the types have to be important from AST
+-- due to observable sharing, the types have to be imported from
+-- the module Reactive.Banana.Internal.AST
 type Event a    = AST.EventModel a     -- = [Maybe a]
 type Behavior a = AST.BehaviorModel a  -- = StepperB a (Event a)
 

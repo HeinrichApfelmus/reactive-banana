@@ -1,6 +1,18 @@
 Changelog
 ---------
 
+version 0.5.0.0
+http://apfelmus.nfshost.com/blog/2012/03/25-frp-banana-0-5.html
+
+This update includes numerous changes, in particular a complete overhaul of the internal implementation. Here a partial list.
+
+* add `collect`, `spill` and `unionWith` combinators to deal with simultaneous events
+* remove general `Monoid` instance for `Event` to simplify reasoning about simultaneous events
+* add `initial` and `changes` combinators that allow you to observe updates to `Behavior`. Remove the `Reactive.Banana.Incremental` module.
+* rename most modules
+* change type: the main types `Event`, `Behavior` and `NetworkDescription` now carry an additional phantom type
+
+
 version 0.4.3.0
 
 * change semantics: IO actions from inside `reactimate` may now interleave as dictated by your event-based framework (issue #15)

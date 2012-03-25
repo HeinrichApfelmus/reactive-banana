@@ -10,7 +10,7 @@ module Reactive.Banana.Experimental.Calm (
     -- 'Event' type that disallows simultaneous event occurrences.
     --
     -- The combinators behave essentially as their counterparts
-    -- in 'Reactive.Banana.Combinators'.
+    -- in "Reactive.Banana.Combinators".
     
     -- * Main types
     Event, Behavior, collect, fromCalm,
@@ -39,7 +39,6 @@ import Data.Maybe (listToMaybe)
 
 import qualified Reactive.Banana.Combinators as Prim
 import qualified Reactive.Banana.Combinators
-import qualified Reactive.Banana.Model as Model
 
 {-----------------------------------------------------------------------------
     Main types

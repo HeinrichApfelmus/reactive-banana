@@ -4,7 +4,7 @@
     Derived data type, a hybrid between  Event  and  Behavior
 ------------------------------------------------------------------------------}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Reactive.Banana.Incremental (
+module Reactive.Banana.Experimental.Incremental (
     -- * Why a third type Discrete?
     -- $discrete
     
