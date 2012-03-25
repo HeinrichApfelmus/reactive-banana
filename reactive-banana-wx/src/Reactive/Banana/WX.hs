@@ -8,13 +8,16 @@ module Reactive.Banana.WX (
     -- | Utility functions for interfacing with wxHaskell.
     -- Note: Useful, but I haven't done any serious design work on these.
     
-    -- * Documentation
-    event1, event0,
-    behaviorText, Prop'(..), sink,
+    -- * General
+    event1, event0, behavior,
+    Prop'(..), sink,
+    
+    -- * Specialized for widgets
+    behaviorText, sinkText, keyboardUp,
     
     -- * Utilities
-    event1ToAddHandler,
-    mapAddHandlerIO,
+    event1ToAddHandler, event0ToEvent1,
+    mapIO,
     ) where
 
 import Reactive.Banana
@@ -39,33 +42,12 @@ event1 widget e = do
 
 -- | Event without parameters.
 event0 :: w -> WX.Event w (IO ()) -> NetworkDescription t (Event t ())
-event0 widget e = event1 widget $ mapEvent const (\_ e -> e ()) e
+event0 widget = event1 widget . event0ToEvent1
 
--- | Behavior from an attribute
+-- | Behavior from an attribute.
+-- Uses 'fromPoll', so may behave as you expect.
 behavior :: w -> WX.Attr w a -> NetworkDescription t (Behavior t a)
-behavior widget attr = undefined -- fromPoll . liftIO $ get widget attr
-
--- | Behavior of the user-entered text of a 'TextCtrl' widget.
---
--- To avoid feedback loops, *only* the user-entered text will
--- update the behavior.
-behaviorText
-    :: WX.TextCtrl w
-    -> String
-        -- ^ Initial value supplied "by the user". Not set programmaticaly.
-    -> NetworkDescription t (Behavior t String)
-behaviorText textCtrl initial = do
-    -- Should probably be  wxEVT_COMMAND_TEXT_UPDATED ,
-    -- but that's missing from wxHaskell.
-    addHandler <- liftIO $ event1ToAddHandler textCtrl keyboardUp
-    e <- fromAddHandler $ mapAddHandlerIO (const $ get textCtrl text) addHandler
-    return $ stepper initial e
-
--- observe "key up" events (many thanks to Abu Alam)
--- this should probably be in the wxHaskell library
-keyboardUp  :: WX.Event (Window a) (EventKey -> IO ())
-keyboardUp  = WX.newEvent "keyboardUp" windowGetOnKeyUp windowOnKeyUp
-
+behavior widget attr = fromPoll . liftIO $ get widget attr
 
 -- | Variant of wx properties that accept a 'Behavior'.
 data Prop' t w = forall a. (WX.Attr w a) :== Behavior t a
@@ -83,6 +65,48 @@ sink widget props = mapM_ sink1 props
         reactimate $ (\x -> set widget [attr := x]) <$> e
 
 {-----------------------------------------------------------------------------
+    Connection with events and behaviors
+------------------------------------------------------------------------------}
+-- | Behavior of the user-entered 'text' of a 'TextCtrl' widget.
+--
+-- To avoid feedback loops, *only* the user-entered text will
+-- update the behavior.
+-- This is probably not what you want, though.
+behaviorText
+    :: WX.TextCtrl w
+    -> String
+        -- ^ Initial value supplied "by the user". Not set programmaticaly.
+    -> NetworkDescription t (Behavior t String)
+behaviorText textCtrl initial = do
+    -- Should probably be  wxEVT_COMMAND_TEXT_UPDATED ,
+    -- but that's missing from wxHaskell.
+    -- Note: Observing  keyUp events does create a small lag
+    addHandler <- liftIO $ event1ToAddHandler textCtrl keyboardUp
+    e <- fromAddHandler $ mapIO (const $ get textCtrl text) addHandler
+    return $ stepper initial e
+
+
+-- observe "key up" events (many thanks to Abu Alam)
+-- this should probably be in the wxHaskell library
+keyboardUp  :: WX.Event (Window a) (EventKey -> IO ())
+keyboardUp  = WX.newEvent "keyboardUp" windowGetOnKeyUp windowOnKeyUp
+
+
+-- | Reactimate the 'text' of a 'TextCtrl' widget.
+--
+-- To avoid feedback loops, the text will not be updated while
+-- the widget has the focus.
+sinkText :: WX.TextCtrl w -> Behavior t String -> NetworkDescription t ()
+sinkText textCtrl b = do
+    e <- changes b
+    x <- initial b
+
+    bHasFocus <- stepper False <$> event1 textCtrl focus
+    
+    let b' = stepper x $ whenE (not <$> bHasFocus) e
+    sink textCtrl [ text :== b' ]
+
+{-----------------------------------------------------------------------------
     Utilities
 ------------------------------------------------------------------------------}
 -- | Obtain an 'AddHandler' from a 'WX.Event'.
@@ -92,6 +116,10 @@ event1ToAddHandler widget e = do
     set widget [on e :~ \h x -> h x >> runHandlers x]
     return addHandler
 
--- | Apply a function with side effects to an event
-mapAddHandlerIO :: (a -> IO b) -> AddHandler a -> AddHandler b
-mapAddHandlerIO f addHandler = \h -> addHandler $ \x -> f x >>= h 
+-- | Obtain an 'AddHandler' from a 'WX.Event'.
+event0ToEvent1 :: WX.Event w (IO ()) -> WX.Event w (() -> IO ())
+event0ToEvent1 = mapEvent const (\_ e -> e ())
+
+-- | Apply a function with side effects to an 'AddHandler'
+mapIO :: (a -> IO b) -> AddHandler a -> AddHandler b
+mapIO f addHandler = \h -> addHandler $ \x -> f x >>= h 
