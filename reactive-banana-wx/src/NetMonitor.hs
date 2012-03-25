@@ -3,13 +3,17 @@
     
     Example: Minuscule network monitor
 ------------------------------------------------------------------------------}
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+
 import Data.Char
 import Data.List
 import Data.Maybe
+
+import System.Process
+
 import Graphics.UI.WX hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.WX
-import System.Process
 
 {-----------------------------------------------------------------------------
     Main
@@ -28,20 +32,24 @@ main = start $ do
     
     t <- timer f [ interval := 500 ] -- timer every 500 ms
 
-    network <- compile $ do
-        etick    <- event0 t command
-        bnetwork <- fromPoll $ getNetworkStatistics
+    let networkDescription :: forall t. NetworkDescription t ()
+        networkDescription = do
+            -- The network statistics are polled when and only when
+            -- the event network handles an event.
+            bnetwork <- fromPoll getNetworkStatistics
+            -- That's why we need a timer that generates regular events to handle.
+            etick    <- event0 t command
         
-        let showStat f = stepperD "" $ f <$> (bnetwork <@ etick)
-            sent     = maybe "parse error" show . fst
-            received = maybe "parse error" show . snd
+            let showSent     = maybe "parse error" show . fst
+                showReceived = maybe "parse error" show . snd
         
-        sink out1 [ text :== showStat sent ]
-        sink out2 [ text :== showStat received ]
+            sink out1 [ text :== showSent     <$> bnetwork ]
+            sink out2 [ text :== showReceived <$> bnetwork ]
     
+    network <- compile networkDescription
     actuate network
 
--- obtain network statistics
+-- Obtain network statistics from the  netstat  utility
 type NetworkStatistics = (Maybe Int, Maybe Int)
 
 getNetworkStatistics :: IO NetworkStatistics

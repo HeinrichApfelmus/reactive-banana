@@ -1,27 +1,38 @@
-{-# LANGUAGE ExistentialQuantification #-}
 {-----------------------------------------------------------------------------
     reactive-banana-wx
-    
-    Utility functions for interfacing with wxHaskell
 ------------------------------------------------------------------------------}
+{-# LANGUAGE ExistentialQuantification #-}
 
-module Reactive.Banana.WX where
+module Reactive.Banana.WX (
+    -- * Synopsis
+    -- | Utility functions for interfacing with wxHaskell.
+    -- Note: Useful, but I haven't done any serious design work on these.
+    
+    -- * General
+    event1, event0, behavior,
+    Prop'(..), sink,
+    
+    -- * Specialized for widgets
+    behaviorText, sinkText, keyboardUp,
+    
+    -- * Utilities
+    event1ToAddHandler, event0ToEvent1,
+    mapIO,
+    ) where
 
 import Reactive.Banana
 import qualified Graphics.UI.WX as WX
-import Graphics.UI.WX (on, Prop(..))
+import Graphics.UI.WX  hiding (Event, Attr)
+import Graphics.UI.WXCore hiding (Event)
+-- import Graphics.UI.WX (on, Prop(..))
 
 {-----------------------------------------------------------------------------
-    Wx
-    
-    Utilities for representing stuff from Wx as events and behaviors
+    Connection with events and behaviors
 ------------------------------------------------------------------------------}
-
 -- | Event with exactly one parameter.
-event1 :: Typeable a => w -> WX.Event w (a -> IO ()) -> NetworkDescription (Event a)
+event1 :: w -> WX.Event w (a -> IO ()) -> NetworkDescription t (Event t a)
 event1 widget e = do
-    (addHandler, runHandlers) <- liftIO $ newAddHandler
-    liftIO $ WX.set widget [on e :~ \h x -> h x >> runHandlers x]
+    addHandler <- liftIO $ event1ToAddHandler widget e
     fromAddHandler addHandler
 
     -- NOTE: Some events don't work, for instance   leftKey  and  rightKey
@@ -30,33 +41,85 @@ event1 widget e = do
     -- Not sure what to do with this.
 
 -- | Event without parameters.
-event0 :: w -> WX.Event w (IO ()) -> NetworkDescription (Event ())
-event0 widget e = event1 widget $ WX.mapEvent const (\_ e -> e ()) e
+event0 :: w -> WX.Event w (IO ()) -> NetworkDescription t (Event t ())
+event0 widget = event1 widget . event0ToEvent1
 
--- | Behavior form an attribute
-behavior :: w -> WX.Attr w a -> NetworkDescription (Behavior a)
-behavior widget attr = fromPoll . liftIO $ WX.get widget attr
+-- | Behavior from an attribute.
+-- Uses 'fromPoll', so may behave as you expect.
+behavior :: w -> WX.Attr w a -> NetworkDescription t (Behavior t a)
+behavior widget attr = fromPoll . liftIO $ get widget attr
 
-
-data Prop' w = forall a. (WX.Attr w a) :== Discrete a
+-- | Variant of wx properties that accept a 'Behavior'.
+data Prop' t w = forall a. (WX.Attr w a) :== Behavior t a
 
 infixr 0 :==
 
--- | "Animate" a property with a stream of events
-sink :: w -> [Prop' w] -> NetworkDescription ()
+-- | "Animate" a property with a behavior
+sink :: w -> [Prop' t w] -> NetworkDescription t ()
 sink widget props = mapM_ sink1 props
     where
-    sink1 (attr :== x) = do
-        liftIOLater $ WX.set widget [attr := initial x]
-        reactimate $ (\x -> WX.set widget [attr := x]) <$> changes x
+    sink1 (attr :== b) = do
+        x <- initial b
+        liftIOLater $ set widget [attr := x]
+        e <- changes b
+        reactimate $ (\x -> set widget [attr := x]) <$> e
 
--- Typeable instances, yikes!
--- Also, these instances are wrong, but I don't care.
-instance Typeable WX.EventKey where
-    typeOf _ = mkTyConApp (mkTyCon "WX.EventKey") []
-instance Typeable WX.EventMouse where
-    typeOf _ = mkTyConApp (mkTyCon "WX.EventMouse") []
+{-----------------------------------------------------------------------------
+    Connection with events and behaviors
+------------------------------------------------------------------------------}
+-- | Behavior of the user-entered 'text' of a 'TextCtrl' widget.
+--
+-- To avoid feedback loops, *only* the user-entered text will
+-- update the behavior.
+-- This is probably not what you want, though.
+behaviorText
+    :: WX.TextCtrl w
+    -> String
+        -- ^ Initial value supplied "by the user". Not set programmaticaly.
+    -> NetworkDescription t (Behavior t String)
+behaviorText textCtrl initial = do
+    -- Should probably be  wxEVT_COMMAND_TEXT_UPDATED ,
+    -- but that's missing from wxHaskell.
+    -- Note: Observing  keyUp events does create a small lag
+    addHandler <- liftIO $ event1ToAddHandler textCtrl keyboardUp
+    e <- fromAddHandler $ mapIO (const $ get textCtrl text) addHandler
+    return $ stepper initial e
 
 
+-- observe "key up" events (many thanks to Abu Alam)
+-- this should probably be in the wxHaskell library
+keyboardUp  :: WX.Event (Window a) (EventKey -> IO ())
+keyboardUp  = WX.newEvent "keyboardUp" windowGetOnKeyUp windowOnKeyUp
 
 
+-- | Reactimate the 'text' of a 'TextCtrl' widget.
+--
+-- To avoid feedback loops, the text will not be updated while
+-- the widget has the focus.
+sinkText :: WX.TextCtrl w -> Behavior t String -> NetworkDescription t ()
+sinkText textCtrl b = do
+    e <- changes b
+    x <- initial b
+
+    bHasFocus <- stepper False <$> event1 textCtrl focus
+    
+    let b' = stepper x $ whenE (not <$> bHasFocus) e
+    sink textCtrl [ text :== b' ]
+
+{-----------------------------------------------------------------------------
+    Utilities
+------------------------------------------------------------------------------}
+-- | Obtain an 'AddHandler' from a 'WX.Event'.
+event1ToAddHandler :: w -> WX.Event w (a -> IO ()) -> IO (AddHandler a)
+event1ToAddHandler widget e = do
+    (addHandler, runHandlers) <- newAddHandler
+    set widget [on e :~ \h x -> h x >> runHandlers x]
+    return addHandler
+
+-- | Obtain an 'AddHandler' from a 'WX.Event'.
+event0ToEvent1 :: WX.Event w (IO ()) -> WX.Event w (() -> IO ())
+event0ToEvent1 = mapEvent const (\_ e -> e ())
+
+-- | Apply a function with side effects to an 'AddHandler'
+mapIO :: (a -> IO b) -> AddHandler a -> AddHandler b
+mapIO f addHandler = \h -> addHandler $ \x -> f x >>= h 

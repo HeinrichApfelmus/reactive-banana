@@ -3,15 +3,16 @@
     
     Example: Currency Converter
 ------------------------------------------------------------------------------}
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
 {-# LANGUAGE RecursiveDo #-}
+
 import Data.Bits
 import Data.Maybe
+import Text.Printf
+
 import Graphics.UI.WX hiding (Event)
-import qualified Graphics.UI.WX.Events
-import Graphics.UI.WXCore hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.WX
-import Text.Printf
 
 {-----------------------------------------------------------------------------
     Main
@@ -29,41 +30,25 @@ main = start $ do
             , label "Amounts update while typing."
             ]]
 
-    network <- compile $ mdo        
-        euroIn   <- reactimateTextEntry euro    euroOut
-        dollarIn <- reactimateTextEntry dollar  dollarOut
-
+    let networkDescription :: forall t. NetworkDescription t ()
+        networkDescription = do
+        
+        euroIn   <- behaviorText euro   "0"
+        dollarIn <- behaviorText dollar "0"
+        
         let rate = 0.7 :: Double
             withString f s
                 = maybe "-" (printf "%.2f") . fmap f 
                 $ listToMaybe [x | (x,"") <- reads s] 
         
             -- define output values in terms of input values
-            dollarOut, euroOut :: Discrete String
-            dollarOut = withString (/ rate) <$> stepperD "0" euroIn
-            euroOut   = withString (* rate) <$> stepperD "0" dollarIn
-
-        return ()
+            dollarOut, euroOut :: Behavior t String
+            dollarOut = withString (/ rate) <$> euroIn
+            euroOut   = withString (* rate) <$> dollarIn
     
+        sink euro   [text :== euroOut  ]
+        sink dollar [text :== dollarOut] 
+
+    network <- compile networkDescription    
     actuate network
-
-
--- text entry widget in terms of discrete time-varying values
-reactimateTextEntry
-    :: TextCtrl a
-    -> Discrete String                    -- set programmatically (view)
-    -> NetworkDescription (Event String)  -- read from user (controller)
-reactimateTextEntry entry input = do
-    sink entry [ text :== input ]
-
-    -- Real-time text updates.
-    -- Should be  wxEVT_COMMAND_TEXT_UPDATED  , but that's misisng from wxHaskell.
-    e <- event1   entry keyboardUp
-    b <- behavior entry text
-    return $ b <@ e
-
--- observe "key up" events (many thanks to Abu Alam)
--- this should probably be in the wxHaskell library
-keyboardUp  :: Graphics.UI.WX.Events.Event (Window a) (EventKey -> IO ())
-keyboardUp  = newEvent "keyboardUp" windowGetOnKeyUp (windowOnKeyUp)
 

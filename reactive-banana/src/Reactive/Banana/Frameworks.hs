@@ -1,30 +1,28 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-----------------------------------------------------------------------------
     Reactive Banana
-    
-    Linking the push-based implementation to an event-based framework
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Implementation (
+{-# LANGUAGE Rank2Types, DeriveDataTypeable #-}
+
+module Reactive.Banana.Frameworks (
     -- * Synopsis
-    -- | Build event networks using existing event-based frameworks
-    --   and run them.
+    -- | Build event networks using existing event-based frameworks and run them.
     
     -- * Simple use
-    PushIO, interpret, interpretAsHandler,
+    interpret, interpretAsHandler,
 
     -- * Building event networks with input/output
     -- $build
     NetworkDescription, compile,
-    AddHandler, fromAddHandler, fromPoll, reactimate, liftIO, liftIOLater,
+    AddHandler, fromAddHandler, fromChanges, fromPoll,
+    reactimate, initial, changes,
+    liftIO, liftIOLater,
     
     -- * Running event networks
     EventNetwork, actuate, pause,
     
     -- * Utilities
     -- $utilities
-    newAddHandler,
-    
-    module Data.Dynamic, -- remove this when bumping to 0.5
+    newAddHandler, newEvent,
     ) where
 
 import Control.Applicative
@@ -35,63 +33,25 @@ import Control.Monad.Fix       (MonadFix(..))
 import Control.Monad.IO.Class  (MonadIO(..))
 import Control.Monad.Trans.RWS
 
-import Data.Dynamic
+import Data.Dynamic (Typeable)
 import Data.IORef
 import Data.List (nub)
 import Data.Monoid
-import qualified Data.Map as Map
-import Data.Unique
 
-import Reactive.Banana.PushIO hiding (compile)
-import qualified Reactive.Banana.PushIO as Implementation
-import qualified Reactive.Banana.Model as Model
+import qualified Data.HashMap.Strict as Map
+
+import Reactive.Banana.Internal.InputOutput
+import Reactive.Banana.Combinators
+import qualified Reactive.Banana.Internal.AST as AST
+import qualified Reactive.Banana.Internal.PushGraph as Implementation
+
+type Map = Map.HashMap
 
 {-----------------------------------------------------------------------------
-    PushIO specific functions
+    AST specific functions
 ------------------------------------------------------------------------------}
-type Flavor  = Implementation.PushIO
-
-poll :: IO a -> Model.Behavior Flavor a
-poll = behavior . Poll
-
-input :: Channel -> Key a -> Model.Event Flavor a
-input c = event . Input c
-
-compileHandlers :: Model.Event Flavor (IO ()) -> IO [(Channel, Universe -> IO ())]
-compileHandlers graph = do
-    -- compile event graph
-    let graph' = Implementation.unEvent graph
-    (paths1,cache) <- Implementation.compile (invalidRef, Reactimate graph')
-
-    -- prepare threading the cache as state
-    rcache <- newEmptyMVar
-    putMVar rcache cache
-    let -- run a single path
-        run m = do
-            -- takeMVar  makes sure that event graph updates are sequential.
-            cache <- takeMVar rcache
-            (reactimates,cache') <- runRun m cache
-            putMVar rcache cache'
-            -- However, the corresponding IO actions are run afterwards,
-            -- and under certain circumstances, they can *interleave*.
-            reactimates
-         
-        appendReactimates
-            :: [Universe -> Run (IO ())]
-            -> (Universe -> Run (IO ()))
-        appendReactimates ps x = do
-            reactimates <- sequence $ map ($ x) ps
-            return $ sequence_ reactimates
-            
-        paths2 = map (second $ (run .) . appendReactimates) $ groupByChannel paths1
-    
-    return paths2
-
-
--- FIXME: make this faster
-groupByChannel :: [(Channel, a)] -> [(Channel, [a])]
-groupByChannel xs = [(i, [x | (j,x) <- xs, i == j]) | i <- channels]
-    where channels = nub . map fst $ xs
+inputE :: InputChannel [a] -> Event t a
+inputE = E . AST.inputE
 
 {-----------------------------------------------------------------------------
     NetworkDescription, setting up event networks
@@ -126,27 +86,31 @@ groupByChannel xs = [(i, [x | (j,x) <- xs, i == j]) | i <- channels]
 >   window <- newWindow
 >   ...
 >
->   -- build the event network
->   network <- compile $ do
->       -- input: obtain  Event  from functions that register event handlers
->       emouse    <- fromAddHandler $ registerMouseEvent window
->       ekeyboard <- fromAddHandler $ registerKeyEvent window
->       -- input: obtain  Behavior  from mutable data by polling
->       btext     <- fromPoll       $ getTextValue editBox
->       bdie      <- fromPoll       $ randomRIO (1,6)
+>   -- describe the event network
+>   let networkDescription :: forall t. NetworkDescription t ()
+>       networkDescription = do
+>           -- input: obtain  Event  from functions that register event handlers
+>           emouse    <- fromAddHandler $ registerMouseEvent window
+>           ekeyboard <- fromAddHandler $ registerKeyEvent window
+>           -- input: obtain  Behavior  from changes
+>           btext     <- fromChanges    "" $ registerTextChange editBox
+>           -- input: obtain  Behavior  from mutable data by polling
+>           bdie      <- fromPoll       $ randomRIO (1,6)
 >
->       -- express event graph
->       let
->           behavior1 = accumB ...
->           ...
->           event15 = union event13 event14
+>           -- express event graph
+>           let
+>               behavior1 = accumB ...
+>               ...
+>               event15 = union event13 event14
 >   
->       -- output: animate some event occurences
->       reactimate $ fmap print event15
->       reactimate $ fmap drawCircle eventCircle
+>           -- output: animate some event occurences
+>           reactimate $ fmap print event15
+>           reactimate $ fmap drawCircle eventCircle
 >
->   -- register handlers and start producing outputs
->   actuate network
+>       -- compile network description into a network
+>       network <- compile networkDescription
+>       -- register handlers and start producing outputs
+>       actuate network
 
     In short, you use 'fromAddHandler' to obtain /input/ events.
     The library uses this to register event handlers
@@ -156,32 +120,36 @@ groupByChannel xs = [(i, [x | (j,x) <- xs, i == j]) | i <- channels]
 
 -}
 
-type AddHandler'  = (Channel, AddHandler Universe)
-type Preparations = ([Model.Event Flavor (IO ())], [AddHandler'], [IO ()])
+type AddHandler'     = AddHandler InputValue
+type Preparations t  =
+    ( [Event t (IO ())]     -- reactimate outputs
+    , [AddHandler']         -- fromAddHandler events 
+    , [IO InputValue]       -- fromPoll events
+    , [IO ()]               -- liftIOLater
+    )
 
 -- | Monad for describing event networks.
 -- 
 -- The 'NetworkDescription' monad is an instance of 'MonadIO',
 -- so 'IO' is allowed inside.
 -- 
--- Note: It is forbidden to smuggle values of types 'Event' or 'Behavior'
--- outside the 'NetworkDescription' monad. This shouldn't be possible by default,
--- but you might get clever and use 'IORef' to circumvent this.
--- Don't do that, it won't work and also has a 99,98% chance of 
--- destroying the earth by summoning time-traveling zygohistomorphisms.
-newtype NetworkDescription a = Prepare { unPrepare :: RWST () Preparations Channel IO a }
+-- Note: The phantom type @t@ prevents you from smuggling
+-- values of types 'Event' or 'Behavior'
+-- outside the 'NetworkDescription' monad.
+newtype NetworkDescription t a
+    = Prepare { unPrepare :: RWST () (Preparations t) () IO a }
 
-instance Monad (NetworkDescription) where
+instance Monad (NetworkDescription t) where
     return  = Prepare . return
     m >>= k = Prepare $ unPrepare m >>= unPrepare . k
-instance MonadIO (NetworkDescription) where
+instance MonadIO (NetworkDescription t) where
     liftIO  = Prepare . liftIO
-instance Functor (NetworkDescription) where
+instance Functor (NetworkDescription t) where
     fmap f  = Prepare . fmap f . unPrepare
-instance Applicative (NetworkDescription) where
+instance Applicative (NetworkDescription t) where
     pure    = Prepare . pure
     f <*> a = Prepare $ unPrepare f <*> unPrepare a
-instance MonadFix (NetworkDescription) where
+instance MonadFix (NetworkDescription t) where
     mfix f  = Prepare $ mfix (unPrepare . f)
 
 {- | Output.
@@ -203,8 +171,8 @@ instance MonadFix (NetworkDescription) where
     of your event-based framework.
 
 -}
-reactimate :: Model.Event PushIO (IO ()) -> NetworkDescription ()
-reactimate e = Prepare $ tell ([e], [], [])
+reactimate :: Event t (IO ()) -> NetworkDescription t ()
+reactimate e = Prepare $ tell ([e],[],[],[])
 
 -- | A value of type @AddHandler a@ is just a facility for registering
 -- callback functions, also known as event handlers.
@@ -223,57 +191,108 @@ type AddHandler a = (a -> IO ()) -> IO (IO ())
 -- When the event network is actuated,
 -- this will register a callback function such that
 -- an event will occur whenever the callback function is called.
-fromAddHandler :: AddHandler a -> NetworkDescription (Model.Event PushIO a)
+fromAddHandler :: AddHandler a -> NetworkDescription t (Event t a)
 fromAddHandler addHandler = Prepare $ do
-        channel <- newChannel
-        key     <- liftIO $ newUniverseKey
-        let addHandler' k = addHandler $ k . toUniverse key
-        tell ([], [(channel, addHandler')], [])
-        return $ input channel key
-    where
-    newChannel = do c <- get; put $! c+1; return c
+    i <- liftIO $ newInputChannel
+    let addHandler' k = addHandler $ k . toValue i . (\x -> [x])
+    tell ([],[addHandler'],[],[])
+    return $ inputE i
 
 -- | Input,
--- obtain a 'Behavior' by polling mutable data, like mutable variables or GUI widgets.
+-- obtain a 'Behavior' by frequently polling mutable data, like the current time.
+--
+-- The resulting 'Behavior' will be updated on whenever the event
+-- network processes an input event.
+--
+-- This function is occasionally useful, but
+-- the recommended way to obtain 'Behaviors' is by using 'fromChanges'.
 -- 
 -- Ideally, the argument IO action just polls a mutable variable,
 -- it should not perform expensive computations.
 -- Neither should its side effects affect the event network significantly.
+fromPoll :: IO a -> NetworkDescription t (Behavior t a)
+fromPoll poll = Prepare $ do
+    i <- liftIO $ newInputChannel
+    let poll' = toValue i . (:[]) <$> poll
+    tell ([],[],[poll'],[])
+    initial <- liftIO $ poll
+    return $ stepper initial (inputE i)
+
+-- | Input,
+-- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
 -- 
--- Internally, the event network will take a snapshot of each mutable
--- datum before processing an input event, so that the obtained behavior
--- is well-defined. This snapshot is guaranteed to happen before
--- any 'reactimate' is performed. The network may omit taking a snapshot altogether
--- if the behavior is not needed.
-fromPoll :: IO a -> NetworkDescription (Model.Behavior PushIO a)
-fromPoll m = return $ poll m
+-- This is essentially just an application of the 'stepper' combinator.
+fromChanges :: a -> AddHandler a -> NetworkDescription t (Behavior t a)
+fromChanges initial changes = stepper initial <$> fromAddHandler changes
+
+-- | Output,
+-- observe when a 'Behavior' changes.
+-- 
+-- Strictly speaking, a 'Behavior' denotes a value that varies *continuously* in time,
+-- so there is no well-defined event which indicates when the behavior changes.
+-- 
+-- Still, for reasons of efficiency, the library provides a way to observe
+-- changes when the behavior is a step function, for instance as 
+-- created by 'stepper'. There are no formal guarantees,
+-- but the idea is that
+--
+-- > changes (stepper x e) = return (calm e)
+changes :: Behavior t a -> NetworkDescription t (Event t a)
+changes ~(B (AST.Pair _ (AST.Stepper x e))) = return $ E $ fmap (:[]) e
+
+-- | Output,
+-- observe the initial value contained in a 'Behavior'.
+--
+-- Similar to 'updates', this function is not well-defined,
+-- but exists for reasons of efficiency.
+initial :: Behavior t a -> NetworkDescription t a
+initial ~(B (AST.Pair _ (AST.Stepper x e))) = return x
 
 -- | Lift an 'IO' action into the 'NetworkDescription' monad,
 -- but defer its execution until compilation time.
 -- This can be useful for recursive definitions using 'MonadFix'.
-liftIOLater :: IO () -> NetworkDescription ()
-liftIOLater m = Prepare $ tell ([],[], [m])
+liftIOLater :: IO () -> NetworkDescription t ()
+liftIOLater m = Prepare $ tell ([],[],[],[m])
 
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
-compile :: NetworkDescription () -> IO EventNetwork
+compile :: (forall t. NetworkDescription t ()) -> IO EventNetwork
 compile (Prepare m) = do
-    (_,_,(outputs,inputs,liftIOs)) <- runRWST m () 0
+    -- execute the NetworkDescription monad
+    (_,_,(outputs,inputs,polls,liftIOs)) <- runRWST m () ()
     sequence_ liftIOs
     
     let -- union of all  reactimates
-        graph = mconcat outputs :: Model.Event Flavor (IO ())
-    paths <- compileHandlers graph
+        E graph = foldr union never outputs
     
-    let -- register event handlers
-        register = fmap sequence_ . sequence . map snd . applyChannels inputs
-                 $ paths
+    automaton <- Implementation.compileToAutomaton graph
+    
+    -- allocate new variable for the automaton
+    rautomaton <- newEmptyMVar
+    putMVar rautomaton automaton
+    
+    let -- run the graph on a single input value
+        run :: InputValue -> IO ()
+        run input = do
+            -- takeMVar  makes sure that event graph updates are sequential.
+            automaton  <- takeMVar rautomaton
+            -- poll mutable data
+            pollValues <- sequence polls
+            -- percolate inputs through event graph
+            (reactimates,automaton') <- runStep automaton $ input:pollValues
+            putMVar rautomaton automaton'
+            -- Run corresponding IO actions afterwards.
+            -- Under certain circumstances, they can *interleave*.
+            case reactimates of
+                Just actions -> sequence_ actions
+                Nothing      -> return ()
+    
+        -- register event handlers
+        register :: IO (IO ())
+        register = fmap sequence_ . sequence . map ($ run) $ inputs
+
     makeEventNetwork register
 
--- FIXME: make this faster
-applyChannels :: [(Channel, a -> b)] -> [(Channel, a)] -> [(Channel, b)]
-applyChannels fs xs =
-    [(i, f x) | (i,f) <- fs, (j,x) <- xs, i == j]
 
 {-----------------------------------------------------------------------------
     Running event networks
@@ -316,7 +335,8 @@ makeEventNetwork register = do
     Simple use
 ------------------------------------------------------------------------------}
 -- | Simple way to run an event graph. Very useful for testing.
-interpret :: (Model.Event PushIO a -> Model.Event PushIO b) -> [a] -> IO [[b]]
+-- Uses the efficient push-driven implementation.
+interpret :: (forall t. Event t a -> Event t b) -> [a] -> IO [[b]]
 interpret f xs = do
     output                    <- newIORef []
     (addHandler, runHandlers) <- newAddHandler
@@ -334,7 +354,7 @@ interpret f xs = do
 
 -- | Simple way to write a single event handler with functional reactive programming.
 interpretAsHandler
-    :: (Model.Event PushIO a -> Model.Event PushIO b)
+    :: (forall t. Event t a -> Event t b)
     -> AddHandler a -> AddHandler b
 interpretAsHandler f addHandlerA = \handlerB -> do
     network <- compile $ do
@@ -342,6 +362,7 @@ interpretAsHandler f addHandlerA = \handlerB -> do
         reactimate $ handlerB <$> f e
     actuate network
     return (pause network)
+
 
 {-----------------------------------------------------------------------------
     Utilities
@@ -369,3 +390,14 @@ newAddHandler = do
             mapM_ ($ x) . map snd . Map.toList =<< readIORef handlers
     return (addHandler, runHandlers)
 
+
+-- | Build an 'Event' together with an 'IO' action that can 
+-- fire occurrences of this event. Variant of 'newAddHandler'.
+-- 
+-- This function is mainly useful for passing callback functions
+-- inside a 'reactimate'.
+newEvent :: NetworkDescription t (Event t a, a -> IO ())
+newEvent = do
+    (addHandler, fire) <- liftIO $ newAddHandler
+    e <- fromAddHandler addHandler
+    return (e,fire)

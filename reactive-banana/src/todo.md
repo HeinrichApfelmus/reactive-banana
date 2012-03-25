@@ -1,38 +1,21 @@
 Present
 -------
 
-Small fry
-=========
-* Add test cases and examples.
-* Consider a better name / overloading the `filterApply` function while we're at it.
+## Incremental computation
 
-* `Discrete`: Investigate use of the `Change` data type for `Discrete`. Will only be relevant in a push-based implementation. Consider overloading the `accumD` function to different types.
+Investigate use of the `Change` data type for `Behavior`.
+Consider overloading the `accumB` function to different types.
 
+This goes hand-in-hand with thoughts about incremental computations.
 
-Interface changes
-=================
+Investigate whether there is a general framework behind discrete values, i.e. where the events are efficient diffs.
 
-### Managing simultaneous events
-
-    -- Collect simultaneous events into a list
-    collect :: Event a -> Event [a]
-    -- collect . spread = id
-    spread :: Event [a] -> Event a
-
-
-    -- only keep the last event from simultaneous ones
-    calm :: Event a -> Event a
-    calm = fmap last . collect
-
-Note: We need to change the `interpret` function to allow for testing this. In particular, it seems like the `interpretTime` function currently doesn't respect simultaneous events.
-
-### Dynamic Event Switching
+## Dynamic Event Switching
 http://apfelmus.nfshost.com/blog/2011/05/15-frp-dynamic-event-switching.html
 
 Found a way to keep the previous interface constant.
 
-
-### Timing and timers
+## Timing and timers
 
     type Duration = -- time difference in UNIX epoch
 
@@ -60,43 +43,20 @@ Special support for time because
 * Debugging/Testing without having to wait the actual times.
 
 
-Efficiency
-==========
-* Sharing for Behaviors
-
-* Optimize finalizers and initializers.
-  Currently, *every* temporariliy cached value will be deleted,
-  and *every* accumulated behavior will be updated.
-  Ideally, you would only this with references that were actually *used*.
-* Actually, we can keep a separate vault for the temporary values
-  and throw it away wholesale.
-
-* Polling behaviors from the outside should only be read if we actually need them.
-  This is a bit tricky, we may not execute any IO action before doing that,
-  because that might change the external behavior.
-    -> This has been solved with the change to IO actions
-  
-* Ponder the difference between internal behaviors and external behaviors
-    internal: freeze after we have changed the accum value
-        Here we have full control, reactimate can't do anything bad.
-    external: freeze before we do anything with it
-  We could avoid a test if we do it right.
-  (Then again, we shouldn't use the Vault if we want to avoid tests...)
-
-* Optimize pure behaviors
+## Efficiency
+* Optimize pure behaviors?
 
     (pure f <$>)   -> fmap f
     apply (pure f) -> fmap f
 
 * Make sure space behavior is like demand-driven implementation (for better or worse).
-
+Actually, we need to speficy the model more carefully. The operations that shuffle events around are strict while the events themselves are lazy.
 
 Future
 ------
-
-Incremental Computation
-=======================
-Investigate whether there is a general framework behind discrete values, i.e. where the events are efficient diffs.
+Pure implementation
+===================
+The push-driven implementation can be made pure by putting the `Vault` data type into the `ST` monad instead of the `IO` monad. This might be useful for MIDI, i.e. using one and the same code for both real-time MIDI generation and writing it to files.
 
 "Splitting the moment"
 ====================
@@ -126,12 +86,4 @@ Possibility 3:
     -- This probably violates transitivity of  ~ ?
     -- e1 ~ e and e2 ~ e  but  e1 /~ e2
     -- Needs another interpretation for  ~
-
-
-Pure implementation
-===================
-The push-driven implementation can be made pure by putting the `Vault` data type into the `ST` monad instead of the `IO` monad. This might be useful for MIDI, i.e. using one and the same code for both real-time MIDI generation and writing it to files.
-
-
-
 

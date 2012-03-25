@@ -1,32 +1,18 @@
 Name:                reactive-banana
-Version:             0.4.3.2
-Synopsis:            Small but solid library for
-                     functional reactive programming (FRP).
+Version:             0.5.0.0
+Synopsis:            Practical library for functional reactive programming (FRP).
 Description:         
-    A small but solid library for functional reactive programming (FRP).
+    Reactive-banana is a practical library for Functional Reactive Programming (FRP).
     .
-    The current focus of this library is to implement
-    a subset of the semantic model for functional reactive programming
-    pioneered by Conal Elliott.
+    FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. Thus, the reactive-banana library promises to avoid the spagethetti code commonly used in traditional GUI technologies.
     .
-    Moreover, this library can hooked into /any/
-    existing event-based framework.
-    It is especially useful in conjunction with existing
-    GUI frameworks like @wxHaskell@ or @gtk2hs@.
-    .
-    This also means that your code can be a mix of FRP and imperative parts.
-    Bored of programming imperative GUIs? Write some parts with FRP!
-    Don't know how to express something with FRP?
-    Switch back to imperative style!
-    .
-    In the spectrum of possible FRP implementations,
-    this one features simple semantics but modest expressivity.
-    Predicting space & time usage should be easy.
+    See the project homepage <http://haskell.org/haskellwiki/Reactive-banana>
+    for a more detailed introduction and features.
     .
     Stability forecast:
-    Known inefficiencies that will be addressed.
     No semantic bugs expected.
-    Significant API changes are likely in future versions.
+    Significant API changes are likely in future versions,
+    though the main interface is beginning to stabilize.
 
 Homepage:            http://haskell.org/haskellwiki/Reactive-banana
 License:             BSD3
@@ -43,7 +29,8 @@ extra-source-files:  doc/examples/*.hs
 
 Library
     hs-source-dirs:     src
-    extensions:         TypeFamilies, FlexibleContexts,
+    extensions:
+                        TypeFamilies, FlexibleContexts,
                         FlexibleInstances, EmptyDataDecls,
                         GADTs, BangPatterns, TupleSections,
                         Rank2Types, NoMonomorphismRestriction,
@@ -52,13 +39,21 @@ Library
         base >= 4.2 && < 5, containers >= 0.3 && < 0.5,
         transformers == 0.2.*,
         QuickCheck >= 1.2 && < 2.5,
-        vault == 0.1.*
-    exposed-modules:    Reactive.Banana,
-                        Reactive.Banana.Incremental,
-                        Reactive.Banana.Model,
-                        Reactive.Banana.Implementation,
+        vault == 0.1.*, unordered-containers == 0.2.*, hashable == 1.1.*,
+        fclabels == 1.1.*
+    exposed-modules:
+                        Reactive.Banana,
+                        Reactive.Banana.Combinators,
+                        Reactive.Banana.Frameworks,
+                        Reactive.Banana.Experimental.Calm,
+                        Reactive.Banana.Internal.Model
+    other-modules:
+                        Reactive.Banana.Internal.AST,
+                        Reactive.Banana.Internal.InputOutput,
+                        Reactive.Banana.Internal.PushGraph,
+                        Reactive.Banana.Internal.TotalOrder,
                         Reactive.Banana.Tests
-    other-modules:      Reactive.Banana.PushIO
+
 
 Source-repository head
     type:               git

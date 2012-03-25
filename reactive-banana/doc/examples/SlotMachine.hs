@@ -3,6 +3,8 @@
     
     Example: Slot machine
 ------------------------------------------------------------------------------}
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+
 import Control.Monad (when)
 import Data.Maybe (isJust, fromJust)
 import Data.List (nub)
@@ -18,7 +20,7 @@ main :: IO ()
 main = do
     displayHelpMessage
     sources <- makeSources
-    network <- setupNetwork sources
+    network <- compile $ setupNetwork sources
     actuate network
     eventLoop sources
 
@@ -82,9 +84,8 @@ payout Triple = 200
 
 
 -- Set up the program logic in terms of events and behaviors.
-setupNetwork :: (EventSource (), EventSource ()) -> IO EventNetwork
-setupNetwork (escoin,esplay) = compile $ do
-
+setupNetwork :: forall t. (EventSource (), EventSource ()) -> NetworkDescription t ()
+setupNetwork (escoin,esplay) = do
     -- initial random number generator
     initialStdGen <- liftIO $ newStdGen
 
@@ -99,8 +100,8 @@ setupNetwork (escoin,esplay) = compile $ do
         -- The  ecoin      event adds a coin to the credits
         -- The  edoesplay  event removes money
         -- The  ewin       event adds credits because the player has won
-        bcredits :: Behavior Money
-        ecredits :: Event Money
+        bcredits :: Behavior t Money
+        ecredits :: Event t Money
         (ecredits, bcredits) = mapAccum 0 . fmap (\f x -> (f x,f x)) $
             ((addCredit <$ ecoin)
             `union` (removeCredit <$ edoesplay)
@@ -113,20 +114,20 @@ setupNetwork (escoin,esplay) = compile $ do
         addWin Triple = (+20)
         
         -- Event: does the player have enough money to play the game?
-        emayplay :: Event Bool
+        emayplay :: Event t Bool
         emayplay = apply ((\credits _ -> credits > 0) <$> bcredits) eplay
         
         -- Event: player has enough coins and plays
-        edoesplay :: Event ()
+        edoesplay :: Event t ()
         edoesplay = () <$ filterE id  emayplay
         -- Event: event that fires when the player doesn't have enough money
-        edenied   :: Event ()
+        edenied   :: Event t ()
         edenied   = () <$ filterE not emayplay
         
         
         -- State: random number generator
-        bstdgen :: Behavior StdGen
-        eroll   :: Event Reels
+        bstdgen :: Behavior t StdGen
+        eroll   :: Event t Reels
         -- accumulate the random number generator while rolling the reels
         (eroll, bstdgen) = mapAccum initialStdGen (roll <$> edoesplay)
         
@@ -140,7 +141,7 @@ setupNetwork (escoin,esplay) = compile $ do
             (z3,gen3) = random gen2
         
         -- Event: it's a win!
-        ewin :: Event Win
+        ewin :: Event t Win
         ewin = fmap fromJust $ filterE isJust $ fmap checkWin eroll
         checkWin (z1,z2,z3)
             | length (nub [z1,z2,z3]) == 1 = Just Triple

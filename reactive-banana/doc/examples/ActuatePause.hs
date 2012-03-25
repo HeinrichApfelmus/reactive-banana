@@ -11,7 +11,7 @@ import System.IO
 import Debug.Trace
 import Data.IORef
 
-import Reactive.Banana as R
+import Reactive.Banana
 
 
 main :: IO ()

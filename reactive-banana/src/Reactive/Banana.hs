@@ -5,19 +5,9 @@
 ------------------------------------------------------------------------------}
 
 module Reactive.Banana (
-    module Reactive.Banana.Incremental,
-    module Reactive.Banana.Model,
-    module Reactive.Banana.Implementation,
-
-    Event, Behavior, Discrete,
+    module Reactive.Banana.Combinators,
+    module Reactive.Banana.Frameworks,
     ) where
 
-import Reactive.Banana.Incremental hiding (Discrete)
-import qualified Reactive.Banana.Incremental as Polymorph
-import Reactive.Banana.Model hiding (interpret, Event, Behavior)
-import qualified Reactive.Banana.Model as Polymorph
-import Reactive.Banana.Implementation
-
-type Event    = Polymorph.Event PushIO
-type Behavior = Polymorph.Behavior PushIO
-type Discrete = Polymorph.Discrete PushIO
+import Reactive.Banana.Combinators
+import Reactive.Banana.Frameworks
