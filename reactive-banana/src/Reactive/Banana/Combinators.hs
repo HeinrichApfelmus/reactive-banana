@@ -1,7 +1,10 @@
 {-----------------------------------------------------------------------------
-    Reactive Banana
+    reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE Rank2Types, MultiParamTypeClasses, TupleSections, FlexibleInstances #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE Rank2Types, TupleSections #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+-- FlexibleInstances
 
 module Reactive.Banana.Combinators (
     -- * Synopsis
@@ -38,10 +41,31 @@ import Control.Monad
 import Data.Maybe (isJust)
 import Data.Monoid (Monoid(..))
 
-import Reactive.Banana.Internal.InputOutput
-import qualified Reactive.Banana.Internal.AST as AST
 import qualified Reactive.Banana.Internal.Model as Model
+
+-- The efficient push-based implementation makes essential
+-- use of several language extensions. To enable building
+-- if other compilers, we can select the model implementation instead.
+#if __GLASGOW_HASKELL__
+
+import Reactive.Banana.Internal.InputOutput
 import Reactive.Banana.Internal.PushGraph
+import qualified Reactive.Banana.Internal.AST as Prim
+import qualified Reactive.Banana.Internal.InterpretModel as Prim
+
+type PrimEvent     = Prim.Event Prim.Expr
+type PrimBehavior  = Prim.Behavior Prim.Expr
+
+#else
+
+import qualified Reactive.Banana.Model as Prim
+
+type PrimEvent    a = Prim.Event a
+type PrimBehavior a = Prim.Behavior a
+
+#endif
+
+
 
 {-----------------------------------------------------------------------------
     Introduction
@@ -59,14 +83,14 @@ that are tagged with their corresponding time of occurence,
 
 > type Event t a = [(Time,a)]
 -}
-newtype Event t a = E { unE :: AST.Event AST.Expr [a] }
+newtype Event t a = E { unE :: PrimEvent [a] }
     -- ^ (Constructor exported for internal use only.)
 
 {-| @Behavior t a@ represents a value that varies in time. Think of it as
 
 > type Behavior t a = Time -> a
 -}
-newtype Behavior t a = B { unB :: AST.Behavior AST.Expr a }
+newtype Behavior t a = B { unB :: PrimBehavior a }
     -- ^ (Constructor exported for internal use only.)
 
 {-$intro2
@@ -90,25 +114,31 @@ model implementation. See 'Reactive.Banana.Model' for more.
 -- | Interpret with model implementation.
 -- Useful for testing.
 interpretModel :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
-interpretModel f xs =
-    map toList <$> Model.interpretModel (unE . f . E) (map Just xs)
+interpretModel f xs = map toList <$> Prim.interpretModel (unE . f . E) (map Just xs)
 
--- | Interpret with push-based implementation.
+-- | Interpret with push-based implementation (if available for your compiler).
 -- Useful for testing.
 interpretPushGraph :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
+
+#if __GLASGOW_HASKELL__
+
 interpretPushGraph f xs = do
     i <- newInputChannel
-    automaton <- compileToAutomaton (unE . f . E $ AST.inputE i)
+    automaton <- compileToAutomaton (unE . f . E $ Prim.inputE i)
     map toList <$> unfoldAutomaton automaton i xs
+
+#else
+
+interpretPushGraph = interpretModel
+
+#endif
 
 toList :: Maybe [a] -> [a]
 toList Nothing   = []
 toList (Just xs) = xs
 
 {-----------------------------------------------------------------------------
-    Basic combinators
-
-    Implemented in terms of Reactive.Banana.Internal.AST
+    Core combinators
 ------------------------------------------------------------------------------}
 singleton :: a -> [a]
 singleton x = [x]
@@ -116,7 +146,7 @@ singleton x = [x]
 -- | Event that never occurs.
 -- Think of it as @never = []@.
 never    :: Event t a
-never = E $ singleton <$> AST.never
+never = E $ Prim.mapE singleton Prim.never
 
 -- | Merge two event streams of the same type.
 -- In case of simultaneous occurrences, the left argument comes first.
@@ -126,14 +156,20 @@ never = E $ singleton <$> AST.never
 -- >    | timex <= timey = (timex,x) : union xs ((timey,y):ys)
 -- >    | timex >  timey = (timey,y) : union ((timex,x):xs) ys
 union    :: Event t a -> Event t a -> Event t a
-union e1 e2 = E $ AST.unionWith (++) (unE e1) (unE e2)
+union e1 e2 = E $ Prim.unionWith (++) (unE e1) (unE e2)
+
+-- | Merge several event streams of the same type.
+-- 
+-- > unions = foldr union never
+unions :: [Event t a] -> Event t a
+unions = foldr union never
 
 -- | Allow all events that fulfill the predicate, discard the rest.
 -- Think of it as
 -- 
 -- > filterE p es = [(time,a) | (time,a) <- es, p a]
 filterE   :: (a -> Bool) -> Event t a -> Event t a
-filterE p = E . AST.filterE (not . null) . (filter p <$>) . unE
+filterE p = E . Prim.filterE (not . null) . (Prim.mapE (filter p)) . unE
 
 -- | Collect simultaneous event occurences.
 -- The result will never contain an empty list.
@@ -141,14 +177,14 @@ filterE p = E . AST.filterE (not . null) . (filter p <$>) . unE
 --
 -- > collect [(time1, e1), (time1, e2)] = [(time1, [e1,e2])]
 collect   :: Event t a -> Event t [a]
-collect e = E $ singleton <$> unE e
+collect e = E $ Prim.mapE singleton (unE e)
 
 -- | Emit simultaneous event occurrences.
 -- Up to strictness, we have
 --
 -- > spill . collect = id
 spill :: Event t [a] -> Event t a
-spill e = E $ concat <$> unE e
+spill e = E $ Prim.mapE concat (unE e)
 
 -- | Construct a time-varying function from an initial value and 
 -- a stream of new values. Think of it as
@@ -162,7 +198,7 @@ spill e = E $ concat <$> unE e
 -- Also note that in the case of simultaneous occurrences,
 -- only the last one is kept.
 stepper :: a -> Event t a -> Behavior t a
-stepper x e = B $ AST.stepperB x (last <$> unE e)
+stepper x e = B $ Prim.stepperB x $ Prim.mapE last $ unE e
 
 -- | The 'accumE' function accumulates a stream of events.
 -- Example:
@@ -173,14 +209,15 @@ stepper x e = B $ AST.stepperB x (last <$> unE e)
 -- Note that the output events are simultaneous with the input events,
 -- there is no \"delay\" like in the case of 'accumB'.
 accumE   :: a -> Event t (a -> a) -> Event t a
-accumE acc = E . mapAccumE acc . fmap concatenate . unE
+accumE acc = E . mapAccumE acc . Prim.mapE concatenate . unE
     where
     concatenate :: [a -> a] -> a -> ([a],a)
     concatenate fs acc = (tail values, last values)
         where values = scanl' (flip ($)) acc fs
 
-    mapAccumE :: s -> AST.Event AST.Expr (s -> (a,s)) -> AST.Event AST.Expr a
-    mapAccumE acc = fmap fst . AST.accumE (undefined,acc) . fmap (. snd)
+    mapAccumE :: s -> PrimEvent (s -> (a,s)) -> PrimEvent a
+    mapAccumE acc =
+        Prim.mapE fst . Prim.accumE (undefined,acc) . Prim.mapE (. snd)
 
 -- strict version of scanl
 scanl' :: (a -> b -> a) -> a -> [b] -> [a]
@@ -193,7 +230,7 @@ scanl' f x ys = x : case ys of
 -- 
 -- > apply bf ex = [(time, bf time x) | (time, x) <- ex]
 apply    :: Behavior t (a -> b) -> Event t a -> Event t b
-apply bf ex = E $ AST.applyE (map <$> unB bf) (unE ex)
+apply bf ex = E $ Prim.applyE (Prim.mapB map $ unB bf) (unE ex)
 
 {-$classes
 
@@ -222,16 +259,19 @@ Think of it as @bf \<*\> bx = \\time -> bf time $ bx time@.
 
 -}
 
+{- No monoid instance, sorry.
+
 instance Monoid (Event t (a -> a)) where
     mempty  = never
     mappend = unionWith (flip (.))
+-}
 
 instance Functor (Event t) where
-    fmap f e = E $ (map f) <$> (unE e)
+    fmap f e = E $ Prim.mapE (map f) (unE e)
 
 instance Applicative (Behavior t) where
-    pure x = B $ AST.pureB x
-    bf <*> bx = B $ AST.applyB (unB bf) (unB bx)
+    pure x    = B $ Prim.pureB x
+    bf <*> bx = B $ Prim.applyB (unB bf) (unB bx)
 
 instance Functor (Behavior t) where
     fmap = liftA
@@ -269,7 +309,7 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
 --
 -- > unionWith f e1 e2 = fmap (foldr1 f) <$> collect (e1 `union` e2)
 unionWith :: (a -> a -> a) -> Event t a -> Event t a -> Event t a
-unionWith f e1 e2 = E $ AST.unionWith g (unE e1) (unE e2)
+unionWith f e1 e2 = E $ Prim.unionWith g (unE e1) (unE e2)
     where g xs ys = singleton $ foldr1 f (xs ++ ys)
 
 -- | Keep only the last occurrence when simultaneous occurrences happen.
