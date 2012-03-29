@@ -19,8 +19,11 @@ import qualified Data.Set as Set
 
 import qualified Graphics.UI.WX as WX
 import Graphics.UI.WX hiding (Event)
+import qualified Graphics.UI.WXCore as WXCore
 import Reactive.Banana
 import Reactive.Banana.WX
+
+import Tidings
 
 {-----------------------------------------------------------------------------
     Main
@@ -52,15 +55,19 @@ main = start $ do
             eCreate <- event0 createBtn command       
             eDelete <- event0 deleteBtn command
             -- filter string
-            bFilterString <- behaviorText filterEntry ""
-            let bFilter :: Behavior t (String -> Bool)
-                bFilter = isPrefixOf <$> bFilterString
-
+            tFilterString <- reactiveTextEntry filterEntry bFilterString
+            let bFilterString = stepper "" $ rumors tFilterString
+                tFilter = isPrefixOf <$> tFilterString
+                bFilter = facts  tFilter
+                eFilter = rumors tFilter
+            
             -- list box with selection
-            bSelection <- reactiveListDisplay listBox bListItems bShowDataItem
+            eSelection <- rumors <$> reactiveListDisplay listBox
+                bListBoxItems bSelection bShowDataItem
 
             -- data item display
-            (_,eDataItemIn) <- reactiveDataItem (firstname,lastname) bDataItemOut
+            eDataItemIn <- rumors <$> reactiveDataItem (firstname,lastname)
+                bSelectionDataItem
             
             let -- database
                 bDatabase :: Behavior t (Database DataItem)
@@ -72,20 +79,30 @@ main = start $ do
                     where
                     update' mkey x = flip update x <$> mkey
                 
+                -- selection
+                bSelection :: Behavior t (Maybe DatabaseKey)
+                bSelection = stepper Nothing $ unions
+                    [ eSelection
+                    , Nothing <$ eDelete
+                    , Just . nextKey <$> bDatabase <@ eCreate
+                    , (\b s p -> b >>= \a -> if p (s a) then Just a else Nothing)
+                        <$> bSelection <*> bShowDataItem <@> eFilter
+                    ]
+                    where
+                    unions = foldr1 union
+                
                 bLookup :: Behavior t (DatabaseKey -> Maybe DataItem)
                 bLookup = flip lookup <$> bDatabase
                 
                 bShowDataItem :: Behavior t (DatabaseKey -> String)
                 bShowDataItem = (maybe "" showDataItem .) <$> bLookup
                 
-                bListItems :: Behavior t [DatabaseKey]
-                bListItems = (\p show -> filter (p. show) . keys)
+                bListBoxItems :: Behavior t [DatabaseKey]
+                bListBoxItems = (\p show -> filter (p. show) . keys)
                     <$> bFilter <*> bShowDataItem <*> bDatabase
 
-                bDataItemOut :: Behavior t (Maybe DataItem)
-                bDataItemOut = (=<<) <$> bLookup <*> bSelection
-
-            -- TODO: Delete event must change selection!
+                bSelectionDataItem :: Behavior t (Maybe DataItem)
+                bSelectionDataItem = (=<<) <$> bLookup <*> bSelection
 
             -- automatically enable / disable editing
             let
@@ -118,43 +135,27 @@ lookup key   (Database _      db) = Map.lookup key db
 type DataItem = (String, String)
 showDataItem (firstname, lastname) = lastname ++ ", " ++ firstname
 
-{- Note: On breaking feedback loops.
-
-The right abstraction for this is a  behavior + notifications .
-The point is that the notifications do *not* represent every single change
-in the behavior. Instead, they represent selected changes.
-That's why the applicative instance for this data type is a bit different
-than usual.
-
--}
-
--- text entry widgets in terms of discrete time-varying values
+-- single text entry
 reactiveTextEntry
     :: TextCtrl a
-    -> Behavior t String      -- set text programmatically (view)
+    -> Behavior t String      -- text value
     -> NetworkDescription t
-        (Behavior t String    -- current text (both view & controller)
-        ,Event t String)      -- user changes (controller)
-reactiveTextEntry entry input = do
-    sink entry [ text :== input ]               -- display value
-
-    eUser <- changes =<< behaviorText entry ""  -- user changes
-    eIn   <- changes input                      -- input changes
-    x     <- initial input
-    -- programmatic changes will affect the text box *after* user changes.
-    return (stepper x (eUser `union` eIn), eUser)
+        (Tidings t String)    -- user changes
+reactiveTextEntry w btext = do
+    sink w [ text :== btext ]   -- display value
+    eUser <- eventText w        -- user changes
+    return $ tidings btext eUser
 
 -- whole data item (consisting of two text entries)
 reactiveDataItem
     :: (TextCtrl a, TextCtrl b)
     -> Behavior t (Maybe DataItem)
     -> NetworkDescription t
-        (Behavior t DataItem, Event t DataItem)
-reactiveDataItem (firstname,lastname) input = do
-    (b1,e1) <- reactiveTextEntry firstname (fst . maybe ("","") id <$> input)
-    (b2,e2) <- reactiveTextEntry lastname  (snd . maybe ("","") id <$> input)
-    return ( (,) <$> b1 <*> b2 ,
-        ((,) <$> b1 <@> e2) `union` (flip (,) <$> b2 <@> e1))
+        (Tidings t DataItem)
+reactiveDataItem (firstname,lastname) binput = do
+    t1 <- reactiveTextEntry firstname (fst . maybe ("","") id <$> binput)
+    t2 <- reactiveTextEntry lastname  (snd . maybe ("","") id <$> binput)
+    return $ (,) <$> t1 <*> t2
 
 
 {-----------------------------------------------------------------------------
@@ -168,35 +169,55 @@ reactiveDataItem (firstname,lastname) input = do
 reactiveListDisplay :: forall t a b. Ord a
     => SingleListBox b          -- ListBox widget to use
     -> Behavior t [a]           -- list of items
+    -> Behavior t (Maybe a)     -- selected element
     -> Behavior t (a -> String) -- display an item
     -> NetworkDescription t
-        (Behavior t (Maybe a))  -- current selection as item (possibly empty)
-reactiveListDisplay listBox elements display = do
-    -- retrieve selection index
-    bSelection <- behaviorListBoxSelection listBox
+        (Tidings t (Maybe a))   -- current selection as item (possibly empty)
+reactiveListDisplay w bitems bsel bdisplay = do
+    -- animate output items
+    sink w [ items :== map <$> bdisplay <*> bitems ]
 
-    -- display items
-    sink listBox [ items :== map <$> display <*> elements ]
+    -- animate output selection
+    let bindices :: Behavior t (Map.Map a Int)
+        bindices = (Map.fromList . flip zip [0..]) <$> bitems
+        bindex   = (\m a -> maybe (-1) id $ flip Map.lookup m =<< a) <$>
+                    bindices <*> bsel
+    sink w [ selection :== bindex ]
+
     -- changing the display won't change the current selection
-    eDisplay <- changes display
-    sink listBox [ selection :== stepper (-1) $ bSelection <@ eDisplay ]
+    -- eDisplay <- changes display
+    -- sink listBox [ selection :== stepper (-1) $ bSelection <@ eDisplay ]
 
-    -- return current selection as element
-    let bIndexed :: Behavior t (Map.Map Int a)
-        bIndexed = Map.fromList . zip [0..] <$> elements
-    return $ Map.lookup <$> bSelection <*> bIndexed
-
+    -- user selection
+    let bindices2 :: Behavior t (Map.Map Int a)
+        bindices2 = Map.fromList . zip [0..] <$> bitems
+    esel <- eventSelection w
+    return $ tidings bsel $ flip Map.lookup <$> bindices2 <@> esel
 
 
 {-----------------------------------------------------------------------------
     wxHaskell convenience wrappers and bug fixes
 ------------------------------------------------------------------------------}
--- | Return *user* changes to the list box selection.
-behaviorListBoxSelection :: SingleListBox b -> NetworkDescription t (Behavior t Int)
-behaviorListBoxSelection listBox = do
-    liftIO $ fixSelectionEvent listBox
-    a <- liftIO $ event1ToAddHandler listBox (event0ToEvent1 select)
-    fromChanges (-1) $ mapIO (const $ get listBox selection) a
+-- user input event - text for text entries
+eventText :: TextCtrl w -> NetworkDescription t (Event t String)
+eventText w = do
+    -- Should probably be  wxEVT_COMMAND_TEXT_UPDATED ,
+    -- but that's missing from wxHaskell.
+    -- Note: Observing  keyUp events does create a small lag
+    addHandler <- liftIO $ event1ToAddHandler w keyboardUp
+    fromAddHandler $ mapIO (const $ get w text) addHandler
+
+-- observe "key up" events (many thanks to Abu Alam)
+-- this should probably be in the wxHaskell library
+keyboardUp  :: WX.Event (Window a) (EventKey -> IO ())
+keyboardUp  = WX.newEvent "keyboardUp" WXCore.windowGetOnKeyUp WXCore.windowOnKeyUp
+
+-- user input event - selection marker for list events
+eventSelection :: SingleListBox b -> NetworkDescription t (Event t Int)
+eventSelection w = do
+    liftIO $ fixSelectionEvent w
+    addHandler <- liftIO $ event1ToAddHandler w (event0ToEvent1 select)
+    fromAddHandler $ mapIO (const $ get w selection) addHandler
 
 -- Fix @select@ event not being fired when items are *un*selected.
 fixSelectionEvent listbox =

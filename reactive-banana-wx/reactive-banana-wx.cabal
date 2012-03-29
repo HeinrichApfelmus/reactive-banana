@@ -1,5 +1,5 @@
 Name:                reactive-banana-wx
-Version:             0.5.0.0
+Version:             0.6.0.0
 Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,

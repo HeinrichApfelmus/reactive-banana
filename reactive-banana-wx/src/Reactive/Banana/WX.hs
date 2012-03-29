@@ -11,10 +11,7 @@ module Reactive.Banana.WX (
     -- * General
     event1, event0, behavior,
     Prop'(..), sink,
-    
-    -- * Specialized for widgets
-    behaviorText, sinkText, keyboardUp,
-    
+        
     -- * Utilities
     event1ToAddHandler, event0ToEvent1,
     mapIO,
@@ -63,48 +60,6 @@ sink widget props = mapM_ sink1 props
         liftIOLater $ set widget [attr := x]
         e <- changes b
         reactimate $ (\x -> set widget [attr := x]) <$> e
-
-{-----------------------------------------------------------------------------
-    Connection with events and behaviors
-------------------------------------------------------------------------------}
--- | Behavior of the user-entered 'text' of a 'TextCtrl' widget.
---
--- To avoid feedback loops, *only* the user-entered text will
--- update the behavior.
--- This is probably not what you want, though.
-behaviorText
-    :: WX.TextCtrl w
-    -> String
-        -- ^ Initial value supplied "by the user". Not set programmaticaly.
-    -> NetworkDescription t (Behavior t String)
-behaviorText textCtrl initial = do
-    -- Should probably be  wxEVT_COMMAND_TEXT_UPDATED ,
-    -- but that's missing from wxHaskell.
-    -- Note: Observing  keyUp events does create a small lag
-    addHandler <- liftIO $ event1ToAddHandler textCtrl keyboardUp
-    e <- fromAddHandler $ mapIO (const $ get textCtrl text) addHandler
-    return $ stepper initial e
-
-
--- observe "key up" events (many thanks to Abu Alam)
--- this should probably be in the wxHaskell library
-keyboardUp  :: WX.Event (Window a) (EventKey -> IO ())
-keyboardUp  = WX.newEvent "keyboardUp" windowGetOnKeyUp windowOnKeyUp
-
-
--- | Reactimate the 'text' of a 'TextCtrl' widget.
---
--- To avoid feedback loops, the text will not be updated while
--- the widget has the focus.
-sinkText :: WX.TextCtrl w -> Behavior t String -> NetworkDescription t ()
-sinkText textCtrl b = do
-    e <- changes b
-    x <- initial b
-
-    bHasFocus <- stepper False <$> event1 textCtrl focus
-    
-    let b' = stepper x $ whenE (not <$> bHasFocus) e
-    sink textCtrl [ text :== b' ]
 
 {-----------------------------------------------------------------------------
     Utilities
