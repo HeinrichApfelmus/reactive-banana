@@ -10,6 +10,7 @@ module Reactive.Banana.Tests where
 import Control.Monad (when)
 
 import Reactive.Banana.Combinators
+import Reactive.Banana.Frameworks (interpretFrameworks)
 
 -- import Test.QuickCheck
 -- import Test.QuickCheck.Property
@@ -18,12 +19,15 @@ import Reactive.Banana.Combinators
     Testing
 ------------------------------------------------------------------------------}
 matchesModel :: (Show b, Eq b)
-             => (forall t. Event t a -> Event t b) -> [[a]] -> IO Bool
+             => (forall t. Event t a -> Event t b) -> [a] -> IO Bool
 matchesModel f xs = do
-    bs1 <- interpretModel     f xs
-    bs2 <- interpretPushGraph f xs
-    when (bs1 /= bs2) $ print bs1 >> print bs2
-    return $ bs1 == bs2
+    bs1 <- interpretModel      f (singletons xs)
+    bs2 <- interpretPushGraph  f (singletons xs)
+    bs3 <- interpretFrameworks f xs
+    let bs = [bs1,bs2,bs3]
+    let b = all (==bs1) bs
+    when (not b) $ mapM_ print bs
+    return b
 
 testSuite = do
         -- trivial unit tests
@@ -43,7 +47,7 @@ testSuite = do
         --  * quickcheck
 
 test :: (Show b, Eq b) => (forall t. Event t Int -> Event t b) -> IO ()
-test f = print =<< matchesModel f (singletons [1..8::Int])
+test f = print =<< matchesModel f [1..8::Int]
 
 singletons = map (\x -> [x])
 

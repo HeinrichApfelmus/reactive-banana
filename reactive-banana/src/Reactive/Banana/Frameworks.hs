@@ -9,7 +9,7 @@ module Reactive.Banana.Frameworks (
     -- | Build event networks using existing event-based frameworks and run them.
     
     -- * Simple use
-    interpret, interpretAsHandler,
+    interpretAsHandler,
 
     -- * Building event networks with input/output
     -- $build
@@ -24,6 +24,9 @@ module Reactive.Banana.Frameworks (
     -- * Utilities
     -- $utilities
     newAddHandler, newEvent,
+    
+    -- * Internal
+    interpretFrameworks,
     ) where
 
 import Control.Applicative
@@ -373,10 +376,10 @@ makeEventNetwork register = do
 {-----------------------------------------------------------------------------
     Simple use
 ------------------------------------------------------------------------------}
--- | Simple way to run an event graph. Very useful for testing.
--- Uses the efficient push-driven implementation.
-interpret :: (forall t. Event t a -> Event t b) -> [a] -> IO [[b]]
-interpret f xs = do
+-- | Interpret by using a framework internally.
+-- Only useful for testing library internals.
+interpretFrameworks :: (forall t. Event t a -> Event t b) -> [a] -> IO [[b]]
+interpretFrameworks f xs = do
     output                    <- newIORef []
     (addHandler, runHandlers) <- newAddHandler
     network                   <- compile $ do
