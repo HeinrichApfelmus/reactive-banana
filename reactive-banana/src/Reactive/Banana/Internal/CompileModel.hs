@@ -41,8 +41,9 @@ compileWithGlobalInput f = do
         filterJust = map fromJust . filter isJust
         
         fromInputValues :: InputChannel a -> [InputValue] -> Maybe a
-        fromInputValues i xs = listToMaybe [y | x <- xs, let Just y = fromValue i x]
-    
+        fromInputValues i xs = listToMaybe [y | x <- xs, Just y <- [fromValue i x]]
+            
+
         -- step of the automaton
         step values outputs = do
             writeIORef ref values           -- write new input value
