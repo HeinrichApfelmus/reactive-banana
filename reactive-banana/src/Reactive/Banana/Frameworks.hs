@@ -1,7 +1,8 @@
 {-----------------------------------------------------------------------------
-    Reactive Banana
+    reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE Rank2Types, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, Rank2Types #-}
+-- #define UseExtensions 1
 
 module Reactive.Banana.Frameworks (
     -- * Synopsis
@@ -26,32 +27,61 @@ module Reactive.Banana.Frameworks (
     ) where
 
 import Control.Applicative
-import Control.Arrow (second)
-import Control.Concurrent
+import Control.Concurrent.MVar
 import Control.Monad
 import Control.Monad.Fix       (MonadFix(..))
 import Control.Monad.IO.Class  (MonadIO(..))
 import Control.Monad.Trans.RWS
 
-import Data.Dynamic (Typeable)
 import Data.IORef
-import Data.List (nub)
 import Data.Monoid
-
-import qualified Data.HashMap.Strict as Map
 
 import Reactive.Banana.Internal.InputOutput
 import Reactive.Banana.Combinators
-import qualified Reactive.Banana.Internal.AST as AST
+
+#if UseExtensions
+
+import qualified Reactive.Banana.Internal.AST as Prim
 import qualified Reactive.Banana.Internal.PushGraph as Implementation
+
+#else
+
+import qualified Reactive.Banana.Model as Prim
+import Reactive.Banana.Internal.CompileModel
+
+#endif
+
+import qualified Data.HashMap.Strict as Map
 
 type Map = Map.HashMap
 
 {-----------------------------------------------------------------------------
-    AST specific functions
+    Compilation specific to the different backends
 ------------------------------------------------------------------------------}
-inputE :: InputChannel [a] -> Event t a
-inputE = E . AST.inputE
+#if UseExtensions
+
+-- TODO: Share types. For that, Model.Event would need to become a newtype.
+
+data InputToEvent = InputToEvent (forall a. InputChannel a -> PrimEvent a)
+type Compile a b  = (InputToEvent -> IO (PrimEvent a,b)) -> IO (Automaton a,b)
+
+compileWithGlobalInput :: Compile a b
+compileWithGlobalInput f = do
+    (e,b) <- f (InputToEvent Prim.inputE)
+    a     <- Implementation.compileToAutomaton e 
+    return (a, b)
+
+primChanges ~(Prim.Pair _ (Prim.Stepper x e)) = e
+primInitial ~(Prim.Pair _ (Prim.Stepper x e)) = x
+
+#else
+
+-- types are imported by CompileModel
+
+primChanges ~(Prim.StepperB x e) = e
+primInitial ~(Prim.StepperB x e) = x
+
+#endif
 
 {-----------------------------------------------------------------------------
     NetworkDescription, setting up event networks
@@ -137,8 +167,9 @@ type Preparations t  =
 -- values of types 'Event' or 'Behavior'
 -- outside the 'NetworkDescription' monad.
 newtype NetworkDescription t a
-    = Prepare { unPrepare :: RWST () (Preparations t) () IO a }
+    = Prepare { unPrepare :: RWST InputToEvent (Preparations t) () IO a }
 
+-- boilerplate class instances
 instance Monad (NetworkDescription t) where
     return  = Prepare . return
     m >>= k = Prepare $ unPrepare m >>= unPrepare . k
@@ -192,11 +223,19 @@ type AddHandler a = (a -> IO ()) -> IO (IO ())
 -- this will register a callback function such that
 -- an event will occur whenever the callback function is called.
 fromAddHandler :: AddHandler a -> NetworkDescription t (Event t a)
-fromAddHandler addHandler = Prepare $ do
-    i <- liftIO $ newInputChannel
+fromAddHandler addHandler = do
+    (i,e) <- newInput
     let addHandler' k = addHandler $ k . toValue i . (\x -> [x])
-    tell ([],[addHandler'],[],[])
-    return $ inputE i
+    Prepare $ tell ([],[addHandler'],[],[])
+    return e
+
+-- create a new input event from the global input event
+newInput :: NetworkDescription t (InputChannel [a], Event t a)
+newInput = Prepare $ do
+    i <- liftIO newInputChannel
+    (InputToEvent f) <- ask
+    return (i, E $ f i)
+
 
 -- | Input,
 -- obtain a 'Behavior' by frequently polling mutable data, like the current time.
@@ -211,12 +250,12 @@ fromAddHandler addHandler = Prepare $ do
 -- it should not perform expensive computations.
 -- Neither should its side effects affect the event network significantly.
 fromPoll :: IO a -> NetworkDescription t (Behavior t a)
-fromPoll poll = Prepare $ do
-    i <- liftIO $ newInputChannel
+fromPoll poll = do
+    (i,e) <- newInput
     let poll' = toValue i . (:[]) <$> poll
-    tell ([],[],[poll'],[])
+    Prepare $ tell ([],[],[poll'],[])
     initial <- liftIO $ poll
-    return $ stepper initial (inputE i)
+    return $ stepper initial e
 
 -- | Input,
 -- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
@@ -238,7 +277,7 @@ fromChanges initial changes = stepper initial <$> fromAddHandler changes
 --
 -- > changes (stepper x e) = return (calm e)
 changes :: Behavior t a -> NetworkDescription t (Event t a)
-changes ~(B (AST.Pair _ (AST.Stepper x e))) = return $ E $ fmap (:[]) e
+changes = return . E . Prim.mapE (:[]) . primChanges . unB
 
 -- | Output,
 -- observe the initial value contained in a 'Behavior'.
@@ -246,7 +285,7 @@ changes ~(B (AST.Pair _ (AST.Stepper x e))) = return $ E $ fmap (:[]) e
 -- Similar to 'updates', this function is not well-defined,
 -- but exists for reasons of efficiency.
 initial :: Behavior t a -> NetworkDescription t a
-initial ~(B (AST.Pair _ (AST.Stepper x e))) = return x
+initial = return . primInitial . unB
 
 -- | Lift an 'IO' action into the 'NetworkDescription' monad,
 -- but defer its execution until compilation time.
@@ -258,23 +297,23 @@ liftIOLater m = Prepare $ tell ([],[],[],[m])
 -- that you can 'actuate', 'pause' and so on.
 compile :: (forall t. NetworkDescription t ()) -> IO EventNetwork
 compile (Prepare m) = do
-    -- execute the NetworkDescription monad
-    (_,_,(outputs,inputs,polls,liftIOs)) <- runRWST m () ()
-    sequence_ liftIOs
-    
-    let -- union of all  reactimates
-        E graph = foldr union never outputs
-    
-    automaton <- Implementation.compileToAutomaton graph
-    
+
+    -- compile network description into an automaton
+    (automaton,(inputs,polls)) <- compileWithGlobalInput $ \inputToEvent -> do
+            -- execute the NetworkDescription monad
+            (_,_,(outputs,inputs,polls,liftIOs)) <- runRWST m inputToEvent ()
+            sequence_ liftIOs                   -- execute the late IOs
+            let E e = foldr union never outputs -- union of all the reactimates
+            return (e, (inputs, polls))
+        
     -- allocate new variable for the automaton
     rautomaton <- newEmptyMVar
     putMVar rautomaton automaton
     
-    let -- run the graph on a single input value
+    let -- run the automaton on a single input value
         run :: InputValue -> IO ()
         run input = do
-            -- takeMVar  makes sure that event graph updates are sequential.
+            -- takeMVar  makes sure that event graph updates are atomic
             automaton  <- takeMVar rautomaton
             -- poll mutable data
             pollValues <- sequence polls
@@ -318,7 +357,7 @@ data EventNetwork = EventNetwork {
     -- The network will /not/ stop immediately though, only after
     -- the current event has been processed completely.
     pause :: IO ()
-    } deriving (Typeable)
+    }
 
 -- Make an event network from a function that registers all event handlers
 makeEventNetwork :: IO (IO ()) -> IO EventNetwork

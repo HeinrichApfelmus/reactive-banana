@@ -3,11 +3,8 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE Rank2Types #-}
-#define UseExtensions 1
-
-#if UseExtensions
 {-# LANGUAGE MultiParamTypeClasses #-}
-#endif
+-- #define UseExtensions 1
 
 module Reactive.Banana.Combinators (
     -- * Synopsis
@@ -36,6 +33,9 @@ module Reactive.Banana.Combinators (
     calm, unionWith,
     -- ** Apply class
     Apply(..),
+    
+    -- ** Internal
+    PrimEvent, PrimBehavior,
     ) where
 
 import Control.Applicative
