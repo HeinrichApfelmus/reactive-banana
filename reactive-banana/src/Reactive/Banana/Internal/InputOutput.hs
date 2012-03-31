@@ -27,7 +27,6 @@ import Control.Exception (evaluate)
 
 import qualified Data.Unique as Unique
 import qualified Data.Vault  as Vault
-import Data.Hashable
 import System.Mem.StableName
 
 {-----------------------------------------------------------------------------

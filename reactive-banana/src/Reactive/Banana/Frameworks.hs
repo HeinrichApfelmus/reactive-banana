@@ -96,7 +96,7 @@ primInitial ~(Prim.StepperB x e) = x
     like @wxHaskell@ or @Gtk2Hs@.
     How do you do that?
 
-    This "Reactive.Banana.Implementation" module allows you to obtain /input/ events
+    The module presented here allows you to obtain /input/ events
     from external sources
     and it allows you perform /output/ in reaction to events.
     

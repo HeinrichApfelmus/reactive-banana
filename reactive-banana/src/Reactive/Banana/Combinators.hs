@@ -19,7 +19,7 @@ module Reactive.Banana.Combinators (
     -- * Core Combinators
     module Control.Applicative,
     module Data.Monoid,
-    never, union, filterE, collect, spill, accumE,
+    never, union, unions, filterE, collect, spill, accumE,
     apply, stepper,
     -- $classes
     
@@ -34,7 +34,7 @@ module Reactive.Banana.Combinators (
     -- ** Apply class
     Apply(..),
     
-    -- ** Internal
+    -- * Internal
     PrimEvent, PrimBehavior,
     ) where
 
@@ -43,8 +43,6 @@ import Control.Monad
 
 import Data.Maybe (isJust)
 import Data.Monoid (Monoid(..))
-
-import qualified Reactive.Banana.Internal.Model as Model
 
 -- The efficient push-based implementation makes essential
 -- use of several language extensions. To enable building
@@ -107,7 +105,7 @@ except of course for the fact that it will annoy you in your type signatures.
 While the type synonyms mentioned above are the way you should think about
 'Behavior' and 'Event', they are a bit vague for formal manipulation.
 To remedy this, the library provides a very simple but authoritative
-model implementation. See 'Reactive.Banana.Model' for more.
+model implementation. See "Reactive.Banana.Model" for more.
 
 -}
 

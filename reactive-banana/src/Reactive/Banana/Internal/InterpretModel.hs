@@ -2,6 +2,9 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Internal.InterpretModel (
+    -- * Synopsis
+    -- | Interpret abstract syntax with model implementation.
+    
     interpretModel
     ) where
 

@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.5.0.0
+Version:             0.6.0.0
 Synopsis:            Practical library for functional reactive programming (FRP).
 Description:         
     Reactive-banana is a practical library for Functional Reactive Programming (FRP).
@@ -24,12 +24,12 @@ Category:            FRP
 Cabal-version:       >=1.6
 Build-type:          Simple
 
+extra-source-files:  doc/examples/*.hs
+
 Source-repository head
     type:               git
     location:           git://github.com/HeinrichApfelmus/reactive-banana.git
     subdir:             reactive-banana/
-
-extra-source-files:  doc/examples/*.hs
 
 flag UseExtensions
     description: Use language extensions like type families or GADTs.
@@ -65,11 +65,19 @@ Library
                         Reactive.Banana.Model
     
     other-modules:
-                        Reactive.Banana.Internal.AST,
                         Reactive.Banana.Internal.InputOutput,
+                        Reactive.Banana.Tests
+    
+    if flag(UseExtensions)
+        other-modules:
+                        Reactive.Banana.Internal.AST,
                         Reactive.Banana.Internal.InterpretModel,
                         Reactive.Banana.Internal.PushGraph,
-                        Reactive.Banana.Internal.TotalOrder,
-                        Reactive.Banana.Tests
+                        Reactive.Banana.Internal.TotalOrder
+    else
+        other-modules:
+                        Reactive.Banana.Internal.CompileModel
+
+                        
 
 

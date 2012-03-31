@@ -71,7 +71,7 @@ main = start $ do
             
             let -- database
                 bDatabase :: Behavior t (Database DataItem)
-                bDatabase = accumB emptydb $ mconcat
+                bDatabase = accumB emptydb $ unions
                     [ create ("Emil","Example") <$ eCreate
                     , filterJust $ update' <$> bSelection <@> eDataItemIn
                     , delete <$> filterJust (bSelection <@ eDelete)
@@ -88,8 +88,6 @@ main = start $ do
                     , (\b s p -> b >>= \a -> if p (s a) then Just a else Nothing)
                         <$> bSelection <*> bShowDataItem <@> eFilter
                     ]
-                    where
-                    unions = foldr1 union
                 
                 bLookup :: Behavior t (DatabaseKey -> Maybe DataItem)
                 bLookup = flip lookup <$> bDatabase
