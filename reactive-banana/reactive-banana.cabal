@@ -22,41 +22,54 @@ Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Stability:           Experimental
 Category:            FRP
 Cabal-version:       >=1.6
-
-
 Build-type:          Simple
-extra-source-files:  doc/examples/*.hs
-
-Library
-    hs-source-dirs:     src
-    extensions:
-                        TypeFamilies, FlexibleContexts,
-                        FlexibleInstances, EmptyDataDecls,
-                        GADTs, BangPatterns, TupleSections,
-                        Rank2Types, NoMonomorphismRestriction,
-                        DeriveDataTypeable
-    build-depends:
-        base >= 4.2 && < 5, containers >= 0.3 && < 0.5,
-        transformers == 0.2.*,
-        QuickCheck >= 1.2 && < 2.5,
-        vault == 0.1.*, unordered-containers == 0.2.*, hashable == 1.1.*,
-        fclabels == 1.1.*
-    exposed-modules:
-                        Reactive.Banana,
-                        Reactive.Banana.Combinators,
-                        Reactive.Banana.Frameworks,
-                        Reactive.Banana.Experimental.Calm,
-                        Reactive.Banana.Internal.Model
-    other-modules:
-                        Reactive.Banana.Internal.AST,
-                        Reactive.Banana.Internal.InputOutput,
-                        Reactive.Banana.Internal.PushGraph,
-                        Reactive.Banana.Internal.TotalOrder,
-                        Reactive.Banana.Tests
-
 
 Source-repository head
     type:               git
     location:           git://github.com/HeinrichApfelmus/reactive-banana.git
     subdir:             reactive-banana/
+
+extra-source-files:  doc/examples/*.hs
+
+flag UseExtensions
+    description: Use language extensions like type families or GADTs.
+                 This enables the efficient push-driven implementation,
+                 but doesn't necessarily work with compilers other than GHC.
+-- Cabal checks if the package can be build with  UseExtensions = True,
+-- otherewise it is set to  False .
+
+Library
+    hs-source-dirs:     src
+    
+    extensions:         CPP,
+                        Rank2Types, NoMonomorphismRestriction, FlexibleInstances
+    
+    build-depends:      base >= 4.2 && < 5, containers >= 0.3 && < 0.5,
+                        transformers == 0.2.*,
+                        vault == 0.1.*, 
+                        unordered-containers == 0.2.*, hashable == 1.1.*
+    
+    if flag(UseExtensions)
+        extensions:     TypeFamilies, GADTs, MultiParamTypeClasses,
+                        BangPatterns, TupleSections,
+                        EmptyDataDecls
+        build-depends:  QuickCheck >= 1.2 && < 2.5,
+                        fclabels == 1.1.*
+        CPP-options:    -DUseExtensions
+        
+    exposed-modules:
+                        Reactive.Banana,
+                        Reactive.Banana.Combinators,
+                        Reactive.Banana.Experimental.Calm,
+                        Reactive.Banana.Frameworks,
+                        Reactive.Banana.Model
+    
+    other-modules:
+                        Reactive.Banana.Internal.AST,
+                        Reactive.Banana.Internal.InputOutput,
+                        Reactive.Banana.Internal.InterpretModel,
+                        Reactive.Banana.Internal.PushGraph,
+                        Reactive.Banana.Internal.TotalOrder,
+                        Reactive.Banana.Tests
+
 

@@ -2,9 +2,12 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE Rank2Types, TupleSections #-}
+{-# LANGUAGE Rank2Types #-}
+#define UseExtensions 1
+
+#if UseExtensions
 {-# LANGUAGE MultiParamTypeClasses #-}
--- FlexibleInstances
+#endif
 
 module Reactive.Banana.Combinators (
     -- * Synopsis
@@ -46,7 +49,7 @@ import qualified Reactive.Banana.Internal.Model as Model
 -- The efficient push-based implementation makes essential
 -- use of several language extensions. To enable building
 -- if other compilers, we can select the model implementation instead.
-#if __GLASGOW_HASKELL__
+#if UseExtensions
 
 import Reactive.Banana.Internal.InputOutput
 import Reactive.Banana.Internal.PushGraph
@@ -120,7 +123,7 @@ interpretModel f xs = map toList <$> Prim.interpretModel (unE . f . E) (map Just
 -- Useful for testing.
 interpretPushGraph :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
 
-#if __GLASGOW_HASKELL__
+#if UseExtensions
 
 interpretPushGraph f xs = do
     i <- newInputChannel
