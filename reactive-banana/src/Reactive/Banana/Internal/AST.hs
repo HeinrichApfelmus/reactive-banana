@@ -11,6 +11,7 @@ import Control.Applicative
 import qualified Data.Vault as Vault
 import System.IO.Unsafe
 
+import Data.Unique.Really
 import Data.Hashable
 
 import qualified Reactive.Banana.Model as Model

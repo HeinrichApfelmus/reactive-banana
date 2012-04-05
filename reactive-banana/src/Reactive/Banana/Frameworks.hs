@@ -38,6 +38,7 @@ import Control.Monad.Trans.RWS
 
 import Data.IORef
 import Data.Monoid
+import qualified Data.Unique -- ordinary uniques here, because they are Ord
 
 import Reactive.Banana.Internal.InputOutput
 import Reactive.Banana.Combinators
@@ -54,9 +55,9 @@ import Reactive.Banana.Internal.CompileModel
 
 #endif
 
-import qualified Data.HashMap.Strict as Map
+import qualified Data.Map as Map
 
-type Map = Map.HashMap
+type Map = Map.Map
 
 {-----------------------------------------------------------------------------
     Compilation specific to the different backends
@@ -425,7 +426,7 @@ newAddHandler :: IO (AddHandler a, a -> IO ())
 newAddHandler = do
     handlers <- newIORef Map.empty
     let addHandler k = do
-            key <- newUnique
+            key <- Data.Unique.newUnique
             modifyIORef handlers $ Map.insert key k
             return $ modifyIORef handlers $ Map.delete key
         runHandlers x =
