@@ -300,15 +300,15 @@ liftIOLater m = Prepare $ tell ([],[],[],[m])
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
 compile :: (forall t. NetworkDescription t ()) -> IO EventNetwork
-compile (Prepare m) = do
+compile m = do
 
     -- compile network description into an automaton
     (automaton,(inputs,polls)) <- compileWithGlobalInput $ \inputToEvent -> do
-            -- execute the NetworkDescription monad
-            (_,_,(outputs,inputs,polls,liftIOs)) <- runRWST m inputToEvent ()
-            sequence_ liftIOs                   -- execute the late IOs
-            let E e = foldr union never outputs -- union of all the reactimates
-            return (e, (inputs, polls))
+        -- execute the NetworkDescription monad
+        (_,_,(outputs,inputs,polls,liftIOs)) <- runRWST (unPrepare m) inputToEvent ()
+        sequence_ liftIOs                   -- execute the late IOs
+        let E e = foldr union never outputs -- union of all the reactimates
+        return (e, (inputs, polls))
         
     -- allocate new variable for the automaton
     rautomaton <- newEmptyMVar

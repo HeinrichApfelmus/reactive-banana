@@ -23,7 +23,6 @@ import Control.Exception (evaluate)
 
 import Data.Unique.Really
 import qualified Data.Vault  as Vault
-import System.Mem.StableName
 
 {-----------------------------------------------------------------------------
     Storing heterogenous input values
