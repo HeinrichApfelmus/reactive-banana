@@ -144,6 +144,8 @@ collect   :: Event t a -> Event t [a]
 collect e = E $ singleton <$> unE e
 
 -- | Emit simultaneous event occurrences.
+-- The first element in the list will be emitted first, and so on.
+--
 -- Up to strictness, we have
 --
 -- > spill . collect = id
@@ -262,7 +264,7 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     fromLeft  (Left  a) = Just a
     fromLeft  (Right b) = Nothing
     fromRight (Left  a) = Nothing
-    fromright (Right b) = Just b
+    fromRight (Right b) = Just b
 
 
 -- | Combine simultaneous event occurrences into a single occurrence.
