@@ -45,7 +45,7 @@ Library
                         Rank2Types, NoMonomorphismRestriction, FlexibleInstances
     
     build-depends:      base >= 4.2 && < 5, containers >= 0.3 && < 0.5,
-                        transformers == 0.2.*,
+                        transformers >= 0.2 && < 0.4,
                         vault == 0.2.*
     
     if flag(UseExtensions)

@@ -4,11 +4,12 @@ http://comments.gmane.org/gmane.comp.lang.haskell.cafe/90908
 http://www.reddit.com/r/haskell/comments/ijsnv/call_for_gui_examples_any_small_gui_applications/
 http://apfelmus.nfshost.com/blog/2011/07/08-call-for-gui-examples.html
 
-
-### Popular requests
-* Real-time data display (stock market, system data / CPU usage, darcs repos)
-
 ### Misc
+* Concurrency / network programming
+    "I would like to see an application where you have a server and a number of clients.
+Each client has a gui containing a circle that they can move by dragging it with the mouse. Each client can only see their own circle.
+The server has a gui where you can see all the circles as they move around, tagged with the name of the client that owns each circle."
+
 * GUI for a command line program
     transformation between files in a directory
 * Chess GUI
@@ -16,10 +17,8 @@ http://apfelmus.nfshost.com/blog/2011/07/08-call-for-gui-examples.html
 * Color picker, font chooser, file chooser
 
 ### Difficult examples
-* CRUD table: create, update, delete records in table (for example Person records), with validating user input, auto-calculated fields (current age by birth date), totals by column, filtering. I think same GUI tasks get solved many GUI developers in imperative style. I hope solution of such day-tasks in FRP will be elegant. Aka databases.
 * small vector drawing application (or GUI designer)
     events from drawn shapes
-
 * arpeggiator for MIDI events (delay existing events to repeat them in the future)
 * dynamic widgets and windows
 
