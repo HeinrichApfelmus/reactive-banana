@@ -15,18 +15,20 @@ Reactive-banana is a practical library for functional reactive programming (FRP)
 
 FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. It promises to avoid the spaghetti code that is all too common in traditional approaches to GUI programming.
 
-The specific goal of the library is to provide a solid foundation.
+The goal of the library is to provide a solid foundation.
 \begin{itemize}
-\item Users can finally use FRP to program \emph{graphical user interfaces} as the library can be hooked into any existing event-based framework like wxHaskell or Gtk2Hs. A plethora of example code helps with getting started. Your can mix FRP and imperative style. If you don't know how to express functionality in terms of FRP, just temporarily switch back to the imperative style.
+\item Users can finally use FRP to program \emph{graphical user interfaces} as the library can be hooked into any existing event-based framework like wxHaskell or Gtk2Hs. A plethora of example code helps with getting started. You can mix FRP and imperative style. If you don't know how to express functionality in terms of FRP, just temporarily switch back to the imperative style.
 \item Programmers interested in implementing FRP will have a \emph{reference} for a \emph{simple semantics} with a working implementation. The library stays close to the semantics pioneered by Conal Elliott.
 \item It features an \emph{efficient implementation}. No more spooky time leaks, predicting space \& time usage should be straightforward.
 \end{itemize}
 
-\emph{Status.} Version 0.5.0.0 of the reactive-banana library has been released on Hackage. It provides a solid push-based implementation. Compared to the previous report, the API has been refined, making the library ever more pleasant to use. Also, the internals have been rewritten completely to prepare for the introduction of dynamic event switching in a future version.
+\emph{Status.} Version 0.6.0.0 of the reactive-banana library has been released on Hackage. It provides a solid push-based implementation.
 
-\emph{Current development} focuses on the aforementioned implementation of dynamic event switching. Examples from computer music are planned.
+Compared to the previous report, the API has been refined, making the library ever more pleasant to use. The internals have been rewritten completely to prepare for the introduction of dynamic event switching in a future version.
 
-Also, I have been approached by Mathijs Kwik who desired to use functional reactive programming in conjunction with the JavaScript backend of the Utrecht Haskell Compiler (UHC). Consequently, I have modified the library and the latest development version can now be compiled with UHC.
+Also, I have been approached by Mathijs Kwik who desired to use functional reactive programming in conjunction with the JavaScript backend of the Utrecht Haskell Compiler (UHC). Consequently, I have modified the library and the latest version can now be compiled with UHC. In other words, it has now become possible to use FRP with Haskell in the web browser.
+
+\emph{Current development} focuses on the implementation of dynamic event switching. Examples from computer music are planned.
 
 \FurtherReading
 \begin{compactitem}
