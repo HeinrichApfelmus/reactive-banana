@@ -34,10 +34,10 @@ main = start $ do
     listBox     <- singleListBox f []
     createBtn   <- button f [ text := "Create" ]
     deleteBtn   <- button f [ text := "Delete" ]
-    filterEntry <- entry f  [ processEnter := True ]
+    filterEntry <- textCtrlEx f 0 [ processEnter := True ]
     
-    firstname <- entry f  [ processEnter := True ]
-    lastname  <- entry f  [ processEnter := True ]
+    firstname <- textCtrlEx f 0 [ ]
+    lastname  <- entry f [ ]
     
     let dataItem = grid 10 10 [[label "First Name:", widget firstname]
                               ,[label "Last Name:" , widget lastname]]
@@ -198,6 +198,8 @@ reactiveListDisplay w bitems bsel bdisplay = do
 {-----------------------------------------------------------------------------
     wxHaskell convenience wrappers and bug fixes
 ------------------------------------------------------------------------------}
+{- Currently exported from Reactive.Banana.WX
+
 -- user input event - text for text entries
 eventText :: TextCtrl w -> NetworkDescription t (Event t String)
 eventText w = do
@@ -227,3 +229,4 @@ fixSelectionEvent listbox =
         propagateEvent
         s <- get listbox selection
         when (s == -1) $ (get listbox (on select)) >>= id
+-}

@@ -19,12 +19,7 @@ import Reactive.Banana
 import Reactive.Banana.WX
 import System.Random
 
--- boring path stuff
-import System.Environment.Executable
-import System.FilePath
-import System.Info
-import System.IO.Unsafe
-import qualified Paths_reactive_banana_wx as Paths (getDataDir)
+import Paths (getDataFile)
 
 {-----------------------------------------------------------------------------
     Main
@@ -39,18 +34,12 @@ chance   :: Double
 chance   = 0.1
 
 rock, burning, ship :: Bitmap ()
-rock    = bitmap $ dataDir </> "rock.ico"
-burning = bitmap $ dataDir </> "burning.ico"
-ship    = bitmap $ dataDir </> "ship.ico"
+rock    = bitmap $ getDataFile "rock.ico"
+burning = bitmap $ getDataFile "burning.ico"
+ship    = bitmap $ getDataFile "ship.ico"
 
 explode :: WXCore.Sound ()
-explode = sound $ dataDir </> "explode.wav" 
-
-getDataDir
-    | os == "darwin" =
-        fmap (\x -> takeDirectory x </> ".." </> "Resources") getExecutablePath 
-    | otherwise      = Paths.getDataDir
-dataDir = unsafePerformIO $ getDataDir
+explode = sound $ getDataFile "explode.wav" 
 
 main :: IO ()
 main = start asteroids
@@ -63,7 +52,6 @@ asteroids :: IO ()
 asteroids = do
     ff <- frame [ text       := "Asteroids"
                 , bgcolor    := white
-                , clientSize := sz width height
                 , resizeable := False ]
 
     status <- statusField [text := "Welcome to asteroids"] 
@@ -86,11 +74,8 @@ asteroids = do
     
     set ff [menuBar := [game]]
     
-    pp <- panel ff [ clientSize := sz width height
-                   , position   := point 1 1
-                   ]
-    set ff [ layout  := widget pp
-           ]
+    pp <- panel ff []
+    set ff [ layout  := minsize (sz width height) $ widget pp ]
     set pp [ on (charKey '-') := set t [interval :~ \i -> i * 2] 
            , on (charKey '+') := set t [interval :~ \i -> max 10 (div i 2)] 
            ]

@@ -23,12 +23,12 @@ main = start $ do
     out1     <- staticText f []
     out2     <- staticText f []
     
-    set f [layout := margin 10 $
+    set f [layout := minsize (sz 250 70) $ margin 10 $
             column 10 [label "TCP network statistics",
                        grid 5 5 [[label "Packets sent: ", widget out1]
                                 ,[label "Packets received: ", widget out2]]
                       ]
-          , size := sz 250 70]
+          ]
     
     t <- timer f [ interval := 500 ] -- timer every 500 ms
 

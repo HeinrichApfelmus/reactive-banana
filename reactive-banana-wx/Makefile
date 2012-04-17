@@ -4,11 +4,12 @@ APPS=Asteroids Counter CRUD CurrencyConverter NetMonitor TicTacToe TwoCounters W
 OBJ=dist/build
 COMPILE= \
 	ghc --make -i$(OBJ) -L/usr/lib -L$(OBJ) \
-	-isrc -i../reactive-banana/src -idist/build/autogen
+	-isrc -i../reactive-banana/src -idist/build/autogen \
+	-DbuildExamples
 
 # Compile all programs with cabal
 all:
-	cabal configure && cabal build --ghc-options=-L/usr/lib
+	cabal configure -fbuildExamples && cabal build --ghc-options=-L/usr/lib
 
 
 # Compile individual programs for testing
@@ -16,7 +17,8 @@ Arithmetic : src/Arithmetic.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/ && macosx-app $@
 
 Asteroids : src/Asteroids.hs src/Reactive/Banana/WX.hs
-	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/ && macosx-app $@
+	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/ && macosx-app $@ \
+	    && cp data/* $@.app/Contents/Resources
 
 Counter : src/Counter.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/ && macosx-app $@

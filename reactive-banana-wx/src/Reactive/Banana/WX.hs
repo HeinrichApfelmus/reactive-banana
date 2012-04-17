@@ -11,7 +11,10 @@ module Reactive.Banana.WX (
     -- * General
     event1, event0, behavior,
     Prop'(..), sink,
-        
+    
+    -- * Specific widgets
+    eventText, behaviorText, eventSelection,
+
     -- * Utilities
     event1ToAddHandler, event0ToEvent1,
     mapIO,
@@ -20,11 +23,11 @@ module Reactive.Banana.WX (
 import Reactive.Banana
 import qualified Graphics.UI.WX as WX
 import Graphics.UI.WX  hiding (Event, Attr)
-import Graphics.UI.WXCore hiding (Event)
+import qualified Graphics.UI.WXCore as WXCore
 -- import Graphics.UI.WX (on, Prop(..))
 
 {-----------------------------------------------------------------------------
-    Connection with events and behaviors
+    General
 ------------------------------------------------------------------------------}
 -- | Event with exactly one parameter.
 event1 :: w -> WX.Event w (a -> IO ()) -> NetworkDescription t (Event t a)
@@ -60,6 +63,45 @@ sink widget props = mapM_ sink1 props
         liftIOLater $ set widget [attr := x]
         e <- changes b
         reactimate $ (\x -> set widget [attr := x]) <$> e
+
+{-----------------------------------------------------------------------------
+    Specific widgets
+------------------------------------------------------------------------------}
+-- | Event that occurs when the /user/ changed
+-- the text in text edit widget.
+eventText :: TextCtrl w -> NetworkDescription t (Event t String)
+eventText w = do
+    -- Should probably be  wxEVT_COMMAND_TEXT_UPDATED ,
+    -- but we need to filter out the events that don't come from the user
+    addHandler <- liftIO $ event1ToAddHandler w keyboardUp
+    fromAddHandler $ mapIO (const $ get w text) addHandler
+
+-- observe "key up" events (many thanks to Abu Alam)
+-- this should probably be in the wxHaskell library
+keyboardUp  :: WX.Event (Window a) (EventKey -> IO ())
+keyboardUp  = WX.newEvent "keyboardUp" WXCore.windowGetOnKeyUp WXCore.windowOnKeyUp
+
+-- | Behavior corresponding to user input the text field.
+behaviorText :: TextCtrl w -> String -> NetworkDescription t (Behavior t String)
+behaviorText w s = stepper s <$> eventText w
+
+-- | Event that occurs when the /user/ changed
+-- the selection marker in a list box widget.
+eventSelection :: SingleListBox b -> NetworkDescription t (Event t Int)
+eventSelection w = do
+    liftIO $ fixSelectionEvent w
+    addHandler <- liftIO $ event1ToAddHandler w (event0ToEvent1 select)
+    fromAddHandler $ mapIO (const $ get w selection) addHandler
+
+-- Fix @select@ event not being fired when items are *un*selected.
+fixSelectionEvent listbox =
+    liftIO $ set listbox [ on unclick := handler ]
+    where
+    handler _ = do
+        propagateEvent
+        s <- get listbox selection
+        when (s == -1) $ (get listbox (on select)) >>= id
+
 
 {-----------------------------------------------------------------------------
     Utilities

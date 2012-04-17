@@ -16,13 +16,13 @@ import Reactive.Banana.WX
 ------------------------------------------------------------------------------}
 main = start $ do
     f         <- frame    [text := "Arithmetic"]
-    input1    <- entry f  [processEnter := True]
-    input2    <- entry f  [processEnter := True]
+    input1    <- textCtrlEx f 0 []
+    input2    <- textCtrlEx f 0 []
     output    <- staticText f [ size := sz 40 20 ]
     
     set f [layout := margin 10 $ row 10 $
             [widget input1, label "+", widget input2
-            , label "=", widget output]]
+            , label "=", minsize (sz 40 20) $ widget output]]
 
     let networkDescription :: forall t. NetworkDescription t ()
         networkDescription = do
