@@ -1,5 +1,5 @@
 {-----------------------------------------------------------------------------
-    Reactive-Banana
+    reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE GADTs, TypeFamilies, TupleSections, EmptyDataDecls,
     TypeSynonymInstances, FlexibleInstances #-}
@@ -11,8 +11,10 @@ import Control.Applicative
 import qualified Data.Vault as Vault
 import System.IO.Unsafe
 
+import Data.Unique.Really
 import Data.Hashable
 
+import qualified Reactive.Banana.Model as Model
 import Reactive.Banana.Internal.InputOutput
 
 {-----------------------------------------------------------------------------
@@ -31,7 +33,7 @@ data EventD t :: * -> * where
     AccumE    :: a -> Event t (a -> a) -> EventD t a
     
     InputE    :: InputChannel a   -> EventD t a   -- represent external inputs
-    InputPure :: InputChannel (EventModel a)
+    InputPure :: InputChannel (Model.Event a)
               -> EventD t a                       -- input for model implementation
 
 -- | Constructors for behaviors.
@@ -116,7 +118,10 @@ inputPure i       = shareE $ InputPure i
 stepperB acc e    = shareB $ Stepper acc (unE e)
 inputB i          = shareB $ InputB i
 
+-- functor
 mapE f  = applyE (pureB f)
+
+-- applicative functor
 pureB x = stepperB x never
 
 applyB :: Behavior Expr (a -> b) -> Behavior Expr a -> Behavior Expr b
@@ -128,12 +133,7 @@ applyB (Pair _ (Stepper f fe)) (Pair _ (Stepper x xe)) =
     changeR x (f,_) = (f,x)
 applyB _ _ = error "TODO: Don't know what to do with external behaviors."
 
--- instance Functor (Event Expr) where
-instance Functor (Pair Node (EventD Expr)) where
-    fmap   = mapE
--- instance Functor (Behavior Expr) where
-instance Functor (Pair Node (BehaviorD Expr)) where
-    fmap f = applyB (pureB f)
+mapB f = applyB (pureB f)
 
 {-----------------------------------------------------------------------------
     The 'Node' type is used for observable sharing and must be defined here.
@@ -150,21 +150,14 @@ data Node a
     , keyFormula :: !(Vault.Key (FormulaD Nodes a))
     , keyOrder   :: !Unique
       -- use for Reactive.Banana.Internal.Model
-    , keyModelE  :: !(Vault.Key (EventModel a))
-    , keyModelB  :: !(Vault.Key (BehaviorModel a))
+    , keyModelE  :: !(Vault.Key (Model.Event a))
+    , keyModelB  :: !(Vault.Key (Model.Behavior a))
     }
 
 newNode :: IO (Node a)
 newNode = Node
     <$> Vault.newKey <*> Vault.newKey <*> newUnique
     <*> Vault.newKey <*> Vault.newKey
-
-{-----------------------------------------------------------------------------
-    Reactive.Banana.Internal.Model
-------------------------------------------------------------------------------}
--- we have to define the interpretation types here
-type EventModel a    = [Maybe a]
-data BehaviorModel a = StepperB a (EventModel a)
 
 {-----------------------------------------------------------------------------
     Reactive.Banana.Internal.PushGraph

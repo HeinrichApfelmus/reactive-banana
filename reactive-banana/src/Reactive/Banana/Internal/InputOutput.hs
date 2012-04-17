@@ -16,38 +16,18 @@ module Reactive.Banana.Internal.InputOutput (
     -- | Stepwise execution of an event graph.
     Automaton(..), fromStateful, unfoldAutomaton,
 
-    -- * Uniques
-    -- | Doesn't belong here, but we also have some stuff about uniques
-    -- that we use for observable sharing.
-    Unique, newUnique,
     ) where
 
 import Control.Applicative
 import Control.Exception (evaluate)
 
-import qualified Data.Unique as Unique
+import Data.Unique.Really
 import qualified Data.Vault  as Vault
-import Data.Hashable
-import System.Mem.StableName
-
-{-----------------------------------------------------------------------------
-    Better Uniques
-------------------------------------------------------------------------------}
-type ReallyUnique = StableName Unique.Unique
-type Unique = ReallyUnique
-
--- instance Hashable Unique
-
-newUnique :: IO Unique
-newUnique = do
-    x <- Unique.newUnique
-    evaluate x
-    makeStableName x
 
 {-----------------------------------------------------------------------------
     Storing heterogenous input values
 ------------------------------------------------------------------------------}
-type Channel  = ReallyUnique    -- identifies an input
+type Channel  = Unique          -- identifies an input
 type Key      = Vault.Key       -- key to retrieve a value
 type Value    = Vault.Vault     -- value storage
 
