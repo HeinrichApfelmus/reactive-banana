@@ -62,6 +62,7 @@ Library
                         Reactive.Banana,
                         Reactive.Banana.Combinators,
                         Reactive.Banana.Experimental.Calm,
+                        Reactive.Banana.Experimental.Switch,
                         Reactive.Banana.Frameworks,
                         Reactive.Banana.Model
     
