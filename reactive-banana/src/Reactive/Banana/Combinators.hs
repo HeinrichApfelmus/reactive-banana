@@ -299,6 +299,8 @@ whenE :: Behavior t Bool -> Event t a -> Event t a
 whenE bf = filterApply (const <$> bf)
 
 -- | Split event occurrences according to a tag.
+-- The 'Left' values go into the left component while the 'Right' values
+-- go into the right component of the result.
 split :: Event t (Either a b) -> (Event t a, Event t b)
 split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     where
