@@ -11,18 +11,16 @@ main = defaultMainWithHooks $ simpleUserHooks {
        }
 
 guiApps :: [MacApp]
-guiApps = [MacApp "Asteroids"
-                  Nothing
-                  Nothing -- Build a default Info.plist for the icon.
-                  files   -- bitmaps and .wav
-                  [] -- No other binaries.
-                  DoNotChase -- Try changing to ChaseWithDefaults
-          ] ++ apps
+guiApps =
+    [mkApp filesAsteroids "Asteroids", mkApp filesAnimation "Animation"] ++ apps
 
-apps = map app $
+apps = map (mkApp []) $
     words "Arithmetic Counter CurrencyConverter CRUD"
     ++ words "NetMonitor TicTacToe TwoCounters Wave"
-app name = MacApp name Nothing Nothing [] [] DoNotChase
-
-files = map ("data/" ++) $
+filesAsteroids = map ("data/" ++) $
     words "burning.ico rock.ico ship.ico explode.wav"
+filesAnimation = map ("data/" ++) $
+    words "banana.png"
+
+
+mkApp files name = MacApp name Nothing Nothing files [] DoNotChase

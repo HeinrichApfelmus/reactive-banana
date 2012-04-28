@@ -48,6 +48,15 @@ Source-repository    head
     location:        git://github.com/HeinrichApfelmus/reactive-banana.git
     subdir:          reactive-banana-wx
 
+Executable Animation
+    if !flag(buildExamples)
+        buildable: False
+    else
+        cpp-options: -DbuildExamples
+    hs-source-dirs:  src
+    other-modules:   Paths_reactive_banana_wx, Paths
+    main-is:         Animation.hs
+
 Executable Arithmetic
     if !flag(buildExamples)
         buildable: False
