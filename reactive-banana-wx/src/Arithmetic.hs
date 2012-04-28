@@ -15,10 +15,10 @@ import Reactive.Banana.WX
     Main
 ------------------------------------------------------------------------------}
 main = start $ do
-    f         <- frame    [text := "Arithmetic"]
-    input1    <- textCtrlEx f 0 []
-    input2    <- textCtrlEx f 0 []
-    output    <- staticText f [ size := sz 40 20 ]
+    f         <- frame [text := "Arithmetic"]
+    input1    <- entry f []
+    input2    <- entry f []
+    output    <- staticText f []
     
     set f [layout := margin 10 $ row 10 $
             [widget input1, label "+", widget input2

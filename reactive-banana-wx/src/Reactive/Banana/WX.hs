@@ -17,7 +17,7 @@ module Reactive.Banana.WX (
 
     -- * Utilities
     event1ToAddHandler, event0ToEvent1,
-    mapIO,
+    mapIO, filterAddHandler,
     ) where
 
 import Reactive.Banana
@@ -71,15 +71,18 @@ sink widget props = mapM_ sink1 props
 -- the text in text edit widget.
 eventText :: TextCtrl w -> NetworkDescription t (Event t String)
 eventText w = do
-    -- Should probably be  wxEVT_COMMAND_TEXT_UPDATED ,
-    -- but we need to filter out the events that don't come from the user
-    addHandler <- liftIO $ event1ToAddHandler w keyboardUp
-    fromAddHandler $ mapIO (const $ get w text) addHandler
+    addHandler <- liftIO $ event1ToAddHandler w (event0ToEvent1 onText)
+    fromAddHandler
+        $ filterAddHandler (const $ WXCore.textCtrlIsModified w)
+        $ mapIO (const $ get w text) addHandler
+
+onText :: WX.Event (WXCore.Control a) (IO ())
+onText = WX.newEvent "onText" WXCore.controlGetOnText WXCore.controlOnText
 
 -- observe "key up" events (many thanks to Abu Alam)
 -- this should probably be in the wxHaskell library
-keyboardUp  :: WX.Event (Window a) (EventKey -> IO ())
-keyboardUp  = WX.newEvent "keyboardUp" WXCore.windowGetOnKeyUp WXCore.windowOnKeyUp
+-- keyboardUp  :: WX.Event (Window a) (EventKey -> IO ())
+-- keyboardUp  = WX.newEvent "keyboardUp" WXCore.windowGetOnKeyUp WXCore.windowOnKeyUp
 
 -- | Behavior corresponding to user input the text field.
 behaviorText :: TextCtrl w -> String -> NetworkDescription t (Behavior t String)
@@ -120,3 +123,8 @@ event0ToEvent1 = mapEvent const (\_ e -> e ())
 -- | Apply a function with side effects to an 'AddHandler'
 mapIO :: (a -> IO b) -> AddHandler a -> AddHandler b
 mapIO f addHandler = \h -> addHandler $ \x -> f x >>= h 
+
+-- | Filter event occurrences that don't return 'True'.
+filterAddHandler :: (a -> IO Bool) -> AddHandler a -> AddHandler a
+filterAddHandler f addHandler = \h ->
+    addHandler $ \x -> f x >>= \b -> if b then h x else return ()
