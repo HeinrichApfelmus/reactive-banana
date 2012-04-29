@@ -5,8 +5,7 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
 
-import Graphics.UI.WX hiding (Event)
-import Graphics.UI.WXCore as WXCore
+import Graphics.UI.WX hiding (Event, Vector)
 import Reactive.Banana
 import Reactive.Banana.WX
 import System.Random
@@ -23,8 +22,8 @@ width    = 400
 dt :: Double
 dt = 20 * ms where ms = 1e-3
 
-banana :: Bitmap ()
-banana = bitmap $ getDataFile "banana.png"
+sprite :: Bitmap ()
+sprite = bitmap $ getDataFile "banana.png"
 
 bitmapWidth, bitmapHeight :: Int
 bitmapWidth  = 128
@@ -48,47 +47,57 @@ main = start $ do
         networkDescription = do
             etick  <- event0 t command  -- frame timer
             emouse <- event1 pp mouse   -- mouse events
-            let bmouse = toPoint2Double <$> stepper (point 0 0)
-                    (filterJust $ justMotion <$> emouse)
             
             let
-                btime :: Behavior t Double
-                btime = (dt*) . fromIntegral <$> (accumB (0::Int) $ (+1) <$ etick)
+                -- mouse pointer position
+                bmouse = fromPoint <$> stepper (point 0 0)
+                    (filterJust $ justMotion <$> emouse)
             
-                bvelocity :: Behavior t (Vector2 Double)
-                bvelocity = speed <$> liftA2 vecBetween bposition bmouse
-                
-                bposition :: Behavior t (Point2 Double)
-                bposition = accumB (point 0 0) $
-                    (\v pos -> clipToFrame $ pointMove (v `vecScale` dt) pos)
-                    <$> bvelocity <@ etick
-                
-                speed v = v `vecScale` (f $ vecLengthDouble v)
+                -- sprite velocity
+                bvelocity :: Behavior t Vector
+                bvelocity =
+                    (\pos mouse -> speedup $ mouse `vecSub` pos `vecSub` vec 0 45)
+                    <$> bposition <*> bmouse
                     where
-                    f d = (d/20)
+                    speedup v = v `vecScale` (vecLengthDouble v / 20)
+                
+                -- sprite position
+                bposition :: Behavior t Vector
+                bposition = accumB (vec 0 0) $
+                    (\v pos -> clipToFrame $ (v `vecScale` dt) `vecAdd` pos)
+                    <$> bvelocity <@ etick
             
-                clipToFrame (Point x y) = Point
+                clipToFrame v = vec
                         (clip 0 x (fromIntegral $ width  - bitmapWidth ))
                         (clip 0 y (fromIntegral $ height - bitmapHeight))
-                    where clip a x b = max a (min x b)
+                    where
+                    x = vecX v; y = vecY v
+                    clip a x b = max a (min x b)
                 
-                drawBanana :: Point -> DC a -> b -> IO ()
-                drawBanana pos dc _view = drawBitmap dc banana pos True []
+                drawSprite :: Point -> DC a -> b -> IO ()
+                drawSprite pos dc _view = drawBitmap dc sprite pos True []
         
-            -- draw the game state
-            sink pp [on paint :== drawBanana . fromPoint2Double <$> bposition]
+            -- animate the sprite
+            sink pp [on paint :== drawSprite . toPoint <$> bposition]
             reactimate $ repaint pp <$ etick
     
     network <- compile networkDescription    
     actuate network
 
+{-----------------------------------------------------------------------------
+    2D Geometry
+------------------------------------------------------------------------------}
+type Vector = Vector2 Double
 
-toPoint2Double :: Point -> Point2 Double
-toPoint2Double (Point x y) = Point (fromIntegral x) (fromIntegral y)
+fromPoint :: Point -> Vector
+fromPoint pt = vector (fromIntegral (pointX pt)) (fromIntegral (pointY pt))
 
-fromPoint2Double :: Point2 Double -> Point
-fromPoint2Double (Point x y) = Point (ceiling x) (ceiling y)
+toPoint :: Vector -> Point
+toPoint v = point (ceiling (vecX v)) (ceiling (vecY v))
 
+{-----------------------------------------------------------------------------
+    wx stuff
+------------------------------------------------------------------------------}
 justMotion :: EventMouse -> Maybe Point
 justMotion (MouseMotion pt _) = Just pt
 justMotion _                  = Nothing
