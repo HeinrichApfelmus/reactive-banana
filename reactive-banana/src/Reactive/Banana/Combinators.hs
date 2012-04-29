@@ -282,6 +282,21 @@ instance Functor (Behavior t) where
 {-----------------------------------------------------------------------------
     Derived Combinators
 ------------------------------------------------------------------------------}
+{-
+
+Unfortunately, we can't make a  Num  instance because that would
+require  Eq  and  Show .
+
+instance Num a => Num (Behavior t a) where
+    (+) = liftA2 (+)
+    (-) = liftA2 (-)
+    (*) = liftA2 (*)
+    negate = fmap negate
+    abs    = fmap abs
+    signum = fmap signum
+    fromInteger = pure . fromInteger
+-}
+
 -- | Keep only the 'Just' values.
 -- Variant of 'filterE'.
 filterJust :: Event t (Maybe a) -> Event t a
