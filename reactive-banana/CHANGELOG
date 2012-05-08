@@ -1,6 +1,12 @@
 Changelog
 ---------
 
+version 0.6.0.0
+
+* can now be compiled with the JavaScript backend of the Utrecht Haskell compiler
+* the push-driven implementations needs the `UseExtensions` flag to work. This flag is enabled by default.
+* minor module reorganization
+
 version 0.5.0.0
 http://apfelmus.nfshost.com/blog/2012/03/25-frp-banana-0-5.html
 

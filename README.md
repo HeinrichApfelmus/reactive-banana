@@ -24,10 +24,10 @@ The project contains two directories:
 
 The reactive-banana library actually contains *two* FRP implementations:
 
-1. [Reactive.Banana.Internal.Model][model] - A model implementation for testing and understanding the semantics. You are encouraged to look at the source code.
+1. [Reactive.Banana.Model][model] - A model implementation for testing and understanding the semantics. You are encouraged to look at the source code.
 2. [Reactive.Banana.Internal.PushGraph][push] - The efficient push-driven implementation used for production code. Contains hard to understand trade secrets. ;-)
 
-  [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Internal/Model.hs
+  [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Model.hs
   [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Internal/PushIO.hs
   [wxhaskell]: http://haskell.org/haskellwiki/WxHaskell
 

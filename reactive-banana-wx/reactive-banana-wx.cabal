@@ -13,6 +13,10 @@ Description:
     .
     @cabal install reactive-banana-wx -fbuildExamples@
     .
+    IMPORTANT NOTE:
+    There are a few issues with WxWidgets 2.9.3 and some examples may crash.
+    These problems are only solved in wx-0.90.0.1 and higher.
+    .
     Stability forecast: The wrapper functions are rather provisional.
 
 Homepage:            http://haskell.org/haskellwiki/Reactive-banana
@@ -28,7 +32,7 @@ Build-type:          Custom
 Extra-source-files:  Makefile
 
 data-dir:            data
-data-files:          *.ico, *.wav
+data-files:          *.ico, *.wav, *.png
 
 flag buildExamples
   description: Build example executables
@@ -39,7 +43,7 @@ Library
     build-depends:   base >= 4.2 && < 5,
                      cabal-macosx >= 0.1 && < 0.3,
                      reactive-banana >= 0.6.0.0 && < 0.7,
-                     wx >= 0.90 && < 0.91, wxcore >= 0.90 && < 0.91
+                     wx >= 0.13.2 && < 0.91, wxcore >= 0.13.2 && < 0.91
     extensions:      ExistentialQuantification
     exposed-modules: Reactive.Banana.WX
 
@@ -92,7 +96,7 @@ Executable CurrencyConverter
 
 Executable CRUD
     if flag(buildExamples)
-        build-depends: containers >= 0.3 && < 0.5
+        build-depends: containers >= 0.3 && < 0.6
     else
         buildable: False
     hs-source-dirs:  src
