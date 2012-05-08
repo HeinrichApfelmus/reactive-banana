@@ -20,26 +20,36 @@ import Data.Traversable (sequenceA)
 ------------------------------------------------------------------------------}
 main = start $ do
     f      <- frame [text := "Bar Tab"]
+    msg    <- staticText f [ text := "Sum:" ]
     total  <- staticText f []
     add    <- button f [text := "Add"]
+    remove <- button f [text := "Remove"]
     
     let networkDescription :: forall t. NetworkDescription t ()
         networkDescription = do
-            eadd <- event0 add command
+            eAdd    <- event0 add command
+            eRemove <- event0 remove command
             
             let
-                newEntry :: NetworkDescription s (Layout, Trimmed Behavior String) 
+                newEntry :: NetworkDescription s (TextCtrl (), Trimmed Behavior String) 
                 newEntry = do
                     wentry <- liftIO $ entry f []
                     bentry <- trimB =<< behaviorText wentry ""
-                    return (widget wentry, bentry)
+                    return (wentry, bentry)
             
-            eNewEntry <- compileNew $ (F newEntry <$ eadd)
+            eNewEntry <- compileNew $ (F newEntry <$ eAdd)
             
             let
-                bentries :: Behavior t [(Layout, Trimmed Behavior String)]
-                bentries = accumB [] $ (:) <$> eNewEntry
+                eDoRemove = whenE (not . null <$> bentries) eRemove
             
+                bentries :: Behavior t [(TextCtrl (), Trimmed Behavior String)]
+                bentries = accumB [] $
+                    ((\x -> (++ [x])) <$> eNewEntry) `union` (init <$ eDoRemove)
+            
+            reactimate $ ((\w -> set w [ visible := False]) . fst . last)
+                <$> bentries <@ eDoRemove
+            
+            let
                 bprices  :: Behavior t [Trimmed Behavior Number]
                 bprices = map (fmap readNumber . snd) <$> bentries
                 
@@ -47,8 +57,8 @@ main = start $ do
                 blayout = mkLayout . map fst <$> bentries
                 
                 mkLayout entries = margin 10 $ column 10 $
-                    [widget add] ++ entries
-                    ++ [row 10 $ [label "Sum:", minsize (sz 40 20) $ widget total]]
+                    [row 10 [widget add, widget remove]] ++ map widget entries
+                    ++ [row 10 $ [widget msg, minsize (sz 40 20) $ widget total]]
         
             -- btotal :: Behavior t Number
             btotal <- switchB $ (fmap sum . sequenceA) <$> bprices
@@ -62,7 +72,7 @@ main = start $ do
 {-----------------------------------------------------------------------------
     Utilities
 ------------------------------------------------------------------------------}
-type Number = Maybe Int
+type Number = Maybe Double
 
 instance Num Number where
     (+) = liftA2 (+)
