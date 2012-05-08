@@ -13,6 +13,19 @@ See the **[project homepage][homepage]** for **documentation**, **examples** and
 
 I'm writing documentation on a call-by-need basis. So, feel free to write me an email if you want something explained that you don't understand, and I'll explain it to you!
 
+## Compilation
+
+Prerequisites: the wxHaskell package
+
+    cabal install wx
+
+Note that you need to have a development version of the wxWidgets libraries installed before building wx. If you run into `ExitFailure 1` exceptions, please follow the [wxHaskell Quick Start](http://www.haskell.org/haskellwiki/WxHaskell/Building) instructions and try again.
+
+To build the reactive-banana libraries, type
+
+    cd reactive-banana && cabal configure && cabal build && cd ..
+    cd reactive-banana-wx && cabal configure && cabal build && cd ..
+
 ## How is the source code structured?
 
 The project contains two directories:
@@ -30,20 +43,6 @@ The reactive-banana library actually contains *two* FRP implementations:
   [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Model.hs
   [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Internal/PushIO.hs
   [wxhaskell]: http://haskell.org/haskellwiki/WxHaskell
-
-## Compilation
-
-Prerequisites: the wxHaskell package
-
-    cabal install wx
-
-Note that you need to have a development version of the wxWidgets libraries installed before building wx. If you run into `ExitFailure 1` exceptions, please follow the [wxHaskell Quick Start](http://www.haskell.org/haskellwiki/WxHaskell/Building) instructions and try again.
-
-To build the reactive-banana libraries, type
-
-    cd reactive-banana && cabal configure && cabal build && cd ..
-    cd reactive-banana-wx && cabal configure && cabal build && cd ..
-
 
 ## Contribute
 
