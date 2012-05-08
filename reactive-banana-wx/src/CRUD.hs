@@ -34,9 +34,9 @@ main = start $ do
     listBox     <- singleListBox f []
     createBtn   <- button f [ text := "Create" ]
     deleteBtn   <- button f [ text := "Delete" ]
-    filterEntry <- textCtrlEx f 0 [ processEnter := True ]
+    filterEntry <- entry  f [ ]
     
-    firstname <- textCtrlEx f 0 [ ]
+    firstname <- entry f [ ]
     lastname  <- entry f [ ]
     
     let dataItem = grid 10 10 [[label "First Name:", widget firstname]
@@ -140,8 +140,15 @@ reactiveTextEntry
     -> NetworkDescription t
         (Tidings t String)    -- user changes
 reactiveTextEntry w btext = do
-    sink w [ text :== btext ]   -- display value
     eUser <- eventText w        -- user changes
+
+    -- filter text setting that are simultaneous with user events
+    itext <- initial btext
+    etext <- changes btext
+    let etext2 = fst $ split $ unionWith (curry snd) (Left <$> etext) (Right <$> eUser)
+        btext2 = stepper itext etext2
+
+    sink w [ text :== btext2 ]  -- display value
     return $ tidings btext eUser
 
 -- whole data item (consisting of two text entries)

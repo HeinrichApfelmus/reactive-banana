@@ -13,6 +13,10 @@ all:
 
 
 # Compile individual programs for testing
+Animation : src/Animation.hs src/Reactive/Banana/WX.hs
+	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/ && macosx-app $@ \
+	    && cp data/* $@.app/Contents/Resources
+
 Arithmetic : src/Arithmetic.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/ && macosx-app $@
 

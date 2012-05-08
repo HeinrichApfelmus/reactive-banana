@@ -282,6 +282,21 @@ instance Functor (Behavior t) where
 {-----------------------------------------------------------------------------
     Derived Combinators
 ------------------------------------------------------------------------------}
+{-
+
+Unfortunately, we can't make a  Num  instance because that would
+require  Eq  and  Show .
+
+instance Num a => Num (Behavior t a) where
+    (+) = liftA2 (+)
+    (-) = liftA2 (-)
+    (*) = liftA2 (*)
+    negate = fmap negate
+    abs    = fmap abs
+    signum = fmap signum
+    fromInteger = pure . fromInteger
+-}
+
 -- | Keep only the 'Just' values.
 -- Variant of 'filterE'.
 filterJust :: Event t (Maybe a) -> Event t a
@@ -299,6 +314,8 @@ whenE :: Behavior t Bool -> Event t a -> Event t a
 whenE bf = filterApply (const <$> bf)
 
 -- | Split event occurrences according to a tag.
+-- The 'Left' values go into the left component while the 'Right' values
+-- go into the right component of the result.
 split :: Event t (Either a b) -> (Event t a, Event t b)
 split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     where

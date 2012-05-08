@@ -20,8 +20,8 @@ import Reactive.Banana.WX
 main = start $ do
     -- FIXME: Why does tab traversal not work?
     f        <- frame   [ text := "Currency Converter", tabTraversal := True ]
-    dollar   <- entry f [ processEnter := True ]
-    euro     <- entry f [ processEnter := True ]
+    dollar   <- entry f []
+    euro     <- entry f []
     
     set f [layout := margin 10 $
             column 10 [

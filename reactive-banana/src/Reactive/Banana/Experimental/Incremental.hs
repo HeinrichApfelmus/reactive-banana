@@ -1,10 +1,11 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
-    
-    Derived data type, a hybrid between  Event  and  Behavior
 ------------------------------------------------------------------------------}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Reactive.Banana.Experimental.Incremental (
+    -- * Synopsis
+    -- | Derived data type, a hybrid between  Event  and  Behavior
+    
     -- * Why a third type Discrete?
     -- $discrete
     
