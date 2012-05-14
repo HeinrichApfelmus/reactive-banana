@@ -43,7 +43,7 @@ Library
     build-depends:   base >= 4.2 && < 5,
                      cabal-macosx >= 0.1 && < 0.3,
                      reactive-banana >= 0.6.0.0 && < 0.7,
-                     wx >= 0.13.2 && < 0.91, wxcore >= 0.13.2 && < 0.91
+                     wx >= 0.13.2.3 && < 0.90 || >= 0.90.0.1 && < 0.91
     extensions:      ExistentialQuantification
     exposed-modules: Reactive.Banana.WX
 
