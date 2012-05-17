@@ -5,15 +5,38 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, NoMonomorphismRestriction #-}
 
-module Reactive.Banana.Tests where
-
 import Control.Monad (when)
 
 import Reactive.Banana.Combinators
 import Reactive.Banana.Frameworks (interpretFrameworks)
 
+import Test.Framework (defaultMain, testGroup, Test)
+import Test.Framework.Providers.HUnit (testCase)
+
+import Test.HUnit (assert, Assertion)
+
 -- import Test.QuickCheck
 -- import Test.QuickCheck.Property
+
+main = defaultMain
+    [ testGroup "Single Combinators"
+        [ testModelMatch "id"      id
+        , testModelMatch "fmap1"   fmap1
+        , testModelMatch "filter1" filter1
+        , testModelMatch "filter2" filter2
+        ]
+    , testGroup "Small combinations"
+        [ testModelMatch "counter"   counter
+        , testModelMatch "double"    double
+        , testModelMatch "sharing"   sharing
+        , testModelMatch "decrease"  decrease
+        , testModelMatch "accumBvsE" accumBvsE
+        ]
+    -- TODO:
+    --  * algebraic laws
+    --  * larger examples
+    --  * quickcheck
+    ]
 
 {-----------------------------------------------------------------------------
     Testing
@@ -29,27 +52,12 @@ matchesModel f xs = do
     when (not b) $ mapM_ print bs
     return b
 
-testSuite = do
-        -- trivial unit tests
-        test id
-        -- test never1
-        test fmap1
-        test filter1
-        test filter2
-        test counter
-        test double
-        test sharing
-        test decrease
-        test accumBvsE
-        -- TODO:
-        --  * algebraic laws
-        --  * larger examples
-        --  * quickcheck
-
-test :: (Show b, Eq b) => (forall t. Event t Int -> Event t b) -> IO ()
-test f = print =<< matchesModel f [1..8::Int]
-
 singletons = map (\x -> [x])
+
+testModelMatch
+    :: (Show b, Eq b)
+    => String -> (forall t. Event t Int -> Event t b) -> Test
+testModelMatch name f = testCase name $ assert $ matchesModel f [1..8::Int]
 
 {-----------------------------------------------------------------------------
     Examples

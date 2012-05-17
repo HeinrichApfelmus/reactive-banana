@@ -21,10 +21,11 @@ Author:              Heinrich Apfelmus
 Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Stability:           Experimental
 Category:            FRP
-Cabal-version:       >=1.6
+Cabal-version:       >= 1.9.2
 Build-type:          Simple
 
-extra-source-files:  doc/examples/*.hs
+extra-source-files:     doc/examples/*.hs,
+                        src/Reactive/Banana/Tests.hs
 
 Source-repository head
     type:               git
@@ -67,8 +68,7 @@ Library
                         Reactive.Banana.Model
     
     other-modules:
-                        Reactive.Banana.Internal.InputOutput,
-                        Reactive.Banana.Tests
+                        Reactive.Banana.Internal.InputOutput
     
     if flag(UseExtensions)
         other-modules:
@@ -80,6 +80,16 @@ Library
         other-modules:
                         Reactive.Banana.Internal.CompileModel
 
-                        
+
+-- compiling the test suite from cabal currently doesn't work
+Test-Suite tests
+    type:               exitcode-stdio-1.0
+    hs-source-dirs:     src
+    main-is:            Reactive/Banana/Tests.hs
+    build-depends:      base >= 4.2 && < 5,
+                        HUnit >= 1.2 && < 2,
+                        test-framework == 0.6.*,
+                        test-framework-hunit == 0.2.*,
+                        reactive-banana
 
 
