@@ -9,10 +9,15 @@ module Reactive.Banana.Model (
     -- $model
 
     -- * Combinators
-    Event(..), Behavior(..),
-    never, filterE, unionWith, applyE, accumE, stepperB,
-    mapE, pureB, applyB, mapB,
-    
+    -- ** Data types
+    Event, Behavior,
+    -- ** Basic
+    never, filterE, unionWith, applyE, accumE, mapE,
+    stepperB, pureB, applyB, mapB,
+    -- ** Dynamic event switching
+    Moment, returnM, bindM,
+    trimE, observeE, switchE,
+        
     -- * Interpretation
     interpretModel,
     ) where
@@ -40,10 +45,10 @@ Implementations are free to be much more efficient.
 -}
 
 {-----------------------------------------------------------------------------
-    Combinators
+    Basic Combinators
 ------------------------------------------------------------------------------}
-type Event a    = [Maybe a]
-data Behavior a = StepperB a (Event a)
+type Event a    = [Maybe a]             -- should be abstract
+data Behavior a = StepperB a (Event a)  -- should be abstract
 
 never :: Event a
 never = repeat Nothing
@@ -92,3 +97,33 @@ mapB f = applyB (pureB f)
 
 interpretModel :: (Event a -> Event b) -> Event a -> IO (Event b)
 interpretModel = (return .)
+
+{-----------------------------------------------------------------------------
+    Dynamic Event Switching
+------------------------------------------------------------------------------}
+type Time     = Int
+type Moment a = Time -> a     -- should be abstract
+
+returnM :: a -> Moment a
+returnM = const
+
+bindM :: Moment a -> (a -> Moment b) -> Moment b
+bindM m g = \time -> g (m time) time
+
+
+trimE :: Event a -> Moment (Moment (Event a))
+trimE e = \now -> \later -> drop (later - now) e
+
+observeE :: Event (Moment a) -> Event a
+observeE = zipWith (\time -> fmap ($ time)) [0..]
+
+switchE :: Event (Moment (Event a)) -> Event a
+switchE = step never . observeE
+    where
+    step _      []           = []
+    step (y:ys) (Nothing:xs) = y : step ys xs 
+    step (y:ys) (Just zs:xs) = y : step zs xs
+    -- assume that the dynamic events are at least as long as the
+    -- switching event
+
+

@@ -15,6 +15,8 @@ module Reactive.Banana.Internal.PullGraph (
 
     compileToAutomaton,
     Event, Behavior, Moment,
+    never, mapE, unionWith, filterJust, accumE, stepperB,
+    switchE, observeE, trimE,
     ) where
 
 import Control.Applicative
