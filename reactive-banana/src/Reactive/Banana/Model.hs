@@ -12,7 +12,7 @@ module Reactive.Banana.Model (
     -- ** Data types
     Event, Behavior,
     -- ** Basic
-    never, filterE, unionWith, applyE, accumE, mapE,
+    never, filterJust, unionWith, mapE, accumE, applyE,
     stepperB, pureB, applyB, mapB,
     -- ** Dynamic event switching
     Moment, returnM, bindM,
@@ -23,6 +23,7 @@ module Reactive.Banana.Model (
     ) where
 
 import Control.Applicative
+import Control.Monad (join)
 
 {-$model
 
@@ -53,8 +54,8 @@ data Behavior a = StepperB a (Event a)  -- should be abstract
 never :: Event a
 never = repeat Nothing
 
-filterE :: (a -> Bool) -> Event a -> Event a
-filterE p = map (>>= \x -> if p x then Just x else Nothing)
+filterJust :: Event (Maybe a) -> Event a
+filterJust = map join
 
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
 unionWith f = zipWith g
@@ -63,6 +64,8 @@ unionWith f = zipWith g
     g (Just x) Nothing  = Just x
     g Nothing  (Just y) = Just y
     g Nothing  Nothing  = Nothing
+
+mapE f  = applyE (pureB f)
 
 applyE :: Behavior (a -> b) -> Event a -> Event b
 applyE _               []     = []
@@ -76,11 +79,8 @@ accumE x []           = []
 accumE x (Nothing:fs) = Nothing : accumE x fs
 accumE x (Just f :fs) = let y = f x in y `seq` (Just y:accumE y fs) 
 
-stepperB :: a -> [Maybe a] -> Behavior a
+stepperB :: a -> Event a -> Behavior a
 stepperB = StepperB
-
--- functor
-mapE f  = applyE (pureB f)
 
 -- applicative functor
 pureB x = stepperB x never
