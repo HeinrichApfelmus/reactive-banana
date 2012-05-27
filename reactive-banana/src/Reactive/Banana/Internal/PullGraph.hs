@@ -196,7 +196,6 @@ data SomeNode = forall a. E (Event a) | forall a. B (Behavior a)
 -- inital description of the functionality of an event or behavior
 data NodeSeed f a = NodeSeed
     { calculate'        :: Keys a -> Network (f a)  -- calculation function
-    , hasAccum'         :: Maybe a                  -- carries accumulator
     , initialArguments' :: [SomeNode]               -- inital dependencies
     }
 
@@ -204,22 +203,24 @@ type EventSeed    = NodeSeed Maybe
 type BehaviorSeed = NodeSeed Identity
 
 -- create an event with observable sharing
-makeEvent :: EventSeed a -> Event a
-makeEvent seed = unsafePerformIO $ do
+makeEventAccum :: Maybe a -> EventSeed a -> Event a
+makeEventAccum accum seed = unsafePerformIO $ do
     self <- newKeys
     return $ Node
         { calculate  = cached self (calculate' seed self)
-        , initialize = makeInitialize self seed
+        , initialize = makeInitializeAccum self accum seed
         }
+makeEvent = makeEventAccum Nothing
 
 -- create a behavior with observable sharing
-makeBehavior :: BehaviorSeed a -> Behavior a
-makeBehavior seed = unsafePerformIO $ do
+makeBehaviorAccum :: Maybe a -> BehaviorSeed a -> Behavior a
+makeBehaviorAccum accum seed = unsafePerformIO $ do
     self <- newKeys
     return $ Node
         { calculate  = calculate' seed self
-        , initialize = makeInitialize self seed
+        , initialize = makeInitializeAccum self accum seed
         }
+makeBehavior = makeBehaviorAccum Nothing
 
 -- functions with specialized types
 calculateE :: Event a -> Network (Maybe a)
@@ -235,12 +236,12 @@ initializeSomeNode :: SomeNode -> Network ()
 initializeSomeNode (E e) = initialize e
 initializeSomeNode (B b) = initialize b
 
-makeInitialize :: Keys a -> NodeSeed f a -> Network ()
-makeInitialize self seed = do
+makeInitializeAccum :: Keys a -> Maybe a -> NodeSeed f a -> Network ()
+makeInitializeAccum self accum seed = do
     b <- readIsInit self
     when (not b) $ do
         -- initialize accumulator if applicable
-        case hasAccum' seed of
+        case accum of
             Just acc -> writeAccum self acc
             Nothing  -> return ()
         -- mark as initialized
@@ -277,21 +278,18 @@ never = Node { calculate = return Nothing, initialize = return () }
 mapE :: (a -> b) -> Event a -> Event b
 mapE f e = makeEvent $ NodeSeed
     { calculate'        = \_ -> fmap f <$> calculateE e
-    , hasAccum'         = Nothing
     , initialArguments' = [E e]
     }
 
 filterJust :: Event (Maybe a) -> Event a
 filterJust e = makeEvent $ NodeSeed
     { calculate'        = \_ -> return . join =<< calculateE e
-    , hasAccum'         = Nothing
     , initialArguments' = [E e]
     }
 
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
 unionWith f e1 e2 = makeEvent $ NodeSeed
     { calculate'        = \_ -> eval <$> calculateE e1 <*> calculateE e2
-    , hasAccum'         = Nothing
     , initialArguments' = [E e1, E e2]
     }
     where
@@ -302,10 +300,9 @@ unionWith f e1 e2 = makeEvent $ NodeSeed
 
 
 accumE :: a -> Event (a -> a) -> Event a
-accumE acc e = makeEvent $ NodeSeed
+accumE acc e = makeEventAccum (Just acc) $ NodeSeed
     { calculate'        = \self ->
             maybe (return Nothing) (accum self) =<< calculateE e
-    , hasAccum'         = Just acc
     , initialArguments' = [E e]
     }
     where
@@ -315,13 +312,12 @@ accumE acc e = makeEvent $ NodeSeed
         return (Just acc')
 
 stepperB :: a -> Event a -> Behavior a
-stepperB acc e = makeBehavior $ NodeSeed
+stepperB acc e = makeBehaviorAccum (Just acc) $ NodeSeed
     { calculate'        = \self -> do
             -- write accumulator if applicable
             maybe (return ()) (writeAccum self $!) =<< calculateE e
             -- return previous instance
             Identity <$> readAccum self
-    , hasAccum'         = Just acc
     , initialArguments' = [E e]
     }
 
@@ -338,7 +334,6 @@ switchE ee = makeEvent $ NodeSeed
     { calculate'        = \self ->
             -- sample current event and calculate its occurrence
             calculateE =<< calculateB bAccum
-    , hasAccum'         = Nothing
     , initialArguments' = [E ee]
     }
     where
@@ -353,7 +348,6 @@ observeE e = makeEvent $ NodeSeed
             case mx of
                 Nothing -> return Nothing
                 Just x  -> Just <$> x
-    , hasAccum'         = Nothing
     , initialArguments' = [E e]
     }
 
