@@ -11,6 +11,7 @@ import Control.Monad (liftM)
 
 import qualified Reactive.Banana.Model as X
 import qualified Reactive.Banana.Internal.PullGraph as Y
+import qualified Reactive.Banana.Internal.InputOutput as Y
 
 {-----------------------------------------------------------------------------
     Types as pairs
@@ -37,6 +38,12 @@ ey y = E undefined y
 -- interpretation
 interpretModel :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
 interpretModel f = fstE . ($ 0) . fstM . f . ex
+
+interpretPullGraph :: (Event a -> Event b) -> [Maybe a] -> IO [Maybe b]
+interpretPullGraph f xs = do
+    i <- Y.newInputChannel
+    let automaton = Y.compileToAutomaton (sndE . f . ey $ Y.inputE i)
+    Y.unfoldAutomaton automaton i xs
 
 {-----------------------------------------------------------------------------
     Primitive combinators

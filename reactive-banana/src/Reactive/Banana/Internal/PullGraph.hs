@@ -15,12 +15,13 @@ module Reactive.Banana.Internal.PullGraph (
 
     compileToAutomaton,
     Event, Behavior, Moment,
-    never, mapE, unionWith, filterJust, accumE, stepperB,
+    inputE, never, mapE, unionWith, filterJust, accumE,
+    stepperB,
     switchE, observeE, trimE,
     ) where
 
 import Control.Applicative
-import Control.Monad (join, liftM, ap, when)
+import Control.Monad (join, liftM, ap, when, void)
 
 import Data.Maybe (fromJust)
 import Data.Functor.Identity
@@ -41,12 +42,17 @@ type Set = Set.HashSet
 -- representation of the current state of the event network
 data Graph a
     = Graph
-    { grValues  :: Vault.Vault  -- currently calculated values
+    { grValues  :: Values       -- currently calculated values
     , grAccums  :: Vault.Vault  -- accumulation values
     , grIsInit  :: Set Unique   -- is a node initialized?
     , grDemand  :: [SomeNode]   -- nodes that need to be evaluated
+    , grInputs  :: [Input]      -- input  nodes
     , grOutput  :: Event a      -- output event
     }
+
+type Values = Vault.Vault       -- currently calculated values
+type Input  =                   -- write input value into the graph
+    InputValue -> Values -> Values
 
 -- keys associated to a single node of type  a  in the graph
 data Keys a
@@ -88,6 +94,16 @@ cached self m = Network $ \graph ->
             in  (a, graph2 { grAccums = Vault.insert (keyValue self) a
                                                      (grValues graph2) }, f) 
 
+-- read cached value
+readValue :: Keys a -> Network (Maybe a)
+readValue self = Network $ \graph ->
+    (join $ Vault.lookup (keyValue self) (grValues graph), graph, id)
+
+-- write cached value
+writeValue :: Keys a -> Maybe a -> Network ()
+writeValue self x = Network $ \graph ->
+    ((), graph { grValues = Vault.insert (keyValue self) x (grValues graph) }, id )
+
 -- read the currently accumulated value
 readAccum :: Keys a -> Network a
 readAccum self = Network $
@@ -120,25 +136,46 @@ addDemand :: SomeNode -> Network ()
 addDemand somenode = Network $ \graph ->
     ((), graph, \g -> g { grDemand = somenode : grDemand g })
 
+
+addInput :: Keys a -> InputChannel a -> Network ()
+addInput self channel = Network $ \graph ->
+    ((), graph { grInputs = f : grInputs graph } , id)
+    where
+    f :: InputValue -> Values -> Values
+    f value
+        | getChannel value == getChannel channel =
+            Vault.insert (keyValue self) (fromValue channel value)
+        | otherwise = id
+
 {-----------------------------------------------------------------------------
     Running the event graph
 ------------------------------------------------------------------------------}
 step :: [InputValue] -> Graph b -> IO (Maybe b, Graph b)
-step inputs graphOld = return (mb, graphNew2)
+step inputvalues graph1 = return (mb, graph4)
     where
-    calculateGraph = mapM_ (\(E e) -> calculateE e >> return ())
-                           (grDemand graphOld)
-                   >> calculateE (grOutput graphOld)
-    (mb, graphNew1, f) = runNetwork calculateGraph graphOld
-    graphNew2 = (f graphNew1) { grValues = Vault.empty }
+    graph2 = graph1 { grValues = addInputs (grInputs graph1) inputvalues }
+    action = do
+        mapM_ (\(E e) -> void $ calculateE e) (grDemand graph2)
+        calculateE (grOutput graph2)
+    (mb, graph3, f) = runNetwork action graph2
+    graph4          = (f graph3) { grValues = error "grValues: internal error" }
+
+concatenate = foldr (.) id
+addInputs fs xs = (concatenate [f x | x <- xs, f <- fs]) Vault.empty
 
 compileToAutomaton :: Event b -> Automaton b
-compileToAutomaton e = fromStateful step $
-    Graph { grValues = Vault.empty
-          , grAccums = Vault.empty
-          , grIsInit = Set.empty
-          , grDemand = [E e]
-          , grOutput = e }
+compileToAutomaton e = fromStateful step graph2
+    where
+    -- initialize the graph
+    (_,graph2,_) = runNetwork (join $ trimE e) graph1
+    graph1       = empty { grOutput = e } 
+    empty        =
+        Graph { grValues = Vault.empty
+              , grAccums = Vault.empty
+              , grIsInit = Set.empty
+              , grDemand = []
+              , grInputs = []
+              , grOutput = undefined }
 
 {-----------------------------------------------------------------------------
     Building events and behaviors with
@@ -172,7 +209,8 @@ makeEvent seed = unsafePerformIO $ do
     self <- newKeys
     return $ Node
         { calculate  = cached self (calculate' seed self)
-        , initialize = makeInitialize self seed }
+        , initialize = makeInitialize self seed
+        }
 
 -- create a behavior with observable sharing
 makeBehavior :: BehaviorSeed a -> Behavior a
@@ -180,7 +218,8 @@ makeBehavior seed = unsafePerformIO $ do
     self <- newKeys
     return $ Node
         { calculate  = calculate' seed self
-        , initialize = makeInitialize self seed }
+        , initialize = makeInitialize self seed
+        }
 
 -- functions with specialized types
 calculateE :: Event a -> Network (Maybe a)
@@ -208,6 +247,23 @@ makeInitialize self seed = do
         writeIsInit self
         -- recurse into dependencies
         mapM_ initializeSomeNode (initialArguments' seed)
+
+cacheInit self action = do
+    b <- readIsInit self
+    when (not b) $ do
+        action
+        writeIsInit self
+
+{-----------------------------------------------------------------------------
+    Input nodes
+------------------------------------------------------------------------------}
+inputE :: InputChannel a -> Event a
+inputE channel = unsafePerformIO $ do
+    self <- newKeys
+    return $ Node
+        { calculate  = readValue self
+        , initialize = cacheInit self $ addInput self channel
+        }
 
 {-----------------------------------------------------------------------------
     Basic combinators

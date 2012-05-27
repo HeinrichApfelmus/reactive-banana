@@ -47,9 +47,8 @@ matchesModel
     :: (Show b, Eq b)
     => (Event a -> Event b) -> [a] -> IO Bool
 matchesModel f xs = do
-    let bs1 = interpretModel (return . f) (singletons xs)
-    let bs2 = bs1
-    -- bs2 <- interpretPushGraph  f (singletons xs)
+    bs1 <- return $ interpretModel (return . f) (singletons xs)
+    bs2 <- interpretPullGraph  f (singletons xs)
     -- bs3 <- interpretFrameworks f xs
     let bs = [bs1,bs2]
     let b = all (==bs1) bs
