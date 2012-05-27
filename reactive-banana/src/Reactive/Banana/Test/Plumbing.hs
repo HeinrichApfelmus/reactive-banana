@@ -52,16 +52,15 @@ never                           = E X.never Y.never
 filterJust (E x y)              = E (X.filterJust x) (Y.filterJust y)
 unionWith f (E x1 y1) (E x2 y2) = E (X.unionWith f x1 x2) (Y.unionWith f y1 y2)
 mapE f (E x y)                  = E (X.mapE f x) (Y.mapE f y)
-applyE ~(B x1 y1) (E x2 y2)     = E (X.applyE x1 x2) undefined
-                                -- E (X.applyE x1 x2) (Y.applyE y1 y2)
+applyE ~(B x1 y1) (E x2 y2)     = E (X.applyE x1 x2) (Y.applyE y1 y2)
 accumE a (E x y)                = E (X.accumE a x) (Y.accumE a y)
 
 instance Functor Event where fmap = mapE
 
 stepperB a (E x y)              = B (X.stepperB a x) (Y.stepperB a y)
-pureB a                         = B (X.pureB a) undefined
-applyB (B x1 y1) (B x2 y2)      = B (X.applyB x1 x2) undefined
-mapB f (B x y)                  = B (X.mapB f x) undefined
+pureB a                         = B (X.pureB a) (Y.pureB a)
+applyB (B x1 y1) (B x2 y2)      = B (X.applyB x1 x2) (Y.applyB y1 y2)
+mapB f (B x y)                  = B (X.mapB f x) (Y.mapB f y)
 
 instance Functor     Behavior where fmap = mapB
 instance Applicative Behavior where pure = pureB; (<*>) = applyB

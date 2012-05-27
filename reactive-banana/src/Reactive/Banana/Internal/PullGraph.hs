@@ -15,8 +15,8 @@ module Reactive.Banana.Internal.PullGraph (
 
     compileToAutomaton,
     Event, Behavior, Moment,
-    inputE, never, mapE, unionWith, filterJust, accumE,
-    stepperB,
+    inputE, never, mapE, unionWith, filterJust, accumE, applyE,
+    stepperB, pureB, applyB, mapB,
     switchE, observeE, trimE,
     ) where
 
@@ -33,6 +33,8 @@ import qualified Data.Vault as Vault
 import System.IO.Unsafe (unsafePerformIO)
 
 import Reactive.Banana.Internal.InputOutput
+
+import Debug.Trace
 
 type Set = Set.HashSet
 
@@ -91,7 +93,7 @@ cached self m = Network $ \graph ->
         Just a  -> (a,graph,id)   -- lookup succeeded
         Nothing ->                -- lookup failed
             let (a, graph2, f) = runNetwork m graph
-            in  (a, graph2 { grAccums = Vault.insert (keyValue self) a
+            in  (a, graph2 { grValues = Vault.insert (keyValue self) a
                                                      (grValues graph2) }, f) 
 
 -- read cached value
@@ -164,13 +166,14 @@ concatenate = foldr (.) id
 addInputs fs xs = (concatenate [f x | x <- xs, f <- fs]) Vault.empty
 
 compileToAutomaton :: Event b -> Automaton b
-compileToAutomaton e = fromStateful step graph2
+compileToAutomaton e = fromStateful step graph3
     where
     -- initialize the graph
-    (_,graph2,_) = runNetwork (join $ trimE e) graph1
+    graph3       = f graph2
+    (_,graph2,f) = runNetwork (join $ trimE e) graph1
     graph1       = empty { grOutput = e } 
     empty        =
-        Graph { grValues = Vault.empty
+        Graph { grValues = undefined
               , grAccums = Vault.empty
               , grIsInit = Set.empty
               , grDemand = []
@@ -281,6 +284,14 @@ mapE f e = makeEvent $ NodeSeed
     , initialArguments' = [E e]
     }
 
+applyE :: Behavior (a -> b) -> Event a -> Event b
+applyE b e = makeEvent $ NodeSeed
+    { calculate'        = \_ -> calculateE e >>= \mx -> case mx of
+            Just x  -> Just . ($ x) <$> calculateB b
+            Nothing -> return Nothing
+    , initialArguments' = [B b, E e]
+    }
+
 filterJust :: Event (Maybe a) -> Event a
 filterJust e = makeEvent $ NodeSeed
     { calculate'        = \_ -> return . join =<< calculateE e
@@ -311,9 +322,12 @@ accumE acc e = makeEventAccum (Just acc) $ NodeSeed
         writeAccum self $! acc'
         return (Just acc')
 
+
 stepperB :: a -> Event a -> Behavior a
 stepperB acc e = makeBehaviorAccum (Just acc) $ NodeSeed
     { calculate'        = \self -> do
+            -- TODO: Calculating the next value has to be delayed,
+            -- otherwise we run into an infinite loop!
             -- write accumulator if applicable
             maybe (return ()) (writeAccum self $!) =<< calculateE e
             -- return previous instance
@@ -321,6 +335,19 @@ stepperB acc e = makeBehaviorAccum (Just acc) $ NodeSeed
     , initialArguments' = [E e]
     }
 
+pureB :: a -> Behavior a
+pureB x = makeBehavior $ NodeSeed
+    { calculate'        = \_ -> Identity <$> return x
+    , initialArguments' = []
+    }
+
+applyB :: Behavior (a -> b) -> Behavior a ->  Behavior b
+applyB bf bx = makeBehavior $ NodeSeed
+    { calculate'        = \_ -> Identity <$> (calculateB bf `ap` calculateB bx)
+    , initialArguments' = [B bf, B bx]
+    }
+
+mapB f = applyB (pureB f)
 
 {-----------------------------------------------------------------------------
     Dynamic event switching
