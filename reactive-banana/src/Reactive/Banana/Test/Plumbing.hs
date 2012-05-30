@@ -37,12 +37,12 @@ ey y = E undefined y
 
 -- interpretation
 interpretModel :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
-interpretModel f = fstE . ($ 0) . fstM . f . ex
+interpretModel f = X.interpretModel (fmap fstE . fstM . f . ex)
 
-interpretPullGraph :: (Event a -> Event b) -> [Maybe a] -> IO [Maybe b]
+interpretPullGraph :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
 interpretPullGraph f xs = do
     i <- Y.newInputChannel
-    let automaton = Y.compileToAutomaton (sndE . f . ey $ Y.inputE i)
+    let automaton = Y.compileToAutomaton (fmap sndE . sndM . f . ey $ Y.inputE i)
     Y.unfoldAutomaton automaton i xs
 
 {-----------------------------------------------------------------------------
@@ -75,8 +75,13 @@ trimE (E x y) = M
     (fmap (fmap ex . mx) $ X.trimE x)
     (fmap (fmap ey . my) $ Y.trimE y)
 
-observeE = undefined
-switchE  = undefined
+observeE :: Event (Moment a) -> Event a
+observeE (E x y) = E (X.observeE $ X.mapE fstM x) (Y.observeE $ Y.mapE sndM y)
+
+switchE :: Event (Moment (Event a)) -> Event a
+switchE (E x y) = E
+    (X.switchE $ X.mapE (fstM . fmap fstE) x)
+    (Y.switchE $ Y.mapE (sndM . fmap sndE) y)
 
 {-----------------------------------------------------------------------------
     Derived combinators

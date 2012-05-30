@@ -165,13 +165,13 @@ step inputvalues graph1 = return (mb, graph4)
 concatenate = foldr (.) id
 addInputs fs xs = (concatenate [f x | x <- xs, f <- fs]) Vault.empty
 
-compileToAutomaton :: Event b -> Automaton b
-compileToAutomaton e = fromStateful step graph3
+compileToAutomaton :: Moment (Event b) -> Automaton b
+compileToAutomaton me = fromStateful step graph3
     where
     -- initialize the graph
-    graph3       = f graph2
-    (_,graph2,f) = runNetwork (join $ trimE e) graph1
-    graph1       = empty { grOutput = e } 
+    graph3       = (f graph2) { grOutput = e }
+    (e,graph2,f) = runNetwork (join . trimE =<< me) graph1
+    graph1       = empty
     empty        =
         Graph { grValues = undefined
               , grAccums = Vault.empty
@@ -370,11 +370,12 @@ switchE ee = makeEvent $ NodeSeed
     { calculate'        = \self ->
             -- sample current event and calculate its occurrence
             calculateE =<< calculateB bAccum
-    , initialArguments' = [E ee]
+    , initialArguments' = [E ee, B bAccum]
     }
     where
     -- switch into new event
-    bAccum = stepperB never (observeE ee)
+    bAccum = stepperB never (observeE $ mapE init ee)
+    init m = do e <- m; initialize e; return e
 
 
 observeE :: Event (Moment a) -> Event a

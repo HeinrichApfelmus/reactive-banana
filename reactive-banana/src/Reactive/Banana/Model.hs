@@ -51,6 +51,9 @@ Implementations are free to be much more efficient.
 type Event a    = [Maybe a]             -- should be abstract
 data Behavior a = StepperB a (Event a)  -- should be abstract
 
+interpretModel :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
+interpretModel f e = f e 0
+
 never :: Event a
 never = repeat Nothing
 
@@ -95,9 +98,6 @@ applyB (StepperB f fe) (StepperB x xe) =
 
 mapB f = applyB (pureB f)
 
-interpretModel :: (Event a -> Event b) -> Event a -> IO (Event b)
-interpretModel = (return .)
-
 {-----------------------------------------------------------------------------
     Dynamic Event Switching
 ------------------------------------------------------------------------------}
@@ -122,7 +122,7 @@ switchE = step never . observeE
     where
     step _      []           = []
     step (y:ys) (Nothing:xs) = y : step ys xs 
-    step (y:ys) (Just zs:xs) = y : step zs xs
+    step (y:ys) (Just zs:xs) = y : step (drop 1 zs) xs
     -- assume that the dynamic events are at least as long as the
     -- switching event
 

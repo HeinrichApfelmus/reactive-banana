@@ -35,6 +35,10 @@ main = defaultMain
         , testModelMatch "recursive" recursive
         , testModelMatch "accumBvsE" accumBvsE
         ]
+    , testGroup "Dynamic Event Switching"
+        [ testModelMatch "observeE1" observeE1
+        , testModelMatchM "switchE1"  switchE1
+        ]
     -- TODO:
     --  * algebraic laws
     --  * larger examples
@@ -46,10 +50,10 @@ main = defaultMain
 ------------------------------------------------------------------------------}
 matchesModel
     :: (Show b, Eq b)
-    => (Event a -> Event b) -> [a] -> IO Bool
+    => (Event a -> Moment (Event b)) -> [a] -> IO Bool
 matchesModel f xs = do
-    bs1 <- return $ interpretModel (return . f) (singletons xs)
-    bs2 <- interpretPullGraph  f (singletons xs)
+    bs1 <- return $ interpretModel f (singletons xs)
+    bs2 <- interpretPullGraph f (singletons xs)
     -- bs3 <- interpretFrameworks f xs
     let bs = [bs1,bs2]
     let b = all (==bs1) bs
@@ -58,18 +62,25 @@ matchesModel f xs = do
 
 singletons = map Just
 
-testModelMatch
+-- test whether model matches
+testModelMatchM
     :: (Show b, Eq b)
-    => String -> (Event Int -> Event b) -> Test
-testModelMatch name f = testCase name $ assert $ matchesModel f [1..8::Int]
+    => String -> (Event Int -> Moment (Event b)) -> Test
+testModelMatchM name f = testCase name $ assert $ matchesModel f [1..8::Int]
+testModelMatch name f = testModelMatchM name (return . f)
 
-{-----------------------------------------------------------------------------
-    Examples
-------------------------------------------------------------------------------}
+-- individual tests for debugging
 testModel :: (Event Int -> Event b) -> [Maybe b]
 testModel f = interpretModel (return . f) $ singletons [1..8::Int]
-testGraph f = interpretPullGraph f $ singletons [1..8::Int]
+testGraph f = interpretPullGraph (return . f) $ singletons [1..8::Int]
 
+testModelM f = interpretModel f $ singletons [1..8::Int]
+testGraphM f = interpretPullGraph f $ singletons [1..8::Int]
+
+
+{-----------------------------------------------------------------------------
+    Tests
+------------------------------------------------------------------------------}
 never1 :: Event Int -> Event Int
 never1    = const never
 fmap1     = fmap (+1)
@@ -98,10 +109,18 @@ recursive edec = applyE (const <$> bcounter) ecandecrease
     bcounter     = accumB 4 $ (subtract 1) <$ ecandecrease
     ecandecrease = whenE ((>0) <$> bcounter) edec
 
-
 -- test accumE vs accumB
 accumBvsE :: Event Dummy -> Event [Int]
 accumBvsE e = merge e1 e2
     where
     e1 = accumE 0 ((+1) <$ e)
     e2 = let b = accumB 0 ((+1) <$ e) in applyE (const <$> b) e
+
+
+observeE1  = observeE . fmap return
+switchE1 e = do
+    me <- trimE e
+    return $ switchE $ me <$ e
+
+
+
