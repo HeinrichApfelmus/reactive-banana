@@ -206,13 +206,15 @@ type EventSeed    = NodeSeed Maybe
 type BehaviorSeed = NodeSeed Identity
 
 -- create an event with observable sharing
-makeEventAccum :: Maybe a -> EventSeed a -> Event a
-makeEventAccum accum seed = unsafePerformIO $ do
+makeEventAccumSelf :: Maybe a -> EventSeed a -> (Event a, Keys a)
+makeEventAccumSelf accum seed = unsafePerformIO $ do
     self <- newKeys
-    return $ Node
+    return $ (Node
         { calculate  = cached self (calculate' seed self)
         , initialize = makeInitializeAccum self accum seed
         }
+        , self)
+makeEventAccum x = fst . makeEventAccumSelf x
 makeEvent = makeEventAccum Nothing
 
 -- create a behavior with observable sharing
@@ -311,7 +313,10 @@ unionWith f e1 e2 = makeEvent $ NodeSeed
 
 
 accumE :: a -> Event (a -> a) -> Event a
-accumE acc e = makeEventAccum (Just acc) $ NodeSeed
+accumE acc = fst . accumESelf acc
+
+accumESelf :: a -> Event (a -> a) -> (Event a, Keys a)
+accumESelf acc e = makeEventAccumSelf (Just acc) $ NodeSeed
     { calculate'        = \self ->
             maybe (return Nothing) (accum self) =<< calculateE e
     , initialArguments' = [E e]
@@ -324,16 +329,20 @@ accumE acc e = makeEventAccum (Just acc) $ NodeSeed
 
 
 stepperB :: a -> Event a -> Behavior a
-stepperB acc e = makeBehaviorAccum (Just acc) $ NodeSeed
-    { calculate'        = \self -> do
-            -- TODO: Calculating the next value has to be delayed,
-            -- otherwise we run into an infinite loop!
-            -- write accumulator if applicable
-            maybe (return ()) (writeAccum self $!) =<< calculateE e
-            -- return previous instance
-            Identity <$> readAccum self
-    , initialArguments' = [E e]
-    }
+stepperB acc = accumB acc . mapE const
+
+accumB :: a -> Event (a -> a) -> Behavior a
+accumB acc e1 = unsafePerformIO $ do
+    self <- newKeys
+    let (e2,eSelf) = accumESelf acc e1  -- helper event for accumulation
+    return $ Node
+        { calculate  =                  -- read old accumulator from event
+                Identity <$> readAccum eSelf 
+        , initialize = cacheInit self $ do
+                initialize e2           -- initialize event
+                addDemand (E e2)        -- make sure to demand the event
+        }
+
 
 pureB :: a -> Behavior a
 pureB x = makeBehavior $ NodeSeed
