@@ -5,7 +5,7 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, NoMonomorphismRestriction #-}
 
-import Control.Monad (when)
+import Control.Monad (when, join)
 
 import Test.Framework (defaultMain, testGroup, Test)
 import Test.Framework.Providers.HUnit (testCase)
@@ -36,8 +36,11 @@ main = defaultMain
         , testModelMatch "accumBvsE" accumBvsE
         ]
     , testGroup "Dynamic Event Switching"
-        [ testModelMatch "observeE1" observeE1
-        , testModelMatchM "switchE1"  switchE1
+        [ testModelMatch  "observeE_id"         observeE_id
+        , testModelMatchM "initialB_immediate"  initialB_immediate
+        , testModelMatchM "dynamic_apply"       dynamic_apply
+        , testModelMatchM "switchE1"            switchE1
+        , testModelMatchM "switchB_two"         switchB_two
         ]
     -- TODO:
     --  * algebraic laws
@@ -117,10 +120,20 @@ accumBvsE e = merge e1 e2
     e2 = let b = accumB 0 ((+1) <$ e) in applyE (const <$> b) e
 
 
-observeE1  = observeE . fmap return
+observeE_id = observeE . fmap return -- = id
+initialB_immediate e = do
+    x <- initialB (stepper 0 e)
+    return $ x <$ e
+dynamic_apply e = do
+    mb <- trimB $ stepper 0 e
+    return $ observeE $ (initialB =<< mb) <$ e
+    -- = stepper 0 e <@ e
 switchE1 e = do
     me <- trimE e
     return $ switchE $ me <$ e
-
-
-
+switchB_two e = do
+    mb0 <- trimB $ stepper 0 $ filterE even e
+    mb1 <- trimB $ stepper 1 $ filterE odd  e
+    b0  <- mb0
+    let b = switchB b0 $ (\x -> if odd x then mb1 else mb0) <$> e
+    return $ b <@ e

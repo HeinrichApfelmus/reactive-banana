@@ -17,7 +17,7 @@ module Reactive.Banana.Internal.PullGraph (
     Event, Behavior, Moment,
     inputE, never, mapE, unionWith, filterJust, accumE, applyE,
     stepperB, pureB, applyB, mapB,
-    switchE, observeE, trimE,
+    initialB, trimE, trimB, observeE, switchE, switchB
     ) where
 
 import Control.Applicative
@@ -106,6 +106,7 @@ writeValue :: Keys a -> Maybe a -> Network ()
 writeValue self x = Network $ \graph ->
     ((), graph { grValues = Vault.insert (keyValue self) x (grValues graph) }, id )
 
+
 -- read the currently accumulated value
 readAccum :: Keys a -> Network a
 readAccum self = Network $
@@ -118,6 +119,13 @@ writeAccum self x = Network $ \graph ->
     ( (), graph
     , \g -> g { grAccums = Vault.insert (keyAccum self) x (grAccums g) }
     )
+
+-- immediately initialize an accumulated value
+initAccum :: Keys a -> a -> Network ()
+initAccum self x = Network $ \graph ->
+    ( (), graph { grAccums = Vault.insert (keyAccum self) x (grAccums graph) }
+    , id )
+
 
 -- test whether we have initialized the node
 readIsInit :: Keys a -> Network Bool
@@ -138,10 +146,10 @@ addDemand :: SomeNode -> Network ()
 addDemand somenode = Network $ \graph ->
     ((), graph, \g -> g { grDemand = somenode : grDemand g })
 
-
+-- add a node that can receive input
 addInput :: Keys a -> InputChannel a -> Network ()
 addInput self channel = Network $ \graph ->
-    ((), graph { grInputs = f : grInputs graph } , id)
+    ((), graph, \g -> g { grInputs = f : grInputs g } )
     where
     f :: InputValue -> Values -> Values
     f value
@@ -247,7 +255,7 @@ makeInitializeAccum self accum seed = do
     when (not b) $ do
         -- initialize accumulator if applicable
         case accum of
-            Just acc -> writeAccum self acc
+            Just acc -> initAccum self acc
             Nothing  -> return ()
         -- mark as initialized
         writeIsInit self
@@ -364,19 +372,23 @@ mapB f = applyB (pureB f)
 -- monad that ensure common start times
 type Moment a = Network a
 
--- dynamic event switching
-switchE :: Event (Moment (Event a)) -> Event a
-switchE ee = makeEvent $ NodeSeed
-    { calculate'        = \self ->
-            -- sample current event and calculate its occurrence
-            calculateE =<< calculateB bAccum
-    , initialArguments' = [E ee, B bAccum]
-    }
-    where
-    -- switch into new event
-    bAccum = stepperB never (observeE $ mapE init ee)
-    init m = do e <- m; initialize e; return e
+initialB :: Behavior a -> Moment a
+initialB b = do
+    -- note: initialization must add accumulated value immediately,
+    -- or this will not work
+    initialize b
+    calculateB b
 
+trimE :: Event a -> Moment (Moment (Event a))
+trimE e = do
+    initialize e
+    addDemand (E e)
+    return $ return e
+
+trimB :: Behavior a -> Moment (Moment (Behavior a))
+trimB b = do
+    initialize b
+    return $ return b
 
 observeE :: Event (Moment a) -> Event a
 observeE e = makeEvent $ NodeSeed
@@ -388,11 +400,29 @@ observeE e = makeEvent $ NodeSeed
     , initialArguments' = [E e]
     }
 
+-- dynamic event switching
+switchE :: Event (Moment (Event a)) -> Event a
+switchE ee = makeEvent $ NodeSeed
+    { calculate'        = \_ ->
+            -- sample current event and calculate its occurrence
+            calculateE =<< calculateB bAccum
+    , initialArguments' = [B bAccum]
+    }
+    where
+    -- switch into new event
+    bAccum = stepperB never (observeE $ mapE init ee)
+    init m = do x <- m; initialize x; return x
 
--- trim an event to be used with dynamic event switching
-trimE :: Event a -> Moment (Moment (Event a))
-trimE e = do
-    initialize e
-    addDemand (E e)
-    return $ return e
+
+switchB :: Behavior a -> Event (Moment (Behavior a)) -> Behavior a
+switchB b eb = makeBehavior $ NodeSeed
+    { calculate'        = \_ -> calculate =<< calculateB bAccum
+    , initialArguments' = [B bAccum]
+    }
+    where
+    -- switch into new event
+    bAccum = stepperB b (observeE $ mapE init eb)
+    init m = do x <- m; initialize x; return x
+
+
 

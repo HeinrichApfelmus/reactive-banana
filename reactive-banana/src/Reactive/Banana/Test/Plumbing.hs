@@ -22,18 +22,14 @@ data Behavior a = B (X.Behavior a) (Y.Behavior a)
 data Moment   a = M (X.Moment   a) (Y.Moment   a)
 
 -- pair extractions
-fstM (M x _) = x
-sndM (M _ y) = y
-
-fstE (E x _) = x
-sndE (E _ y) = y
+fstE (E x _) = x; sndE (E _ y) = y
+fstB (B x _) = x; sndB (B _ y) = y
+fstM (M x _) = x; sndM (M _ y) = y
 
 -- partial embedding functions
-mx x = M x undefined
-my y = M undefined y
-
-ex x = E x undefined
-ey y = E undefined y
+ex x = E x undefined; ey y = E undefined y
+bx x = B x undefined; by y = B undefined y
+mx x = M x undefined; my y = M undefined y
 
 -- interpretation
 interpretModel :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
@@ -57,6 +53,7 @@ accumE a (E x y)                = E (X.accumE a x) (Y.accumE a y)
 
 instance Functor Event where fmap = mapE
 
+stepper = stepperB
 stepperB a (E x y)              = B (X.stepperB a x) (Y.stepperB a y)
 pureB a                         = B (X.pureB a) (Y.pureB a)
 applyB (B x1 y1) (B x2 y2)      = B (X.applyB x1 x2) (Y.applyB y1 y2)
@@ -74,6 +71,12 @@ trimE :: Event a -> Moment (Moment (Event a))
 trimE (E x y) = M
     (fmap (fmap ex . mx) $ X.trimE x)
     (fmap (fmap ey . my) $ Y.trimE y)
+trimB :: Behavior a -> Moment (Moment (Behavior a))
+trimB (B x y) = M
+    (fmap (fmap bx . mx) $ X.trimB x)
+    (fmap (fmap by . my) $ Y.trimB y)
+
+initialB (B x y) = M (X.initialB x) (Y.initialB y)
 
 observeE :: Event (Moment a) -> Event a
 observeE (E x y) = E (X.observeE $ X.mapE fstM x) (Y.observeE $ Y.mapE sndM y)
@@ -83,9 +86,14 @@ switchE (E x y) = E
     (X.switchE $ X.mapE (fstM . fmap fstE) x)
     (Y.switchE $ Y.mapE (sndM . fmap sndE) y)
 
+switchB :: Behavior a -> Event (Moment (Behavior a)) -> Behavior a
+switchB (B x y) (E xe ye) = B
+    (X.switchB x $ X.mapE (fstM . fmap fstB) xe)
+    (Y.switchB y $ Y.mapE (sndM . fmap sndB) ye)
+
 {-----------------------------------------------------------------------------
     Derived combinators
 ------------------------------------------------------------------------------}
 accumB acc = stepperB acc . accumE acc
 whenE b = filterJust . applyE ((\b e -> if b then Just e else Nothing) <$> b)
-
+b <@ e = applyE (const <$> b) e

@@ -15,8 +15,8 @@ module Reactive.Banana.Model (
     never, filterJust, unionWith, mapE, accumE, applyE,
     stepperB, pureB, applyB, mapB,
     -- ** Dynamic event switching
-    Moment, returnM, bindM,
-    trimE, observeE, switchE,
+    Moment,
+    initialB, trimE, trimB, observeE, switchE, switchB,
         
     -- * Interpretation
     interpretModel,
@@ -104,15 +104,26 @@ mapB f = applyB (pureB f)
 type Time     = Int
 type Moment a = Time -> a     -- should be abstract
 
-returnM :: a -> Moment a
-returnM = const
+{-
+instance Monad Moment where
+    return  = const
+    m >>= g = \time -> g (m time) time
+-}
 
-bindM :: Moment a -> (a -> Moment b) -> Moment b
-bindM m g = \time -> g (m time) time
-
+initialB :: Behavior a -> Moment a
+initialB (StepperB x _) = return x
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = \now -> \later -> drop (later - now) e
+
+trimB :: Behavior a -> Moment (Moment (Behavior a))
+trimB b = \now -> \later -> bTrimmed !! (later - now)
+    where
+    bTrimmed = iterate drop1 b
+
+    drop1 (StepperB x []          ) = StepperB x never
+    drop1 (StepperB x (Just y :ys)) = StepperB y ys
+    drop1 (StepperB x (Nothing:ys)) = StepperB x ys
 
 observeE :: Event (Moment a) -> Event a
 observeE = zipWith (\time -> fmap ($ time)) [0..]
@@ -120,10 +131,21 @@ observeE = zipWith (\time -> fmap ($ time)) [0..]
 switchE :: Event (Moment (Event a)) -> Event a
 switchE = step never . observeE
     where
-    step _      []           = []
+    step ys     []           = ys
     step (y:ys) (Nothing:xs) = y : step ys xs 
     step (y:ys) (Just zs:xs) = y : step (drop 1 zs) xs
     -- assume that the dynamic events are at least as long as the
     -- switching event
+
+switchB :: Behavior a -> Event (Moment (Behavior a)) -> Behavior a
+switchB (StepperB x e) = stepperB x . step e . observeE
+    where
+    step ys     []                        = ys
+    step (y:ys) (Nothing             :xs) =          y : step ys xs 
+    step (y:ys) (Just (StepperB x zs):xs) = Just value : step (drop 1 zs) xs
+        where
+        value = case zs of
+            Just z : _ -> z -- new behavior changes right away
+            _          -> x -- new behavior stays constant for a while
 
 
