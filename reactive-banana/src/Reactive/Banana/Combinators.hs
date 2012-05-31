@@ -12,9 +12,9 @@ module Reactive.Banana.Combinators (
     
     -- * Introduction
     -- $intro1
-    Event(..), Behavior(..),
+    Event, Behavior,
     -- $intro2
-    interpretModel, interpretPushGraph,
+    interpret,
     
     -- * Core Combinators
     module Control.Applicative,
@@ -33,39 +33,17 @@ module Reactive.Banana.Combinators (
     calm, unionWith,
     -- ** Apply class
     Apply(..),
-    
-    -- * Internal
-    PrimEvent, PrimBehavior,
     ) where
 
 import Control.Applicative
 import Control.Monad
 
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, catMaybes)
 import Data.Monoid (Monoid(..))
 
--- The efficient push-based implementation makes essential
--- use of several language extensions. To enable building
--- if other compilers, we can select the model implementation instead.
-#if UseExtensions
 
-import Reactive.Banana.Internal.InputOutput
-import Reactive.Banana.Internal.PushGraph
-import qualified Reactive.Banana.Internal.AST as Prim
-import qualified Reactive.Banana.Internal.InterpretModel as Prim
-
-type PrimEvent     = Prim.Event Prim.Expr
-type PrimBehavior  = Prim.Behavior Prim.Expr
-
-#else
-
-import qualified Reactive.Banana.Model as Prim
-
-type PrimEvent    a = Prim.Event a
-type PrimBehavior a = Prim.Behavior a
-
-#endif
-
+import qualified Reactive.Banana.Internal.PullGraph as Prim
+import Reactive.Banana.Internal.PrimTypes
 
 
 {-----------------------------------------------------------------------------
@@ -78,21 +56,8 @@ data types 'Event' and 'Behavior' and the various ways to combine them.
 
 -}
 
-{-| @Event t a@ represents a stream of events as they occur in time.
-Semantically, you can think of @Event t a@ as an infinite list of values
-that are tagged with their corresponding time of occurence,
-
-> type Event t a = [(Time,a)]
--}
-newtype Event t a = E { unE :: PrimEvent [a] }
-    -- ^ (Constructor exported for internal use only.)
-
-{-| @Behavior t a@ represents a value that varies in time. Think of it as
-
-> type Behavior t a = Time -> a
--}
-newtype Behavior t a = B { unB :: PrimBehavior a }
-    -- ^ (Constructor exported for internal use only.)
+-- Event
+-- Behavior
 
 {-$intro2
 
@@ -112,27 +77,12 @@ model implementation. See "Reactive.Banana.Model" for more.
 {-----------------------------------------------------------------------------
     Interpetation
 ------------------------------------------------------------------------------}
--- | Interpret with model implementation.
+-- | Interpret an event processing function.
 -- Useful for testing.
-interpretModel :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
-interpretModel f xs = map toList <$> Prim.interpretModel (unE . f . E) (map Just xs)
+interpret :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
+interpret f xs =
+    map toList <$> Prim.interpret (return . unE . f . E) (map Just xs)
 
--- | Interpret with push-based implementation (if available for your compiler).
--- Useful for testing.
-interpretPushGraph :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
-
-#if UseExtensions
-
-interpretPushGraph f xs = do
-    i <- newInputChannel
-    automaton <- compileToAutomaton (unE . f . E $ Prim.inputE i)
-    map toList <$> unfoldAutomaton automaton i xs
-
-#else
-
-interpretPushGraph = interpretModel
-
-#endif
 
 toList :: Maybe [a] -> [a]
 toList Nothing   = []
@@ -165,12 +115,19 @@ union e1 e2 = E $ Prim.unionWith (++) (unE e1) (unE e2)
 unions :: [Event t a] -> Event t a
 unions = foldr union never
 
+-- | Allow all event occurrences that are 'Just' values, discard the rest.
+-- Variant of 'filterE'.
+filterJust :: Event t (Maybe a) -> Event t a
+filterJust = E . Prim.filterJust . Prim.mapE (decide . catMaybes) . unE
+    where
+    decide xs = if null xs then Nothing else Just xs
+
 -- | Allow all events that fulfill the predicate, discard the rest.
 -- Think of it as
 -- 
 -- > filterE p es = [(time,a) | (time,a) <- es, p a]
 filterE   :: (a -> Bool) -> Event t a -> Event t a
-filterE p = E . Prim.filterE (not . null) . (Prim.mapE (filter p)) . unE
+filterE p = filterJust . fmap (\x -> if p x then Just x else Nothing)
 
 -- | Collect simultaneous event occurences.
 -- The result will never contain an empty list.
@@ -218,7 +175,7 @@ accumE acc = E . mapAccumE acc . Prim.mapE concatenate . unE
     concatenate fs acc = (tail values, last values)
         where values = scanl' (flip ($)) acc fs
 
-    mapAccumE :: s -> PrimEvent (s -> (a,s)) -> PrimEvent a
+    mapAccumE :: s -> Prim.Event (s -> (a,s)) -> Prim.Event a
     mapAccumE acc =
         Prim.mapE fst . Prim.accumE (undefined,acc) . Prim.mapE (. snd)
 
@@ -296,12 +253,6 @@ instance Num a => Num (Behavior t a) where
     signum = fmap signum
     fromInteger = pure . fromInteger
 -}
-
--- | Keep only the 'Just' values.
--- Variant of 'filterE'.
-filterJust :: Event t (Maybe a) -> Event t a
-filterJust = fmap (maybe err id) . filterE isJust
-    where err = error "Reactive.Banana.Model.filterJust: Internal error. :("
 
 -- | Allow all events that fulfill the time-varying predicate, discard the rest.
 -- Generalization of 'filterE'.

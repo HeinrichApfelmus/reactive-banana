@@ -36,10 +36,7 @@ interpretModel :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
 interpretModel f = X.interpretModel (fmap fstE . fstM . f . ex)
 
 interpretPullGraph :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
-interpretPullGraph f xs = do
-    i <- Y.newInputChannel
-    let automaton = Y.compileToAutomaton (fmap sndE . sndM . f . ey $ Y.inputE i)
-    Y.unfoldAutomaton automaton i xs
+interpretPullGraph f = Y.interpret (fmap sndE . sndM . f . ey)
 
 {-----------------------------------------------------------------------------
     Primitive combinators

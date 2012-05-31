@@ -13,7 +13,7 @@ module Reactive.Banana.Internal.PullGraph (
     -- * Synopsis
     -- | Pull-driven implementation.
 
-    compileToAutomaton,
+    compileToAutomaton, interpret,
     Event, Behavior, Moment,
     inputE, never, mapE, unionWith, filterJust, accumE, applyE,
     stepperB, pureB, applyB, mapB,
@@ -187,6 +187,12 @@ compileToAutomaton me = fromStateful step graph3
               , grDemand = []
               , grInputs = []
               , grOutput = undefined }
+
+interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
+interpret f xs = do
+    i <- newInputChannel
+    let automaton = compileToAutomaton (f $ inputE i)
+    unfoldAutomaton automaton i xs
 
 {-----------------------------------------------------------------------------
     Building events and behaviors with
