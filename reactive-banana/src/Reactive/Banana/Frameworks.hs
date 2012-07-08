@@ -141,10 +141,10 @@ primInitial ~(Prim.StepperB x e) = x
 >           reactimate $ fmap print event15
 >           reactimate $ fmap drawCircle eventCircle
 >
->       -- compile network description into a network
->       network <- compile networkDescription
->       -- register handlers and start producing outputs
->       actuate network
+>   -- compile network description into a network
+>   network <- compile networkDescription
+>   -- register handlers and start producing outputs
+>   actuate network
 
     In short, you use 'fromAddHandler' to obtain /input/ events.
     The library uses this to register event handlers
