@@ -1,8 +1,9 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE Rank2Types, RecursiveDo, ExistentialQuantification #-}
-module Reactive.Banana.Internal.PulseLatch where
+{-# LANGUAGE Rank2Types, RecursiveDo, ExistentialQuantification,
+    TypeSynonymInstances #-}
+module Reactive.Banana.Internal.PulseLatch0 where
 
 import Control.Applicative
 import Control.Monad
@@ -10,6 +11,8 @@ import Control.Monad.Trans.RWS
 import Control.Monad.IO.Class
 
 import Data.Monoid (Endo(..))
+
+import Reactive.Banana.Internal.Cached
 
 import Data.Hashable
 import Data.Unique.Really
@@ -25,8 +28,13 @@ data Graph = Graph
     { grPulse  :: Values                    -- pulse values
     , grLatch  :: Values                    -- latch values
     
+    , grCache  :: Values                    -- cache for initialization
     , grDeps   :: Map SomeNode [SomeNode]   -- dependency information
     }
+
+instance HasVault Network where
+    retrieve key = Vault.lookup key . grCache <$> get
+    write key a  = modify $ \g -> g { grCache = Vault.insert key a (grCache g) }
 
 type Values = Vault.Vault
 type Key    = Vault.Key
@@ -35,6 +43,7 @@ emptyGraph :: Graph
 emptyGraph = Graph
     { grPulse  = Vault.empty
     , grLatch  = Vault.empty
+    , grCache  = Vault.empty
     , grDeps   = Map.empty
     }
 
@@ -179,6 +188,11 @@ accumP a p = mdo
     eval a Nothing  = Nothing
     eval a (Just f) = Just (f a)
 
+mapP :: (a -> b) -> Pulse a -> Network (Pulse b)
+mapP f p = do
+    result <- pulse $ fmap f <$> valueP p
+    P result `dependOn` P p
+    return result
 
 unionWith :: (a -> a -> a) -> Pulse a -> Pulse a -> Network (Pulse a)
 unionWith f px py = do
