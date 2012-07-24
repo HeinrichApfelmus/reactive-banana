@@ -52,9 +52,14 @@ emptyGraph = Graph
 ------------------------------------------------------------------------------}
 step :: Pulse a -> Graph -> IO (Maybe a, Graph)
 step = undefined
-    -- collect demands, chase dependencies
-    -- perform evaluations in the right order
-    -- read output value
+    -- * Figure out which nodes need to be evaluated.
+    -- All nodes that are connected to current input nodes must be evaluated.
+    -- The other nodes don't have to be evaluated, because they yield
+    -- Nothing / don't change anyway.
+    --
+    -- * Build an evaluation order
+    -- * Perform evaluations
+    -- * read output value
 
 {-----------------------------------------------------------------------------
     Network monad
@@ -208,12 +213,12 @@ unionWith f px py = do
 {-----------------------------------------------------------------------------
     Combinators - dynamic event switching
 ------------------------------------------------------------------------------}
-observeP :: Pulse (Network (Maybe a)) -> Network (Pulse a)
+observeP :: Pulse (Network a) -> Network (Pulse a)
 observeP pn = do
     result <- pulse $ do
         mp <- valueP pn
         case mp of
-            Just p  -> p
+            Just p  -> Just <$> p
             Nothing -> return Nothing
     P result `dependOn` P pn
     return result
