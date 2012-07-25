@@ -10,7 +10,7 @@ import Control.Applicative
 import Control.Monad (liftM)
 
 import qualified Reactive.Banana.Model as X
-import qualified Reactive.Banana.Internal.PullGraph as Y
+import qualified Reactive.Banana.Internal.EventBehavior1 as Y
 import qualified Reactive.Banana.Internal.InputOutput as Y
 
 {-----------------------------------------------------------------------------

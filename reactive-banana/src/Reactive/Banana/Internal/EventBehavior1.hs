@@ -9,21 +9,25 @@ import qualified Reactive.Banana.Internal.PulseLatch0 as Prim
 import Reactive.Banana.Internal.Cached
 
 type Network = Prim.Network
+type Latch   = Prim.Latch
+type Pulse   = Prim.Pulse
 
 {-----------------------------------------------------------------------------
     Event and Behavior types
 ------------------------------------------------------------------------------}
-type Behavior a = Cached Network (Prim.Latch a, Prim.Pulse ())
-type Event a    = Cached Network (Prim.Pulse a)
+type Behavior a = Cached Network (Latch a, Pulse ())
+type Event a    = Cached Network (Pulse a)
 type Moment     = Network
 
 {-----------------------------------------------------------------------------
     Combinators - basic
 ------------------------------------------------------------------------------}
-never    = mkCached $ Prim.neverP
+never       = mkCached $ Prim.neverP
 unionWith f = liftCached2 $ \p1 p2 -> Prim.unionWith f
-accumE x = liftCached1 $ Prim.accumP x
-mapE f   = liftCached1 $ Prim.mapP f
+filterJust  = liftCached1 $ Prim.filterJustP
+accumE x    = liftCached1 $ Prim.accumP x
+mapE f      = liftCached1 $ Prim.mapP f
+applyE      = liftCached2 $ \(lf,_) px -> Prim.applyP lf px
 
 stepperB a  = liftCached1 $ \p1 -> do
     l  <- Prim.stepperL a p1
@@ -31,23 +35,19 @@ stepperB a  = liftCached1 $ \p1 -> do
     return (l, p2)
 
 pureB a = stepperB a never
-applyB = liftCached2 $ \(l1,p1) (l2,p2) ->
+applyB = liftCached2 $ \(l1,p1) (l2,p2) -> do
     p3 <- Prim.unionWith const p1 p2
-    -- ????
-    l3 <- observeP $ ($) <*> readLatch l1 <*> readLatch l2
-    returN (l3,p3)
+    l3 <- Prim.applyL l1 l2
+    return (l3,p3)
+mapB f = applyB (pureB f)
 
 {-----------------------------------------------------------------------------
     Combinators - dynamic event switching
 ------------------------------------------------------------------------------}
-observeE :: Event (Moment a) -> Event a 
-observeE = liftCached1 $ Prim.observeP
-
-switchE :: Event (Moment (Event a)) -> Event a
-switchE = liftCached1 $ \p1 -> do
-    p2 <- Prim.mapP (join . fmap runCached) p1
-    p3 <- Prim.observeP p2
-    Prim.switchP p3
+initialB :: Behavior a -> Moment a
+initialB b = do
+    (l,_) <- runCached b
+    Prim.valueL l
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = do
@@ -62,4 +62,21 @@ trimB b = do
     (l,p) <- runCached b             -- add behavior to network
     return $ return $ fromPure (l,p) -- remember it henceforth
 
+
+observeE :: Event (Moment a) -> Event a 
+observeE = liftCached1 $ Prim.observeP
+
+switchE :: Event (Moment (Event a)) -> Event a
+switchE = liftCached1 $ \p1 -> do
+    p2 <- Prim.mapP (join . fmap runCached) p1
+    p3 <- Prim.observeP p2
+    Prim.switchP p3
+
+switchB :: Behavior a -> Event (Moment (Behavior a)) -> Behavior a
+switchB = liftCached2 $ \(l0,p0) p1 -> do
+    p2 <- Prim.mapP (join . fmap runCached) p1
+    p3 <- Prim.observeP p2
+    lr <- Prim.switchL l0 =<< Prim.mapP fst p3
+    pr <- Prim.unionWith (\_ _ -> ()) p0 =<< Prim.switchP =<< Prim.mapP snd p3
+    return (lr, pr)
 
