@@ -181,15 +181,16 @@ neverP = do
         , uidP      = uid
         }
 
--- make latch from initial value and evaluation function
-latch :: a -> Network (Maybe a) -> Network (Latch a)
-latch a eval = do
+-- make latch from initial value, a future value and evaluation function
+latch :: a -> a -> Network (Maybe a) -> Network (Latch a)
+latch now future eval = do
     key <- liftIO Vault.newKey
     uid <- liftIO newUnique
 
-    -- Initialize with future latch value.
+    -- Initialize with current and future latch value.
     -- See note [LatchCreation].
-    writeLatchFuture key a
+    writeLatch key now
+    writeLatchFuture key future
 
     return $ Latch
         { evaluateL = maybe (return ()) (writeLatchFuture key) =<< eval
@@ -229,7 +230,7 @@ instance Hashable SomeNode where
 stepperL :: a -> Pulse a -> Network (Latch a)
 stepperL a p = do
     -- @a@ is indeed the future latch value. See note [LatchCreation].
-    x <- latch a (valueP p)
+    x <- latch a a (valueP p)
     L x `dependOn` P p
     return x
 
@@ -282,8 +283,9 @@ applyL lf lx = do
     -- The value in the next cycle is always the future value.
     -- See note [LatchCreation].
     let eval = ($) <$> futureL lf <*> futureL lx
-    a <- eval
-    result <- latch a $ fmap Just eval
+    future <- eval
+    now    <- ($) <$> valueL lf <*> valueL lx
+    result <- latch now future $ fmap Just eval
     L result `dependOns` [L lf, L lx]
     return result
 
@@ -332,8 +334,9 @@ switchL l p = mdo
                 Nothing -> futureL =<< valueL ll
                 Just l  -> switchTo l
 
-    a      <- futureL l                 -- see note [LatchCreation]
-    result <- latch a $ Just <$> eval
+    now    <- valueL  l                 -- see note [LatchCreation]
+    future <- futureL l
+    result <- latch now future $ Just <$> eval
     L result `dependOns` [L l, P p]
     return result
 
