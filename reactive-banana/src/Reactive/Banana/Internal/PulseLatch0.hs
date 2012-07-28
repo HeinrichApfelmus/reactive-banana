@@ -5,6 +5,7 @@
     TypeSynonymInstances #-}
 module Reactive.Banana.Internal.PulseLatch0 where
 
+import Control.Arrow (second)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.RWS
@@ -13,59 +14,89 @@ import Control.Monad.IO.Class
 import Data.Monoid (Endo(..))
 
 import Reactive.Banana.Internal.Cached
+import Reactive.Banana.Internal.InputOutput
+import qualified Reactive.Banana.Internal.DependencyGraph as Deps
 
 import Data.Hashable
 import Data.Unique.Really
 import qualified Data.Vault as Vault
 import qualified Data.HashMap.Lazy as Map
 
-type Map = Map.HashMap
+type Map  = Map.HashMap
+type Deps = Deps.Deps
 
 {-----------------------------------------------------------------------------
     Graph data type
 ------------------------------------------------------------------------------}
 data Graph = Graph
-    { grPulse  :: Values                    -- pulse values
-    , grLatch  :: Values                    -- latch values
+    { grPulse   :: Values                    -- pulse values
+    , grLatch   :: Values                    -- latch values
     
-    , grCache  :: Values                    -- cache for initialization
-    , grDeps   :: Map SomeNode [SomeNode]   -- dependency information
-    }
+    , grCache   :: Values                    -- cache for initialization
 
-instance HasVault Network where
-    retrieve key = Vault.lookup key . grCache <$> get
-    write key a  = modify $ \g -> g { grCache = Vault.insert key a (grCache g) }
+    , grDeps    :: Deps SomeNode             -- dependency information
+    , grInputs  :: [Input]                   -- input  nodes
+    }
 
 type Values = Vault.Vault
 type Key    = Vault.Key
+type Input  =
+    ( SomeNode
+    , InputValue -> Values -> Values         -- write input value into graph
+    )
 
 emptyGraph :: Graph
 emptyGraph = Graph
     { grPulse  = Vault.empty
     , grLatch  = Vault.empty
     , grCache  = Vault.empty
-    , grDeps   = Map.empty
+    , grDeps   = Deps.empty
+    , grInputs = []
     }
 
 {-----------------------------------------------------------------------------
     Graph evaluation
 ------------------------------------------------------------------------------}
-step :: Pulse a -> Graph -> IO (Maybe a, Graph)
-step = undefined
-    -- * Figure out which nodes need to be evaluated.
-    -- All nodes that are connected to current input nodes must be evaluated.
-    -- The other nodes don't have to be evaluated, because they yield
-    -- Nothing / don't change anyway.
-    --
-    -- * Build an evaluation order
-    -- * Perform evaluations
-    -- * read output value
+step :: Pulse a -> [InputValue] -> Graph -> IO (Maybe a, Graph)
+step result inputs =
+    uncurry (\nodes -> runNetworkAtomic $ do
+        performEvaluation nodes
+        readOutputValue result)
+    . buildEvaluationOrder
+    . writeInputValues inputs
+
+readOutputValue = valueP
+
+writeInputValues inputs g = g { grPulse =
+    concatenate [f x | (_,f) <- grInputs g, x <- inputs] Vault.empty }
+
+concatenate :: [a -> a] -> (a -> a)
+concatenate = foldr (.) id
+
+performEvaluation = mapM_ evaluate
+    where
+    evaluate (P p) = evaluateP p
+    evaluate (L l) = evaluateL l
+
+-- Figure out which nodes need to be evaluated.
+--
+-- All nodes that are connected to current input nodes must be evaluated.
+-- The other nodes don't have to be evaluated, because they yield
+-- Nothing / don't change anyway.
+buildEvaluationOrder :: Graph -> ([SomeNode], Graph)
+buildEvaluationOrder g = (Deps.topologicalSort $ grDeps g, g)
+
 
 {-----------------------------------------------------------------------------
     Network monad
 ------------------------------------------------------------------------------}
 -- reader / writer / state monad
 type Network = RWST Graph (Endo Graph) Graph IO
+
+-- access initialization cache
+instance HasVault Network where
+    retrieve key = Vault.lookup key . grCache <$> get
+    write key a  = modify $ \g -> g { grCache = Vault.insert key a (grCache g) }
 
 -- change a graph "atomically"
 runNetworkAtomic :: Network a -> Graph -> IO (a, Graph)
@@ -107,13 +138,20 @@ readLatchFuture key = (maybe err id . Vault.lookup key . grLatch) <$> ask
 
 -- add a dependency
 dependOn :: SomeNode -> SomeNode -> Network ()
-dependOn x (P y) = -- dependency on a pulse is added directly
-    modify $ \g -> g { grDeps = Map.insertWith (++) x [P y] $ grDeps g }
-dependOn x (L y) = -- dependcy on a latch breaks the vicious cycle
-    undefined
+dependOn x y = modify $ \g -> g { grDeps = Deps.dependOn x y $ grDeps g }
 
 dependOns :: SomeNode -> [SomeNode] -> Network ()
 dependOns x = mapM_ $ dependOn x
+
+-- link a Pulse key to an input channel
+addInput :: Key (Maybe a) -> Pulse a -> InputChannel a -> Network ()
+addInput key pulse channel =
+    modify $ \g -> g { grInputs = (P pulse, input) : grInputs g }
+    where
+    input value
+        | getChannel value == getChannel channel =
+            Vault.insert key (fromValue channel value)
+        | otherwise = id
 
 {-----------------------------------------------------------------------------
     Pulse and Latch types
@@ -180,6 +218,20 @@ neverP = do
         , valueP    = return Nothing
         , uidP      = uid
         }
+
+-- create a pulse that listens to input values
+inputP :: InputChannel a -> Network (Pulse a)
+inputP channel = do
+    key <- liftIO Vault.newKey
+    uid <- liftIO newUnique
+    
+    let pulse = Pulse
+            { evaluateP = return ()
+            , valueP    = readPulse key
+            , uidP      = uid
+            }
+    addInput key pulse channel
+    return pulse
 
 -- make latch from initial value, a future value and evaluation function
 latch :: a -> a -> Network (Maybe a) -> Network (Latch a)
