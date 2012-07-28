@@ -19,7 +19,7 @@ module Reactive.Banana.Model (
     initialB, trimE, trimB, observeE, switchE, switchB,
         
     -- * Interpretation
-    interpretModel,
+    interpret,
     ) where
 
 import Control.Applicative
@@ -51,8 +51,8 @@ Implementations are free to be much more efficient.
 type Event a    = [Maybe a]             -- should be abstract
 data Behavior a = StepperB a (Event a)  -- should be abstract
 
-interpretModel :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
-interpretModel f e = f e 0
+interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
+interpret f e = f e 0
 
 never :: Event a
 never = repeat Nothing

@@ -33,10 +33,10 @@ mx x = M x undefined; my y = M undefined y
 
 -- interpretation
 interpretModel :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
-interpretModel f = X.interpretModel (fmap fstE . fstM . f . ex)
+interpretModel f = X.interpret (fmap fstE . fstM . f . ex)
 
-interpretPullGraph :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
-interpretPullGraph f = Y.interpret (fmap sndE . sndM . f . ey)
+interpretGraph :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
+interpretGraph f = Y.interpret (fmap sndE . sndM . f . ey)
 
 {-----------------------------------------------------------------------------
     Primitive combinators

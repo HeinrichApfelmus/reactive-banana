@@ -57,6 +57,11 @@ emptyGraph = Graph
 {-----------------------------------------------------------------------------
     Graph evaluation
 ------------------------------------------------------------------------------}
+compileToAutomaton :: Network (Pulse a) -> IO (Automaton a)
+compileToAutomaton registerPulse = do
+    (p,graph) <- runNetworkAtomic registerPulse emptyGraph
+    return $ fromStateful (step p) graph
+
 step :: Pulse a -> [InputValue] -> Graph -> IO (Maybe a, Graph)
 step result inputs =
     uncurry (\nodes -> runNetworkAtomic $ do

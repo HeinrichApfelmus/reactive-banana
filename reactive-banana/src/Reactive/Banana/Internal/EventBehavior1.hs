@@ -1,12 +1,21 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Internal.EventBehavior1 where
+module Reactive.Banana.Internal.EventBehavior1 (
+    interpret,
+    Event, Behavior,
+    never, filterJust, unionWith, mapE, accumE, applyE,
+    stepperB, pureB, applyB, mapB,
+    Moment,
+    initialB, trimE, trimB, observeE, switchE, switchB,
+    ) where
 
+import Data.Functor
 import Control.Monad (join)
 
 import qualified Reactive.Banana.Internal.PulseLatch0 as Prim
 import Reactive.Banana.Internal.Cached
+import Reactive.Banana.Internal.InputOutput
 
 type Network = Prim.Network
 type Latch   = Prim.Latch
@@ -19,11 +28,18 @@ type Behavior a = Cached Network (Latch a, Pulse ())
 type Event a    = Cached Network (Pulse a)
 type Moment     = Network
 
+interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
+interpret f xs = do
+    i <- newInputChannel
+    automaton <- Prim.compileToAutomaton $
+        runCached =<< f (mkCached $ Prim.inputP i)
+    unfoldAutomaton automaton i xs
+
 {-----------------------------------------------------------------------------
     Combinators - basic
 ------------------------------------------------------------------------------}
 never       = mkCached $ Prim.neverP
-unionWith f = liftCached2 $ \p1 p2 -> Prim.unionWith f
+unionWith f = liftCached2 $ Prim.unionWith f
 filterJust  = liftCached1 $ Prim.filterJustP
 accumE x    = liftCached1 $ Prim.accumP x
 mapE f      = liftCached1 $ Prim.mapP f
@@ -47,7 +63,7 @@ mapB f = applyB (pureB f)
 initialB :: Behavior a -> Moment a
 initialB b = do
     (l,_) <- runCached b
-    Prim.valueL l
+    Prim.valueL l   -- Warning! This doesn't work.
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = do
