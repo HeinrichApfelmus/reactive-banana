@@ -29,11 +29,13 @@ main = defaultMain
         , testModelMatch "accumE1" accumE1
         ]
     , testGroup "Complex"
-        [ testModelMatch "counter"   counter
-        , testModelMatch "double"    double
-        , testModelMatch "sharing"   sharing
-        -- , testModelMatch "recursive" recursive
-        , testModelMatch "accumBvsE" accumBvsE
+        [ testModelMatch "counter"    counter
+        , testModelMatch "double"     double
+        , testModelMatch "sharing"    sharing
+        , testModelMatch "recursive1" recursive1
+        , testModelMatch "recursive2" recursive2
+        , testModelMatch "recursive3" recursive3
+        , testModelMatch "accumBvsE"  accumBvsE
         ]
     , testGroup "Dynamic Event Switching"
         [ testModelMatch  "observeE_id"         observeE_id
@@ -102,12 +104,21 @@ merge e1 e2 = unionWith (++) (list e1) (list e2)
 double e  = merge e e
 sharing e = merge e1 e1
     where e1 = filterE (< 3) e
+recursive1 e1 = e2
+    where
+    e2 = applyE b e1
+    b  = (+) <$> stepperB 0 e2
+recursive2 e1 = e2
+    where
+    e2 = applyE b e1
+    b  = (+) <$> stepperB 0 e3
+    e3 = applyE (id <$> b) e1   -- actually equal to e2
 
 type Dummy = Int
 
 -- counter that can be decreased as long as it's >= 0
-recursive :: Event Dummy -> Event Int
-recursive edec = applyE (const <$> bcounter) ecandecrease
+recursive3 :: Event Dummy -> Event Int
+recursive3 edec = applyE (const <$> bcounter) ecandecrease
     where
     bcounter     = accumB 4 $ (subtract 1) <$ ecandecrease
     ecandecrease = whenE ((>0) <$> bcounter) edec

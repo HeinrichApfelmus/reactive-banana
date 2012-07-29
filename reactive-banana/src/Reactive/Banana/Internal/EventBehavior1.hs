@@ -43,7 +43,7 @@ unionWith f = liftCached2 $ Prim.unionWith f
 filterJust  = liftCached1 $ Prim.filterJustP
 accumE x    = liftCached1 $ Prim.accumP x
 mapE f      = liftCached1 $ Prim.mapP f
-applyE      = liftCached2 $ \(lf,_) px -> Prim.applyP lf px
+applyE      = liftCached2 $ \(~(lf,_)) px -> Prim.applyP lf px
 
 stepperB a  = liftCached1 $ \p1 -> do
     l  <- Prim.stepperL a p1
@@ -62,8 +62,8 @@ mapB f = applyB (pureB f)
 ------------------------------------------------------------------------------}
 initialB :: Behavior a -> Moment a
 initialB b = do
-    (l,_) <- runCached b
-    Prim.valueL l   -- Warning! This doesn't work.
+    ~(l,_) <- runCached b
+    Prim.valueL l
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = do
@@ -75,8 +75,8 @@ trimE e = do
 
 trimB :: Behavior a -> Moment (Moment (Behavior a))
 trimB b = do
-    (l,p) <- runCached b             -- add behavior to network
-    return $ return $ fromPure (l,p) -- remember it henceforth
+    ~(l,p) <- runCached b             -- add behavior to network
+    return $ return $ fromPure (l,p)  -- remember it henceforth
 
 
 observeE :: Event (Moment a) -> Event a 
@@ -89,7 +89,7 @@ switchE = liftCached1 $ \p1 -> do
     Prim.switchP p3
 
 switchB :: Behavior a -> Event (Moment (Behavior a)) -> Behavior a
-switchB = liftCached2 $ \(l0,p0) p1 -> do
+switchB = liftCached2 $ \(~(l0,p0)) p1 -> do
     p2 <- Prim.mapP (join . fmap runCached) p1
     p3 <- Prim.observeP p2
     lr <- Prim.switchL l0 =<< Prim.mapP fst p3

@@ -1,6 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE RecursiveDo #-}
 module Reactive.Banana.Internal.Cached (
     -- | Utility for executing monadic actions once
     -- and then retrieving values from a cache.
@@ -12,6 +13,7 @@ module Reactive.Banana.Internal.Cached (
     ) where
 
 import Control.Monad
+import Control.Monad.Fix
 import Data.Unique.Really
 import qualified Data.Vault as Vault
 import System.IO.Unsafe
@@ -25,7 +27,7 @@ runCached :: Cached m a -> m a
 runCached (Cached x) = x
 
 -- | Type class for monads that have a 'Vault' that can be used.
-class Monad m => HasVault m where
+class (Monad m, MonadFix m) => HasVault m where
     retrieve :: Vault.Key a -> m (Maybe a)
     write    :: Vault.Key a -> a -> m ()
 
@@ -40,9 +42,9 @@ mkCached m = unsafePerformIO $ do
     return $ Cached $ do
         ma <- retrieve key      -- look up calculation result
         case ma of
-            Nothing -> do
+            Nothing -> mdo
+                write key a     -- black-hole result first
                 a <- m          -- evaluate
-                write key a
                 return a
             Just a  -> return a -- return cached result
 
