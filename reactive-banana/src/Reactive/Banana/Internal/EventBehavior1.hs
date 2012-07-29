@@ -43,7 +43,7 @@ unionWith f = liftCached2 $ Prim.unionWith f
 filterJust  = liftCached1 $ Prim.filterJustP
 accumE x    = liftCached1 $ Prim.accumP x
 mapE f      = liftCached1 $ Prim.mapP f
-applyE      = liftCached2 $ \(~(lf,_)) px -> Prim.applyP lf px
+applyE      = liftCached2 $ \(lf,_) px -> Prim.applyP lf px
 
 stepperB a  = liftCached1 $ \p1 -> do
     l  <- Prim.stepperL a p1
@@ -89,7 +89,7 @@ switchE = liftCached1 $ \p1 -> do
     Prim.switchP p3
 
 switchB :: Behavior a -> Event (Moment (Behavior a)) -> Behavior a
-switchB = liftCached2 $ \(~(l0,p0)) p1 -> do
+switchB = liftCached2 $ \(l0,p0) p1 -> do
     p2 <- Prim.mapP (join . fmap runCached) p1
     p3 <- Prim.observeP p2
     lr <- Prim.switchL l0 =<< Prim.mapP fst p3

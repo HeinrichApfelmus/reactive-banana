@@ -21,12 +21,15 @@ import Data.Unique.Really
 import qualified Data.Vault as Vault
 import qualified Data.HashMap.Lazy as Map
 
+import Data.Functor.Identity
+import System.IO.Unsafe
+
 import Debug.Trace
 
 type Map  = Map.HashMap
 type Deps = Deps.Deps
 
-debug   = trace
+debug   s m = m
 debugIO s m = liftIO (putStrLn s) >> m
 
 {-----------------------------------------------------------------------------
@@ -100,7 +103,7 @@ buildEvaluationOrder g = (Deps.topologicalSort $ grDeps g, g)
     Network monad
 ------------------------------------------------------------------------------}
 -- reader / writer / state monad
-type Network = RWST Graph (Endo Graph) Graph IO
+type Network = RWS Graph (Endo Graph) Graph
 
 -- access initialization cache
 instance HasVault Network where
@@ -109,11 +112,11 @@ instance HasVault Network where
 
 -- change a graph "atomically"
 runNetworkAtomic :: Network a -> Graph -> IO (a, Graph)
-runNetworkAtomic m g1 = mdo
+runNetworkAtomic m g1 = return . runIdentity $ mdo
     (x, g2, w2) <- runRWST m g3 g1  -- apply early graph gransformations
     let g3 = appEndo w2 g2          -- apply late  graph transformations
     return (x, g3)
-    
+
 -- write pulse value immediately
 writePulse :: Key (Maybe a) -> Maybe a -> Network ()
 writePulse key x =
@@ -190,7 +193,8 @@ data Latch a = Latch
     , uidL      :: Unique
     }
 
-{- Note [LatchCreation]
+{-
+* Note [LatchCreation]
 
 When creating a new latch from a pulse, we assume that the
 pulse cannot fire at the moment that the latch is created.
@@ -199,20 +203,34 @@ This is important when switching latches, because of note [PulseCreation].
 Likewise, when creating a latch, we assume that we do not
 have to calculate the previous latch value.
 
-Note [PulseCreation]
+* Note [PulseCreation]
 
 We assume that we do not have to calculate a pulse occurrence
 at the moment we create the pulse. Otherwise, we would have
 to recalculate the dependencies *while* doing evaluation;
 this is a recipe for desaster.
 
+
+* Note [unsafePerformIO]
+
+We're using @unsafePerformIO@ only to get @Key@ and @Unique@.
+It's not great, but it works.
+
+Unfortunately, using @IO@ as the base of the @Network@ monad
+transformer doens't work because it doesn't support recursion
+and @mfix@ very well.
+
+We could use the @ST@ monad, but this would add a type parameter
+to everything. A refactoring of this scope is too annoying for
+my taste right now.
+
 -}
 
 -- make pulse from evaluation function
 pulse :: Network (Maybe a) -> Network (Pulse a)
-pulse eval = do
-    key <- liftIO Vault.newKey
-    uid <- liftIO newUnique
+pulse eval = return . unsafePerformIO $ do
+    key <- Vault.newKey
+    uid <- newUnique
     return $ Pulse
         { evaluateP = writePulse key =<< eval
         , valueP    = readPulse key
@@ -220,8 +238,8 @@ pulse eval = do
         }
 
 neverP :: Network (Pulse a)
-neverP = debug "neverP" $ do
-    uid <- liftIO newUnique
+neverP = debug "neverP" $ return . unsafePerformIO $ do
+    uid <- newUnique
     return $ Pulse
         { evaluateP = return ()
         , valueP    = return Nothing
@@ -231,37 +249,38 @@ neverP = debug "neverP" $ do
 -- create a pulse that listens to input values
 inputP :: InputChannel a -> Network (Pulse a)
 inputP channel = debug "inputP" $ do
-    key <- liftIO Vault.newKey
-    uid <- liftIO newUnique
-    
-    let p = Pulse
+    (key,p) <- return . unsafePerformIO $ do
+        key <- Vault.newKey
+        uid <- newUnique
+        return $ (key, Pulse
             { evaluateP = return ()
             , valueP    = readPulse key
             , uidP      = uid
-            }
+            })
     addInput key p channel
     return p
 
 -- make latch from initial value, a future value and evaluation function
 latch :: a -> a -> Network (Maybe a) -> Network (Latch a)
 latch now future eval = do
-    key <- liftIO Vault.newKey
-    uid <- liftIO newUnique
+    (key, l) <- return . unsafePerformIO $ do
+        key <- Vault.newKey
+        uid <- newUnique
+        return $ (key, Latch
+            { evaluateL = maybe (return ()) (writeLatchFuture key) =<< eval
+            , valueL    = readLatch key
+            , futureL   = readLatchFuture key
+            , uidL      = uid
+            })
 
     -- Initialize with current and future latch value.
     -- See note [LatchCreation].
     writeLatch key now
     writeLatchFuture key future
-
-    return $ Latch
-        { evaluateL = maybe (return ()) (writeLatchFuture key) =<< eval
-        , valueL    = readLatch key
-        , futureL   = readLatchFuture key
-        , uidL      = uid
-        }
+    return l
 
 pureL :: a -> Network (Latch a)
-pureL a = debug "pureL" $ do
+pureL a = debug "pureL" $ return . unsafePerformIO $ do
     uid <- liftIO newUnique
     return $ Latch
         { evaluateL = return ()
