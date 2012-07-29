@@ -5,7 +5,6 @@
     TypeSynonymInstances #-}
 module Reactive.Banana.Internal.PulseLatch0 where
 
-import Control.Arrow (second)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.RWS
@@ -22,8 +21,13 @@ import Data.Unique.Really
 import qualified Data.Vault as Vault
 import qualified Data.HashMap.Lazy as Map
 
+import Debug.Trace
+
 type Map  = Map.HashMap
 type Deps = Deps.Deps
+
+debug   = trace
+debugIO s m = liftIO (putStrLn s) >> m
 
 {-----------------------------------------------------------------------------
     Graph data type
@@ -216,7 +220,7 @@ pulse eval = do
         }
 
 neverP :: Network (Pulse a)
-neverP = do
+neverP = debug "neverP" $ do
     uid <- liftIO newUnique
     return $ Pulse
         { evaluateP = return ()
@@ -226,17 +230,17 @@ neverP = do
 
 -- create a pulse that listens to input values
 inputP :: InputChannel a -> Network (Pulse a)
-inputP channel = do
+inputP channel = debug "inputP" $ do
     key <- liftIO Vault.newKey
     uid <- liftIO newUnique
     
-    let pulse = Pulse
+    let p = Pulse
             { evaluateP = return ()
             , valueP    = readPulse key
             , uidP      = uid
             }
-    addInput key pulse channel
-    return pulse
+    addInput key p channel
+    return p
 
 -- make latch from initial value, a future value and evaluation function
 latch :: a -> a -> Network (Maybe a) -> Network (Latch a)
@@ -257,7 +261,7 @@ latch now future eval = do
         }
 
 pureL :: a -> Network (Latch a)
-pureL a = do
+pureL a = debug "pureL" $ do
     uid <- liftIO newUnique
     return $ Latch
         { evaluateL = return ()
@@ -285,14 +289,14 @@ instance Hashable SomeNode where
     Combinators - basic
 ------------------------------------------------------------------------------}
 stepperL :: a -> Pulse a -> Network (Latch a)
-stepperL a p = do
+stepperL a p = debug "stepperL" $ do
     -- @a@ is indeed the future latch value. See note [LatchCreation].
     x <- latch a a (valueP p)
     L x `dependOn` P p
     return x
 
 accumP :: a -> Pulse (a -> a) -> Network (Pulse a)
-accumP a p = mdo
+accumP a p = debug "accumP" $ mdo
         x       <- stepperL a result
         result  <- pulse $ eval <$> valueL x <*> valueP p
         -- Evaluation order of the result pulse does *not*
@@ -301,30 +305,30 @@ accumP a p = mdo
         P result `dependOn` P p
         return result
     where
-    eval a Nothing  = Nothing
-    eval a (Just f) = let b = f a in b `seq` Just b  -- strict evaluation
+    eval _ Nothing  = Nothing
+    eval x (Just f) = let y = f x in y `seq` Just y  -- strict evaluation
 
 applyP :: Latch (a -> b) -> Pulse a -> Network (Pulse b)
-applyP f x = do
+applyP f x = debug "applyP" $ do
     result <- pulse $ fmap <$> valueL f <*> valueP x
     P result `dependOn` P x
     return result
 
 
 mapP :: (a -> b) -> Pulse a -> Network (Pulse b)
-mapP f p = do
+mapP f p = debug "mapP" $ do
     result <- pulse $ fmap f <$> valueP p
     P result `dependOn` P p
     return result
 
 filterJustP :: Pulse (Maybe a) -> Network (Pulse a)
-filterJustP p = do
+filterJustP p = debug "filterJustP" $ do
     result <- pulse $ join <$> valueP p
     P result `dependOn` P p
     return result
 
 unionWith :: (a -> a -> a) -> Pulse a -> Pulse a -> Network (Pulse a)
-unionWith f px py = do
+unionWith f px py = debug "unionWith" $ do
         result <- pulse $ eval <$> valueP px <*> valueP py
         P result `dependOns` [P px, P py]
         return result
@@ -336,9 +340,9 @@ unionWith f px py = do
 
 
 applyL :: Latch (a -> b) -> Latch a -> Network (Latch b)
-applyL lf lx = do
-    -- The value in the next cycle is always the future value.
-    -- See note [LatchCreation].
+applyL lf lx = debug "applyL" $ do
+        -- The value in the next cycle is always the future value.
+    -- See note [LatchCreation]
     let eval = ($) <$> futureL lf <*> futureL lx
     future <- eval
     now    <- ($) <$> valueL lf <*> valueL lx
