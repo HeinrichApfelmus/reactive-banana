@@ -45,8 +45,8 @@ import Reactive.Banana.Combinators
 
 #if UseExtensions
 
-import qualified Reactive.Banana.Internal.AST as Prim
-import qualified Reactive.Banana.Internal.PushGraph as Implementation
+import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
+import Reactive.Banana.Internal.Types2
 
 #else
 

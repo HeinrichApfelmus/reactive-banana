@@ -1,12 +1,12 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Internal.PrimTypes (
+module Reactive.Banana.Internal.Types2 (
     -- | Primitive types.
     Event (..), Behavior (..), Moment (..)
     ) where
 
-import qualified Reactive.Banana.Internal.PullGraph as Prim
+import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
 
 {-| @Event t a@ represents a stream of events as they occur in time.
 Semantically, you can think of @Event t a@ as an infinite list of values

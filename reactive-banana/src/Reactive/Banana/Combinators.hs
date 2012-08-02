@@ -42,8 +42,8 @@ import Data.Maybe (isJust, catMaybes)
 import Data.Monoid (Monoid(..))
 
 
-import qualified Reactive.Banana.Internal.PullGraph as Prim
-import Reactive.Banana.Internal.PrimTypes
+import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
+import Reactive.Banana.Internal.Types2 
 
 
 {-----------------------------------------------------------------------------
