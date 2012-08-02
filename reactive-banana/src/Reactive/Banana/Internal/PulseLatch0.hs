@@ -240,19 +240,19 @@ my taste right now.
 
 -- make pulse from evaluation function
 pulse :: Network (Maybe a) -> Network (Pulse a)
-pulse eval = return . unsafePerformIO $ do
+pulse eval = unsafePerformIO $ do
     key <- Vault.newKey
     uid <- newUnique
-    return $ Pulse
+    return $ return $ Pulse
         { evaluateP = writePulse key =<< eval
         , valueP    = readPulse key
         , uidP      = uid
         }
 
 neverP :: Network (Pulse a)
-neverP = debug "neverP" $ return . unsafePerformIO $ do
+neverP = debug "neverP" $ unsafePerformIO $ do
     uid <- newUnique
-    return $ Pulse
+    return $ return $ Pulse
         { evaluateP = return ()
         , valueP    = return Nothing
         , uidP      = uid
@@ -260,41 +260,41 @@ neverP = debug "neverP" $ return . unsafePerformIO $ do
 
 -- create a pulse that listens to input values
 inputP :: InputChannel a -> Network (Pulse a)
-inputP channel = debug "inputP" $ do
-    (key,p) <- return . unsafePerformIO $ do
-        key <- Vault.newKey
-        uid <- newUnique
-        return $ (key, Pulse
-            { evaluateP = return ()
-            , valueP    = readPulse key
-            , uidP      = uid
-            })
-    addInput key p channel
-    return p
+inputP channel = debug "inputP" $ unsafePerformIO $ do
+    key <- Vault.newKey
+    uid <- newUnique
+    return $ do
+        let
+            p = Pulse
+                { evaluateP = return ()
+                , valueP    = readPulse key
+                , uidP      = uid
+                }
+        addInput key p channel
+        return p
 
 -- make latch from initial value, a future value and evaluation function
 latch :: a -> a -> Network (Maybe a) -> Network (Latch a)
-latch now future eval = do
-    (key, l) <- return . unsafePerformIO $ do
-        key <- Vault.newKey
-        uid <- newUnique
-        return $ (key, Latch
+latch now future eval = unsafePerformIO $ do
+    key <- Vault.newKey
+    uid <- newUnique
+    return $ do
+        -- Initialize with current and future latch value.
+        -- See note [LatchCreation].
+        writeLatch key now
+        writeLatchFuture key future
+        
+        return $ Latch
             { evaluateL = maybe (return ()) (writeLatchFuture key) =<< eval
             , valueL    = readLatch key
             , futureL   = readLatchFuture key
             , uidL      = uid
-            })
-
-    -- Initialize with current and future latch value.
-    -- See note [LatchCreation].
-    writeLatch key now
-    writeLatchFuture key future
-    return l
+            }
 
 pureL :: a -> Network (Latch a)
-pureL a = debug "pureL" $ return . unsafePerformIO $ do
+pureL a = debug "pureL" $ unsafePerformIO $ do
     uid <- liftIO newUnique
-    return $ Latch
+    return $ return $ Latch
         { evaluateL = return ()
         , valueL    = return a
         , futureL   = return a
