@@ -2,16 +2,19 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Internal.EventBehavior1 (
-    interpret,
     Event, Behavior,
     never, filterJust, unionWith, mapE, accumE, applyE,
-    stepperB, pureB, applyB, mapB,
-    Moment,
+    changesB, stepperB, pureB, applyB, mapB,
+    Moment, MomentT, liftMoment,
     initialB, trimE, trimB, observeE, switchE, switchB,
+    
+    compileToAutomatonT, inputE, interpret,
     ) where
 
 import Data.Functor
+import Data.Functor.Identity
 import Control.Monad (join)
+import Control.Monad.Fix
 
 import qualified Reactive.Banana.Internal.PulseLatch0 as Prim
 import Reactive.Banana.Internal.Cached
@@ -22,17 +25,37 @@ type Latch   = Prim.Latch
 type Pulse   = Prim.Pulse
 
 {-----------------------------------------------------------------------------
-    Event and Behavior types
+    Types
 ------------------------------------------------------------------------------}
 type Behavior a = Cached Network (Latch a, Pulse ())
 type Event a    = Cached Network (Pulse a)
+type MomentT    = Prim.NetworkT
 type Moment     = Network
+
+
+liftMoment :: Monad m => Moment a -> MomentT m a
+liftMoment = Prim.liftNetwork
+
+{-----------------------------------------------------------------------------
+    Interpretation
+------------------------------------------------------------------------------}
+compileToAutomaton :: Moment (Event a) -> IO (Automaton a)
+compileToAutomaton = return . runIdentity . compileToAutomatonT
+
+compileToAutomatonT :: (Monad m, MonadFix m)
+    => MomentT m (Event a) -> m (Automaton a)
+compileToAutomatonT action =
+    Prim.compileToAutomatonT $ do
+        e <- action                     -- creation can use the Monad m
+        Prim.liftNetwork (runCached e)  -- but the event itself cannot use m
+
+inputE :: InputChannel a -> Event a
+inputE = mkCached . Prim.inputP
 
 interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
     i <- newInputChannel
-    automaton <- Prim.compileToAutomaton $
-        runCached =<< f (mkCached $ Prim.inputP i)
+    automaton <- compileToAutomaton $ f $ inputE i
     unfoldAutomaton automaton i xs
 
 {-----------------------------------------------------------------------------
@@ -45,11 +68,11 @@ accumE x    = liftCached1 $ Prim.accumP x
 mapE f      = liftCached1 $ Prim.mapP f
 applyE      = liftCached2 $ \(lf,_) px -> Prim.applyP lf px
 
+changesB    = liftCached1 $ \(lx,px) -> Prim.tagFuture lx px
 stepperB a  = liftCached1 $ \p1 -> do
     l  <- Prim.stepperL a p1
     p2 <- Prim.mapP (const ()) p1
     return (l, p2)
-
 pureB a = stepperB a never
 applyB = liftCached2 $ \(l1,p1) (l2,p2) -> do
     p3 <- Prim.unionWith const p1 p2

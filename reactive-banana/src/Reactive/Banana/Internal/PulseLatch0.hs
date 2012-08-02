@@ -7,6 +7,7 @@ module Reactive.Banana.Internal.PulseLatch0 where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Fix
 import Control.Monad.Trans.RWS
 import Control.Monad.IO.Class
 
@@ -64,9 +65,10 @@ emptyGraph = Graph
 {-----------------------------------------------------------------------------
     Graph evaluation
 ------------------------------------------------------------------------------}
-compileToAutomaton :: Network (Pulse a) -> IO (Automaton a)
-compileToAutomaton registerPulse = do
-    (p,graph) <- runNetworkAtomic registerPulse emptyGraph
+compileToAutomatonT :: (Monad m, MonadFix m)
+    => NetworkT m (Pulse a) -> m (Automaton a)
+compileToAutomatonT registerPulse = do
+    (p,graph) <- runNetworkAtomicT registerPulse emptyGraph
     return $ fromStateful (step p) graph
 
 step :: Pulse a -> [InputValue] -> Graph -> IO (Maybe a, Graph)
@@ -103,16 +105,26 @@ buildEvaluationOrder g = (Deps.topologicalSort $ grDeps g, g)
     Network monad
 ------------------------------------------------------------------------------}
 -- reader / writer / state monad
-type Network = RWS Graph (Endo Graph) Graph
+type NetworkT = RWST Graph (Endo Graph) Graph
+type Network  = NetworkT Identity
+
+-- lift pure Network computation into any monad
+-- very useful for its laziness
+liftNetwork :: Monad m => Network a -> NetworkT m a
+liftNetwork m = RWST $ \r s -> return . runIdentity $ runRWST m r s
 
 -- access initialization cache
-instance HasVault Network where
+instance (Monad m, MonadFix m, Functor m) => HasVault (NetworkT m) where
     retrieve key = Vault.lookup key . grCache <$> get
     write key a  = modify $ \g -> g { grCache = Vault.insert key a (grCache g) }
 
 -- change a graph "atomically"
 runNetworkAtomic :: Network a -> Graph -> IO (a, Graph)
-runNetworkAtomic m g1 = return . runIdentity $ mdo
+runNetworkAtomic m g = return . runIdentity $ runNetworkAtomicT m g
+
+runNetworkAtomicT :: (Monad m, MonadFix m)
+    => NetworkT m a -> Graph -> m (a, Graph)
+runNetworkAtomicT m g1 = mdo
     (x, g2, w2) <- runRWST m g3 g1  -- apply early graph gransformations
     let g3 = appEndo w2 g2          -- apply late  graph transformations
     return (x, g3)
@@ -333,6 +345,13 @@ applyP f x = debug "applyP" $ do
     P result `dependOn` P x
     return result
 
+-- tag a pulse with future values of a latch
+-- Caveat emptor.
+tagFuture :: Latch a -> Pulse b -> Network (Pulse a)
+tagFuture f x = debug "tagFuture" $ do
+    result <- pulse $ fmap . const <$> futureL f <*> valueP x
+    P result `dependOn` P x
+    return result
 
 mapP :: (a -> b) -> Pulse a -> Network (Pulse b)
 mapP f p = debug "mapP" $ do

@@ -6,7 +6,8 @@
 
 module Reactive.Banana.Frameworks (
     -- * Synopsis
-    -- | Build event networks using existing event-based frameworks and run them.
+    -- | Build event networks using existing event-based frameworks
+    -- and run them.
     
     -- * Simple use
     interpretAsHandler,
@@ -15,7 +16,7 @@ module Reactive.Banana.Frameworks (
     -- $build
     NetworkDescription, compile,
     AddHandler, fromAddHandler, fromChanges, fromPoll,
-    reactimate, initial, changes,
+    reactimate, initial, changes, now,
     liftIO, liftIOLater,
     
     -- * Running event networks
@@ -34,6 +35,7 @@ import Control.Concurrent.MVar
 import Control.Monad
 import Control.Monad.Fix       (MonadFix(..))
 import Control.Monad.IO.Class  (MonadIO(..))
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.RWS
 
 import Data.IORef
@@ -43,17 +45,8 @@ import qualified Data.Unique -- ordinary uniques here, because they are Ord
 import Reactive.Banana.Internal.InputOutput
 import Reactive.Banana.Combinators
 
-#if UseExtensions
-
 import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
 import Reactive.Banana.Internal.Types2
-
-#else
-
-import qualified Reactive.Banana.Model as Prim
-import Reactive.Banana.Internal.CompileModel
-
-#endif
 
 import qualified Data.Map as Map
 
@@ -62,30 +55,20 @@ type Map = Map.Map
 {-----------------------------------------------------------------------------
     Compilation specific to the different backends
 ------------------------------------------------------------------------------}
-#if UseExtensions
-
--- TODO: Share types. For that, Model.Event would need to become a newtype.
-
-data InputToEvent = InputToEvent (forall a. InputChannel a -> PrimEvent a)
-type Compile a b  = (InputToEvent -> IO (PrimEvent a,b)) -> IO (Automaton a,b)
+data InputToEvent = InputToEvent (forall a. InputChannel a -> Prim.Event a)
+type Compile a b
+    =  (InputToEvent -> Prim.MomentT IO (Prim.Event a,b))
+    -> IO (Automaton a,b)
 
 compileWithGlobalInput :: Compile a b
 compileWithGlobalInput f = do
-    (e,b) <- f (InputToEvent Prim.inputE)
-    a     <- Implementation.compileToAutomaton e 
-    return (a, b)
-
-primChanges ~(Prim.Pair _ (Prim.Stepper x e)) = e
-primInitial ~(Prim.Pair _ (Prim.Stepper x e)) = x
-
-#else
-
--- types are imported by CompileModel
-
-primChanges ~(Prim.StepperB x e) = e
-primInitial ~(Prim.StepperB x e) = x
-
-#endif
+    rx <- newIORef undefined
+    e  <- Prim.compileToAutomatonT $ do
+        (e,b) <- f $ InputToEvent Prim.inputE
+        liftIO $ writeIORef rx b
+        return e
+    b <- readIORef rx
+    return (e, b)
 
 {-----------------------------------------------------------------------------
     NetworkDescription, setting up event networks
@@ -107,11 +90,13 @@ primInitial ~(Prim.StepperB x e) = x
     
     An /event network/ is an event graph together with inputs and outputs.
     To build an event network,
-    describe the inputs, outputs and event graph in the 'NetworkDescription' monad 
+    describe the inputs, outputs and event graph in the
+    'NetworkDescription' monad 
     and use the 'compile' function to obtain an event network from that.
 
     To /activate/ an event network, use the 'actuate' function.
-    The network will register its input event handlers and start producing output.
+    The network will register its input event handlers and start 
+    producing output.
 
     A typical setup looks like this:
     
@@ -170,8 +155,9 @@ type Preparations t  =
 -- Note: The phantom type @t@ prevents you from smuggling
 -- values of types 'Event' or 'Behavior'
 -- outside the 'NetworkDescription' monad.
-newtype NetworkDescription t a
-    = Prepare { unPrepare :: RWST InputToEvent (Preparations t) () IO a }
+newtype NetworkDescription t a = Prepare
+    { unPrepare :: RWST InputToEvent (Preparations t) () (Prim.MomentT IO) a
+    }
 
 -- boilerplate class instances
 instance Monad (NetworkDescription t) where
@@ -271,7 +257,8 @@ fromChanges initial changes = stepper initial <$> fromAddHandler changes
 -- | Output,
 -- observe when a 'Behavior' changes.
 -- 
--- Strictly speaking, a 'Behavior' denotes a value that varies *continuously* in time,
+-- Strictly speaking, a 'Behavior' denotes a value that
+-- varies *continuously* in time,
 -- so there is no well-defined event which indicates when the behavior changes.
 -- 
 -- Still, for reasons of efficiency, the library provides a way to observe
@@ -280,16 +267,31 @@ fromChanges initial changes = stepper initial <$> fromAddHandler changes
 -- but the idea is that
 --
 -- > changes (stepper x e) = return (calm e)
+--
+-- WARNING: The values of the event will not become available
+-- until event processing is complete. Use them within 'reactimate'.
+-- If you try to access them before that, the program
+-- will be thrown into an infinite loop.
 changes :: Behavior t a -> NetworkDescription t (Event t a)
-changes = return . E . Prim.mapE (:[]) . primChanges . unB
+changes = return . E . Prim.mapE (:[]) . Prim.changesB . unB
 
 -- | Output,
 -- observe the initial value contained in a 'Behavior'.
 --
 -- Similar to 'updates', this function is not well-defined,
 -- but exists for reasons of efficiency.
+--
+-- WARNING: The value will actually only become available
+-- at the end of compilation.
+-- Use it within 'liftIOLater'.
+-- If you try to access it before that, the program will be
+-- thrown into an infinite loop.
 initial :: Behavior t a -> NetworkDescription t a
-initial = return . primInitial . unB
+initial = now . M . Prim.initialB . unB
+
+-- | Observe a 'Moment' in the 'NetworkDescription' monad.
+now :: Moment t a -> NetworkDescription t a
+now = Prepare . lift . Prim.liftMoment . unM
 
 -- | Lift an 'IO' action into the 'NetworkDescription' monad,
 -- but defer its execution until compilation time.
@@ -303,12 +305,18 @@ compile :: (forall t. NetworkDescription t ()) -> IO EventNetwork
 compile m = do
 
     -- compile network description into an automaton
-    (automaton,(inputs,polls)) <- compileWithGlobalInput $ \inputToEvent -> do
-        -- execute the NetworkDescription monad
-        (_,_,(outputs,inputs,polls,liftIOs)) <- runRWST (unPrepare m) inputToEvent ()
-        sequence_ liftIOs                   -- execute the late IOs
-        let E e = foldr union never outputs -- union of all the reactimates
-        return (e, (inputs, polls))
+    (automaton,(inputs,polls,liftIOs)) <-
+        compileWithGlobalInput $ \inputToEvent -> do
+            -- execute the NetworkDescription monad
+            (_,_,(outputs,a,b,c))
+                <- runRWST (unPrepare m) inputToEvent ()
+            -- output event = union of all the reactimates
+            let E e = foldr union never outputs
+            -- compile the output event
+            return (e, (a,b,c))
+
+    -- execute the late IOs after compilation
+    sequence_ liftIOs
         
     -- allocate new variable for the automaton
     rautomaton <- newEmptyMVar
@@ -395,7 +403,8 @@ interpretFrameworks f xs = do
         return bs
     return bs
 
--- | Simple way to write a single event handler with functional reactive programming.
+-- | Simple way to write a single event handler with
+-- functional reactive programming.
 interpretAsHandler
     :: (forall t. Event t a -> Event t b)
     -> AddHandler a -> AddHandler b
