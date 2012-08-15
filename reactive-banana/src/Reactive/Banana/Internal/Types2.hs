@@ -24,7 +24,7 @@ newtype Behavior t a = B { unB :: Prim.Behavior a }
 
 {-| The 'Moment' monad denotes a value at a particular /moment in time/.
 
-This monad is almost the trivial moment,
+This monad is almost the trivial monad,
 but the type parameter allows for some clever internal bookkeeping.
 
 In particular, an expression of type @Moment t a@ denotes
