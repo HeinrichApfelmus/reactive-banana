@@ -68,18 +68,14 @@ Library
                         Reactive.Banana.Model
     
     other-modules:
-                        Reactive.Banana.Internal.InputOutput
-    
-    if flag(UseExtensions)
-        other-modules:
                         Reactive.Banana.Internal.Cached,
                         Reactive.Banana.Internal.DependencyGraph,
                         Reactive.Banana.Internal.EventBehavior1,
+                        Reactive.Banana.Internal.InputOutput
                         Reactive.Banana.Internal.PulseLatch0,
                         Reactive.Banana.Internal.Types2
-    else
-        other-modules:
-                        Reactive.Banana.Internal.CompileModel
+                        Reactive.Banana.Test.Plumbing
+                        Reactive.Banana.Test
 
 
 -- compiling the test suite from cabal currently doesn't work
