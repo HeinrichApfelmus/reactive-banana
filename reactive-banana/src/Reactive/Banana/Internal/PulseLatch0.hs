@@ -13,6 +13,8 @@ import Control.Monad.IO.Class
 
 import Data.Monoid (Endo(..))
 
+import Control.Concurrent.MVar
+
 import Reactive.Banana.Internal.Cached
 import Reactive.Banana.Internal.InputOutput
 import qualified Reactive.Banana.Internal.DependencyGraph as Deps
@@ -65,22 +67,7 @@ emptyGraph = Graph
 {-----------------------------------------------------------------------------
     Graph evaluation
 ------------------------------------------------------------------------------}
-compileToAutomaton :: NetworkSetup (Pulse a) -> IO (Automaton a)
-compileToAutomaton registerPulse = do
-    ((result,graph), reactimates)
-        <- runSetup $ runNetworkAtomicT registerPulse emptyGraph
-    
-    let
-        step inputs (g0,r0) = do
-            (g2,r1) <- runSetup $ evaluateGraph inputs g0
-            let r2 = r0 ++ r1       -- concatenation reactimates
-            runReactimates (g2,r2)
-            let a  = readPulseValue result g2
-            return (a,(g2,r2))
-    
-    return $ fromStateful step (graph,reactimates)
-
-
+-- evaluate all the nodes in the graph once
 evaluateGraph :: [InputValue] -> Graph -> Setup Graph
 evaluateGraph inputs = fmap snd
     . uncurry (runNetworkAtomicT . performEvaluation)
@@ -213,11 +200,71 @@ liftIOLater x = tell ([],[x])
 addReactimate :: Reactimate -> Setup ()
 addReactimate x = tell ([x],[])
 
+discardSetup :: Setup a -> IO a
+discardSetup m = do
+    (a,_,_) <- runRWST m () ()
+    return a
+
 runSetup :: Setup a -> IO (a, [Reactimate])
 runSetup m = do
     (a,_,(reactimates,liftIOLaters)) <- runRWST m () ()
-    sequence_ liftIOLaters
+    sequence_ liftIOLaters      -- execute late IOs
+                                -- register new event handlers
     return (a,reactimates)
+
+
+{-----------------------------------------------------------------------------
+    State machine and IO stuff
+------------------------------------------------------------------------------}
+type Callback = [InputValue] -> IO ()
+
+-- compile to a callback function
+compile :: NetworkSetup () -> IO Callback
+compile setup = do
+    ((_,graph), reactimates)                     -- compile initial graph
+        <- runSetup $ runNetworkAtomicT setup emptyGraph
+    
+    let -- evaluation function
+        step inputs (g0,r0) = do
+            (g2,r1) <- runSetup $ evaluateGraph inputs g0
+            let
+                r2     = r0 ++ r1                -- concatenate reactimates
+                runner = runReactimates (g2,r2)  -- don't run them yet!
+            return (runner, (g2,r2))
+    
+    rstate <- newMVar (graph, reactimates)       -- setup callback machinery
+    let
+        callback inputs = do
+            state0 <- takeMVar rstate            -- read and take lock
+            -- pollValues <- sequence polls      -- poll mutable data
+            (reactimates, state1)
+                <- step inputs state0            -- calculate new state
+            putMVar rstate state1                -- write state
+            reactimates                          -- run IO actions afterwards
+    
+    return callback
+
+-- make an interpreter
+interpret :: (Pulse a -> Network (Pulse b)) -> [Maybe a] -> IO [Maybe b]
+interpret f xs = do
+    i <- newInputChannel
+    let
+        (result,graph) =
+            runIdentity $ runNetworkAtomicT (f =<< inputP i) emptyGraph
+
+        step Nothing  g0 = return (Nothing,g0)
+        step (Just a) g0 = do
+            g1 <- discardSetup $ evaluateGraph [toValue i a] g0
+            return (readPulseValue result g1, g1)
+    
+    mapAccumM step graph xs
+
+mapAccumM :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m [b]
+mapAccumM _ _  []     = return []
+mapAccumM f s0 (x:xs) = do
+    (b,s1) <- f x s0
+    bs     <- mapAccumM f s1 xs
+    return (b:bs)
 
 {-----------------------------------------------------------------------------
     Pulse and Latch types

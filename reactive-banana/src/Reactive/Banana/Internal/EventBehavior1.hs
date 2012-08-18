@@ -14,7 +14,7 @@ module Reactive.Banana.Internal.EventBehavior1 (
 
 import Data.Functor
 import Data.Functor.Identity
-import Control.Monad (join)
+import Control.Monad (join, (<=<))
 import Control.Monad.Fix
 
 import qualified Reactive.Banana.Internal.PulseLatch0 as Prim
@@ -40,28 +40,11 @@ liftMoment = Prim.liftNetwork
 {-----------------------------------------------------------------------------
     Interpretation
 ------------------------------------------------------------------------------}
-compileToAutomaton :: Moment (Event a) -> IO (Automaton a)
-compileToAutomaton me =
-    Prim.compileToAutomaton . Prim.liftNetwork $ runCached =<< me
-
-{-
-compileToAutomaton :: Moment (Event a) -> IO (Automaton a)
-compileToAutomaton = return . runIdentity . compileToAutomatonT
-
-compileToAutomatonT :: MonadFix m => MomentT m (Event a) -> m (Automaton a)
-compileToAutomatonT action =
-    Prim.compileToAutomatonT $ do
-        e <- action                     -- creation can use the Monad m
-        Prim.liftNetwork (runCached e)  -- but the event itself cannot use m
--}
 inputE :: InputChannel a -> Event a
 inputE = mkCached . Prim.inputP
 
 interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
-interpret f xs = do
-    i <- newInputChannel
-    automaton <- compileToAutomaton $ f $ inputE i
-    unfoldAutomaton automaton i xs
+interpret f = Prim.interpret (\pulse -> runCached =<< f (fromPure pulse))
 
 {-----------------------------------------------------------------------------
     Combinators - basic
