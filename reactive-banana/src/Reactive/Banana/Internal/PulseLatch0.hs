@@ -65,31 +65,44 @@ emptyGraph = Graph
 {-----------------------------------------------------------------------------
     Graph evaluation
 ------------------------------------------------------------------------------}
-compileToAutomatonT :: MonadFix m => NetworkT m (Pulse a) -> m (Automaton a)
-compileToAutomatonT registerPulse = do
-    (p,graph) <- runNetworkAtomicT registerPulse emptyGraph
-    return $ fromStateful (step p) graph
+compileToAutomaton :: NetworkSetup (Pulse a) -> IO (Automaton a)
+compileToAutomaton registerPulse = do
+    ((result,graph), reactimates)
+        <- runSetup $ runNetworkAtomicT registerPulse emptyGraph
+    
+    let
+        step inputs (g0,r0) = do
+            (g2,r1) <- runSetup $ evaluateGraph inputs g0
+            let r2 = r0 ++ r1       -- concatenation reactimates
+            runReactimates (g2,r2)
+            let a  = readPulseValue result g2
+            return (a,(g2,r2))
+    
+    return $ fromStateful step (graph,reactimates)
 
-step :: Pulse a -> [InputValue] -> Graph -> IO (Maybe a, Graph)
-step result inputs =
-    uncurry (\nodes -> runNetworkAtomic $ do
-        performEvaluation nodes
-        readOutputValue result)
+
+evaluateGraph :: [InputValue] -> Graph -> Setup Graph
+evaluateGraph inputs = fmap snd
+    . uncurry (runNetworkAtomicT . performEvaluation)
     . buildEvaluationOrder
     . writeInputValues inputs
 
-readOutputValue = valueP
+runReactimates (graph,reactimates) =
+        sequence_ [action | pulse <- reactimates
+                          , Just action <- [readPulseValue pulse graph]]
+readPulseValue p = getValueP p . grPulse
 
-writeInputValues inputs g = g { grPulse =
-    concatenate [f x | (_,f) <- grInputs g, x <- inputs] Vault.empty }
+writeInputValues inputs graph = graph { grPulse =
+    concatenate [f x | (_,f) <- grInputs graph, x <- inputs] Vault.empty }
 
 concatenate :: [a -> a] -> (a -> a)
 concatenate = foldr (.) id
 
+performEvaluation :: [SomeNode] -> NetworkSetup ()
 performEvaluation = mapM_ evaluate
     where
     evaluate (P p) = evaluateP p
-    evaluate (L l) = evaluateL l
+    evaluate (L l) = liftNetwork $ evaluateL l
 
 -- Figure out which nodes need to be evaluated.
 --
@@ -97,15 +110,17 @@ performEvaluation = mapM_ evaluate
 -- The other nodes don't have to be evaluated, because they yield
 -- Nothing / don't change anyway.
 buildEvaluationOrder :: Graph -> ([SomeNode], Graph)
-buildEvaluationOrder g = (Deps.topologicalSort $ grDeps g, g)
+buildEvaluationOrder graph = (Deps.topologicalSort $ grDeps graph, graph)
 
 
 {-----------------------------------------------------------------------------
     Network monad
 ------------------------------------------------------------------------------}
--- reader / writer / state monad
-type NetworkT = RWST Graph (Endo Graph) Graph
-type Network  = NetworkT Identity
+-- The 'Network' monad is used for evaluation and changes
+-- the state of the graph.
+type NetworkT     = RWST Graph (Endo Graph) Graph
+type Network      = NetworkT Identity
+type NetworkSetup = NetworkT Setup
 
 -- lift pure Network computation into any monad
 -- very useful for its laziness
@@ -118,9 +133,6 @@ instance (MonadFix m, Functor m) => HasVault (NetworkT m) where
     write key a  = modify $ \g -> g { grCache = Vault.insert key a (grCache g) }
 
 -- change a graph "atomically"
-runNetworkAtomic :: Network a -> Graph -> IO (a, Graph)
-runNetworkAtomic m g = return . runIdentity $ runNetworkAtomicT m g
-
 runNetworkAtomicT :: MonadFix m => NetworkT m a -> Graph -> m (a, Graph)
 runNetworkAtomicT m g1 = mdo
     (x, g2, w2) <- runRWST m g3 g1  -- apply early graph gransformations
@@ -134,7 +146,9 @@ writePulse key x =
 
 -- read pulse value immediately
 readPulse :: Key (Maybe a) -> Network (Maybe a)
-readPulse key = (join . Vault.lookup key . grPulse) <$> get
+readPulse key = (getPulse key . grPulse) <$> get
+
+getPulse key = join . Vault.lookup key
 
 -- write latch value immediately
 writeLatch :: Key a -> a -> Network ()
@@ -176,6 +190,36 @@ addInput key pulse channel =
         | otherwise = id
 
 {-----------------------------------------------------------------------------
+    Setup monad
+------------------------------------------------------------------------------}
+{-
+    The 'Setup' monad allows us to do administrative tasks
+    during graph evaluation.
+    For instance, we can
+        * add new reactimates
+        * perform IO
+-}
+
+type Reactimate = Pulse (IO ())
+type SetupConf  =
+    ( [Reactimate]       -- reactimate
+    , [IO ()]            -- liftIOLater
+    )
+type Setup  = RWST () SetupConf () IO
+
+liftIOLater :: IO () -> Setup ()
+liftIOLater x = tell ([],[x])
+
+addReactimate :: Reactimate -> Setup ()
+addReactimate x = tell ([x],[])
+
+runSetup :: Setup a -> IO (a, [Reactimate])
+runSetup m = do
+    (a,_,(reactimates,liftIOLaters)) <- runRWST m () ()
+    sequence_ liftIOLaters
+    return (a,reactimates)
+
+{-----------------------------------------------------------------------------
     Pulse and Latch types
 ------------------------------------------------------------------------------}
 {-
@@ -191,8 +235,8 @@ addInput key pulse channel =
 -}
 
 data Pulse a = Pulse
-    { evaluateP :: Network ()
-    , valueP    :: Network (Maybe a)
+    { evaluateP :: NetworkSetup ()
+    , getValueP :: Values -> Maybe a
     , uidP      :: Unique
     }
 
@@ -202,6 +246,10 @@ data Latch a = Latch
     , futureL   :: Network a
     , uidL      :: Unique
     }
+
+
+valueP :: Pulse a -> Network (Maybe a)
+valueP p = getValueP p . grPulse <$> get
 
 {-
 * Note [LatchCreation]
@@ -237,22 +285,25 @@ my taste right now.
 -}
 
 -- make pulse from evaluation function
-pulse :: Network (Maybe a) -> Network (Pulse a)
-pulse eval = unsafePerformIO $ do
+pulse' :: NetworkSetup (Maybe a) -> Network (Pulse a)
+pulse' eval = unsafePerformIO $ do
     key <- Vault.newKey
     uid <- newUnique
     return $ return $ Pulse
-        { evaluateP = writePulse key =<< eval
-        , valueP    = readPulse key
+        { evaluateP = liftNetwork . writePulse key =<< eval
+        , getValueP = getPulse key
         , uidP      = uid
         }
+
+pulse :: Network (Maybe a) -> Network (Pulse a)
+pulse = pulse' . liftNetwork
 
 neverP :: Network (Pulse a)
 neverP = debug "neverP" $ unsafePerformIO $ do
     uid <- newUnique
     return $ return $ Pulse
         { evaluateP = return ()
-        , valueP    = return Nothing
+        , getValueP = const Nothing
         , uidP      = uid
         }
 
@@ -265,7 +316,7 @@ inputP channel = debug "inputP" $ unsafePerformIO $ do
         let
             p = Pulse
                 { evaluateP = return ()
-                , valueP    = readPulse key
+                , getValueP = getPulse key
                 , uidP      = uid
                 }
         addInput key p channel

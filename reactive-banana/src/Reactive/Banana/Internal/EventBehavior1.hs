@@ -8,7 +8,8 @@ module Reactive.Banana.Internal.EventBehavior1 (
     Moment, MomentT, liftMoment,
     initialB, trimE, trimB, observeE, switchE, switchB,
     
-    compileToAutomatonT, inputE, interpret,
+    -- compileToAutomatonT,
+    inputE, interpret,
     ) where
 
 import Data.Functor
@@ -40,6 +41,11 @@ liftMoment = Prim.liftNetwork
     Interpretation
 ------------------------------------------------------------------------------}
 compileToAutomaton :: Moment (Event a) -> IO (Automaton a)
+compileToAutomaton me =
+    Prim.compileToAutomaton . Prim.liftNetwork $ runCached =<< me
+
+{-
+compileToAutomaton :: Moment (Event a) -> IO (Automaton a)
 compileToAutomaton = return . runIdentity . compileToAutomatonT
 
 compileToAutomatonT :: MonadFix m => MomentT m (Event a) -> m (Automaton a)
@@ -47,7 +53,7 @@ compileToAutomatonT action =
     Prim.compileToAutomatonT $ do
         e <- action                     -- creation can use the Monad m
         Prim.liftNetwork (runCached e)  -- but the event itself cannot use m
-
+-}
 inputE :: InputChannel a -> Event a
 inputE = mkCached . Prim.inputP
 
