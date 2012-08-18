@@ -65,8 +65,7 @@ emptyGraph = Graph
 {-----------------------------------------------------------------------------
     Graph evaluation
 ------------------------------------------------------------------------------}
-compileToAutomatonT :: (Monad m, MonadFix m)
-    => NetworkT m (Pulse a) -> m (Automaton a)
+compileToAutomatonT :: MonadFix m => NetworkT m (Pulse a) -> m (Automaton a)
 compileToAutomatonT registerPulse = do
     (p,graph) <- runNetworkAtomicT registerPulse emptyGraph
     return $ fromStateful (step p) graph
@@ -114,7 +113,7 @@ liftNetwork :: Monad m => Network a -> NetworkT m a
 liftNetwork m = RWST $ \r s -> return . runIdentity $ runRWST m r s
 
 -- access initialization cache
-instance (Monad m, MonadFix m, Functor m) => HasVault (NetworkT m) where
+instance (MonadFix m, Functor m) => HasVault (NetworkT m) where
     retrieve key = Vault.lookup key . grCache <$> get
     write key a  = modify $ \g -> g { grCache = Vault.insert key a (grCache g) }
 
@@ -122,8 +121,7 @@ instance (Monad m, MonadFix m, Functor m) => HasVault (NetworkT m) where
 runNetworkAtomic :: Network a -> Graph -> IO (a, Graph)
 runNetworkAtomic m g = return . runIdentity $ runNetworkAtomicT m g
 
-runNetworkAtomicT :: (Monad m, MonadFix m)
-    => NetworkT m a -> Graph -> m (a, Graph)
+runNetworkAtomicT :: MonadFix m => NetworkT m a -> Graph -> m (a, Graph)
 runNetworkAtomicT m g1 = mdo
     (x, g2, w2) <- runRWST m g3 g1  -- apply early graph gransformations
     let g3 = appEndo w2 g2          -- apply late  graph transformations

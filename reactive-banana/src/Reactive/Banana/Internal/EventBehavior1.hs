@@ -42,8 +42,7 @@ liftMoment = Prim.liftNetwork
 compileToAutomaton :: Moment (Event a) -> IO (Automaton a)
 compileToAutomaton = return . runIdentity . compileToAutomatonT
 
-compileToAutomatonT :: (Monad m, MonadFix m)
-    => MomentT m (Event a) -> m (Automaton a)
+compileToAutomatonT :: MonadFix m => MomentT m (Event a) -> m (Automaton a)
 compileToAutomatonT action =
     Prim.compileToAutomatonT $ do
         e <- action                     -- creation can use the Monad m
