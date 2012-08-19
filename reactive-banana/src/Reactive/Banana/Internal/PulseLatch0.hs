@@ -18,6 +18,7 @@ import Control.Concurrent.MVar
 import Reactive.Banana.Internal.Cached
 import Reactive.Banana.Internal.InputOutput
 import qualified Reactive.Banana.Internal.DependencyGraph as Deps
+import Reactive.Banana.AddHandler
 
 import Data.Hashable
 import Data.Unique.Really
@@ -205,13 +206,16 @@ discardSetup m = do
     (a,_,_) <- runRWST m () ()
     return a
 
+-- FIXME: Actually register some event handlers here!
+registerHandler :: AddHandler InputValue -> Setup ()
+registerHandler _ = return ()
+
 runSetup :: Setup a -> IO (a, [Reactimate])
 runSetup m = do
     (a,_,(reactimates,liftIOLaters)) <- runRWST m () ()
     sequence_ liftIOLaters      -- execute late IOs
                                 -- register new event handlers
     return (a,reactimates)
-
 
 {-----------------------------------------------------------------------------
     State machine and IO stuff
@@ -242,16 +246,20 @@ compile setup = do
             putMVar rstate state1                -- write state
             reactimates                          -- run IO actions afterwards
     
+        -- register event handlers
+        -- register :: IO (IO ())
+        -- register = fmap sequence_ . sequence . map ($ run) $ inputs
+    
     return callback
 
 -- make an interpreter
-interpret :: (Pulse a -> Network (Pulse b)) -> [Maybe a] -> IO [Maybe b]
+interpret :: (Pulse a -> NetworkSetup (Pulse b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
     i <- newInputChannel
-    let
-        (result,graph) =
-            runIdentity $ runNetworkAtomicT (f =<< inputP i) emptyGraph
+    (result,graph) <- discardSetup $
+        runNetworkAtomicT (f =<< liftNetwork (inputP i)) emptyGraph
 
+    let
         step Nothing  g0 = return (Nothing,g0)
         step (Just a) g0 = do
             g1 <- discardSetup $ evaluateGraph [toValue i a] g0
@@ -487,10 +495,10 @@ applyL lf lx = debug "applyL" $ do
 {-----------------------------------------------------------------------------
     Combinators - dynamic event switching
 ------------------------------------------------------------------------------}
-observeP :: Pulse (Network a) -> Network (Pulse a)
-observeP pn = do
-    result <- pulse $ do
-        mp <- valueP pn
+executeP :: Pulse (NetworkSetup a) -> Network (Pulse a)
+executeP pn = do
+    result <- pulse' $ do
+        mp <- liftNetwork $ valueP pn
         case mp of
             Just p  -> Just <$> p
             Nothing -> return Nothing

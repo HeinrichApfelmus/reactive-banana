@@ -1,8 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE CPP, Rank2Types #-}
--- #define UseExtensions 1
+{-# LANGUAGE Rank2Types, ImpredicativeTypes #-}
 
 module Reactive.Banana.Frameworks (
     -- * Synopsis
@@ -16,8 +15,8 @@ module Reactive.Banana.Frameworks (
     -- $build
     NetworkDescription, compile,
     AddHandler, fromAddHandler, fromChanges, fromPoll,
-    reactimate, initial, changes, now,
-    liftIO, liftIOLater,
+    reactimate, initial, changes,
+    execute, liftIONow, liftIOLater,
     
     -- * Running event networks
     EventNetwork, actuate, pause,
@@ -25,54 +24,26 @@ module Reactive.Banana.Frameworks (
     -- * Utilities
     -- $utilities
     newAddHandler, newEvent,
+    module Reactive.Banana.AddHandler,
     
     -- * Internal
     interpretFrameworks,
     ) where
 
-import Control.Applicative
-import Control.Concurrent.MVar
 import Control.Monad
-import Control.Monad.Fix       (MonadFix(..))
-import Control.Monad.IO.Class  (MonadIO(..))
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.RWS
-
 import Data.IORef
-import Data.Monoid
-import qualified Data.Unique -- ordinary uniques here, because they are Ord
 
-import Reactive.Banana.Internal.InputOutput
 import Reactive.Banana.Combinators
+import Reactive.Banana.AddHandler
 
 import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
 import Reactive.Banana.Internal.Types2
 
-import qualified Data.Map as Map
-
-type Map = Map.Map
-
 {-----------------------------------------------------------------------------
-    Compilation specific to the different backends
+    Documentation
 ------------------------------------------------------------------------------}
-data InputToEvent = InputToEvent (forall a. InputChannel a -> Prim.Event a)
-type Compile a b
-    =  (InputToEvent -> Prim.MomentT IO (Prim.Event a,b))
-    -> IO (Automaton a,b)
+-- FIXME: Fix documentation text!
 
-compileWithGlobalInput :: Compile a b
-compileWithGlobalInput f = do
-    rx <- newIORef undefined
-    e  <- Prim.compileToAutomatonT $ do
-        (e,b) <- f $ InputToEvent Prim.inputE
-        liftIO $ writeIORef rx b
-        return e
-    b <- readIORef rx
-    return (e, b)
-
-{-----------------------------------------------------------------------------
-    NetworkDescription, setting up event networks
-------------------------------------------------------------------------------}
 {-$build
 
     After having read all about 'Event's and 'Behavior's,
@@ -139,13 +110,11 @@ compileWithGlobalInput f = do
 
 -}
 
-type AddHandler'     = AddHandler InputValue
-type Preparations t  =
-    ( [Event t (IO ())]     -- reactimate outputs
-    , [AddHandler']         -- fromAddHandler events 
-    , [IO InputValue]       -- fromPoll events
-    , [IO ()]               -- liftIOLater
-    )
+{-----------------------------------------------------------------------------
+    Combinators
+------------------------------------------------------------------------------}
+singletonsE :: Prim.Event a -> Event t a
+singletonsE = E . Prim.mapE (:[])
 
 -- | Monad for describing event networks.
 -- 
@@ -155,23 +124,9 @@ type Preparations t  =
 -- Note: The phantom type @t@ prevents you from smuggling
 -- values of types 'Event' or 'Behavior'
 -- outside the 'NetworkDescription' monad.
-newtype NetworkDescription t a = Prepare
-    { unPrepare :: RWST InputToEvent (Preparations t) () (Prim.MomentT IO) a
-    }
+type NetworkDescription = Moment
 
--- boilerplate class instances
-instance Monad (NetworkDescription t) where
-    return  = Prepare . return
-    m >>= k = Prepare $ unPrepare m >>= unPrepare . k
-instance MonadIO (NetworkDescription t) where
-    liftIO  = Prepare . liftIO
-instance Functor (NetworkDescription t) where
-    fmap f  = Prepare . fmap f . unPrepare
-instance Applicative (NetworkDescription t) where
-    pure    = Prepare . pure
-    f <*> a = Prepare $ unPrepare f <*> unPrepare a
-instance MonadFix (NetworkDescription t) where
-    mfix f  = Prepare $ mfix (unPrepare . f)
+class Setup t
 
 {- | Output.
     Execute the 'IO' action whenever the event occurs.
@@ -192,19 +147,8 @@ instance MonadFix (NetworkDescription t) where
     of your event-based framework.
 
 -}
-reactimate :: Event t (IO ()) -> NetworkDescription t ()
-reactimate e = Prepare $ tell ([e],[],[],[])
-
--- | A value of type @AddHandler a@ is just a facility for registering
--- callback functions, also known as event handlers.
--- 
--- The type is a bit mysterious, it works like this:
--- 
--- > do unregisterMyHandler <- addHandler myHandler
---
--- The argument is an event handler that will be registered.
--- The return value is an action that unregisters this very event handler again.
-type AddHandler a = (a -> IO ()) -> IO (IO ())
+reactimate :: Setup t => Event t (IO ()) -> Moment t ()
+reactimate = M . Prim.addReactimate . Prim.mapE sequence_ . unE
 
 -- | Input,
 -- obtain an 'Event' from an 'AddHandler'.
@@ -212,20 +156,8 @@ type AddHandler a = (a -> IO ()) -> IO (IO ())
 -- When the event network is actuated,
 -- this will register a callback function such that
 -- an event will occur whenever the callback function is called.
-fromAddHandler :: AddHandler a -> NetworkDescription t (Event t a)
-fromAddHandler addHandler = do
-    (i,e) <- newInput
-    let addHandler' k = addHandler $ k . toValue i . (\x -> [x])
-    Prepare $ tell ([],[addHandler'],[],[])
-    return e
-
--- create a new input event from the global input event
-newInput :: NetworkDescription t (InputChannel [a], Event t a)
-newInput = Prepare $ do
-    i <- liftIO newInputChannel
-    (InputToEvent f) <- ask
-    return (i, E $ f i)
-
+fromAddHandler :: Setup t => AddHandler a -> Moment t (Event t a)
+fromAddHandler = M . fmap singletonsE . Prim.fromAddHandler
 
 -- | Input,
 -- obtain a 'Behavior' by frequently polling mutable data, like the current time.
@@ -239,19 +171,21 @@ newInput = Prepare $ do
 -- Ideally, the argument IO action just polls a mutable variable,
 -- it should not perform expensive computations.
 -- Neither should its side effects affect the event network significantly.
-fromPoll :: IO a -> NetworkDescription t (Behavior t a)
-fromPoll poll = do
+fromPoll :: Setup t => IO a -> Moment t (Behavior t a)
+fromPoll poll = return undefined
+{- do
     (i,e) <- newInput
     let poll' = toValue i . (:[]) <$> poll
     Prepare $ tell ([],[],[poll'],[])
     initial <- liftIO $ poll
     return $ stepper initial e
+-}
 
 -- | Input,
 -- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
 -- 
 -- This is essentially just an application of the 'stepper' combinator.
-fromChanges :: a -> AddHandler a -> NetworkDescription t (Behavior t a)
+fromChanges :: Setup t => a -> AddHandler a -> Moment t (Behavior t a)
 fromChanges initial changes = stepper initial <$> fromAddHandler changes
 
 -- | Output,
@@ -272,77 +206,48 @@ fromChanges initial changes = stepper initial <$> fromAddHandler changes
 -- until event processing is complete. Use them within 'reactimate'.
 -- If you try to access them before that, the program
 -- will be thrown into an infinite loop.
-changes :: Behavior t a -> NetworkDescription t (Event t a)
-changes = return . E . Prim.mapE (:[]) . Prim.changesB . unB
+changes :: Setup t => Behavior t a -> Moment t (Event t a)
+changes = return . singletonsE . Prim.changesB . unB
 
 -- | Output,
--- observe the initial value contained in a 'Behavior'.
---
--- Similar to 'updates', this function is not well-defined,
--- but exists for reasons of efficiency.
---
--- WARNING: The value will actually only become available
--- at the end of compilation.
--- Use it within 'liftIOLater'.
--- If you try to access it before that, the program will be
--- thrown into an infinite loop.
-initial :: Behavior t a -> NetworkDescription t a
-initial = now . M . Prim.initialB . unB
+-- observe the current value contained in a 'Behavior'.
+initial :: Behavior t a -> Moment t a
+initial = M . Prim.initialB . unB
 
--- | Observe a 'Moment' in the 'NetworkDescription' monad.
-now :: Moment t a -> NetworkDescription t a
-now = Prepare . lift . Prim.liftMoment . unM
 
--- | Lift an 'IO' action into the 'NetworkDescription' monad,
+-- | Dummy type needed to simulate impredicative polymorphism.
+newtype SetupMoment a = SM { unSM :: Prim.Moment a }
+
+setupMoment :: (forall t. Setup t => Moment t a) -> SetupMoment a
+setupMoment m = SM (unM m)
+
+-- | Set up new events on the fly.
+execute
+    :: Setup t
+    => Event t (SetupMoment a)
+    -> Moment t (Event t a)
+execute = M
+    . fmap singletonsE . Prim.executeE
+    . Prim.mapE (fmap last . sequence . map unSM )
+    . unE
+
+-- | Lift an 'IO' action into the 'Moment' monad.
+liftIONow :: Setup t => IO a -> Moment t a
+liftIONow = M . Prim.liftIONow
+
+-- | Lift an 'IO' action into the 'Moment' monad,
 -- but defer its execution until compilation time.
 -- This can be useful for recursive definitions using 'MonadFix'.
-liftIOLater :: IO () -> NetworkDescription t ()
-liftIOLater m = Prepare $ tell ([],[],[],[m])
+liftIOLater :: Setup t => IO () -> Moment t ()
+liftIOLater = M . Prim.liftIOLater
 
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
-compile :: (forall t. NetworkDescription t ()) -> IO EventNetwork
+compile :: (forall t. Setup t => Moment t ()) -> IO EventNetwork
 compile m = do
-
-    -- compile network description into an automaton
-    (automaton,(inputs,polls,liftIOs)) <-
-        compileWithGlobalInput $ \inputToEvent -> do
-            -- execute the NetworkDescription monad
-            (_,_,(outputs,a,b,c))
-                <- runRWST (unPrepare m) inputToEvent ()
-            -- output event = union of all the reactimates
-            let E e = foldr union never outputs
-            -- compile the output event
-            return (e, (a,b,c))
-
-    -- execute the late IOs after compilation
-    sequence_ liftIOs
-        
-    -- allocate new variable for the automaton
-    rautomaton <- newEmptyMVar
-    putMVar rautomaton automaton
-    
-    let -- run the automaton on a single input value
-        run :: InputValue -> IO ()
-        run input = do
-            -- takeMVar  makes sure that event graph updates are atomic
-            automaton  <- takeMVar rautomaton
-            -- poll mutable data
-            pollValues <- sequence polls
-            -- percolate inputs through event graph
-            (reactimates,automaton') <- runStep automaton $ input:pollValues
-            putMVar rautomaton automaton'
-            -- Run corresponding IO actions afterwards.
-            -- Under certain circumstances, they can *interleave*.
-            case reactimates of
-                Just actions -> sequence_ actions
-                Nothing      -> return ()
-    
-        -- register event handlers
-        register :: IO (IO ())
-        register = fmap sequence_ . sequence . map ($ run) $ inputs
-
-    makeEventNetwork register
+    Prim.compile (unM m)
+    -- FIXME: don't return dummy network
+    return $ EventNetwork (return ()) (return ())
 
 
 {-----------------------------------------------------------------------------
@@ -371,6 +276,7 @@ data EventNetwork = EventNetwork {
     pause :: IO ()
     }
 
+{-
 -- Make an event network from a function that registers all event handlers
 makeEventNetwork :: IO (IO ()) -> IO EventNetwork
 makeEventNetwork register = do
@@ -380,7 +286,7 @@ makeEventNetwork register = do
         actuate = register >>= writeIORef unregister
         pause   = readIORef unregister >>= id >> writeIORef unregister nop
     return $ EventNetwork actuate pause
-
+-}
 
 {-----------------------------------------------------------------------------
     Simple use
@@ -430,26 +336,13 @@ interpretAsHandler f addHandlerA = \handlerB -> do
 
 -}
 
--- | Build a facility to register and unregister event handlers.
-newAddHandler :: IO (AddHandler a, a -> IO ())
-newAddHandler = do
-    handlers <- newIORef Map.empty
-    let addHandler k = do
-            key <- Data.Unique.newUnique
-            modifyIORef handlers $ Map.insert key k
-            return $ modifyIORef handlers $ Map.delete key
-        runHandlers x =
-            mapM_ ($ x) . map snd . Map.toList =<< readIORef handlers
-    return (addHandler, runHandlers)
-
-
 -- | Build an 'Event' together with an 'IO' action that can 
 -- fire occurrences of this event. Variant of 'newAddHandler'.
 -- 
 -- This function is mainly useful for passing callback functions
 -- inside a 'reactimate'.
-newEvent :: NetworkDescription t (Event t a, a -> IO ())
+newEvent :: Setup t => Moment t (Event t a, a -> IO ())
 newEvent = do
-    (addHandler, fire) <- liftIO $ newAddHandler
+    (addHandler, fire) <- liftIONow $ newAddHandler
     e <- fromAddHandler addHandler
     return (e,fire)

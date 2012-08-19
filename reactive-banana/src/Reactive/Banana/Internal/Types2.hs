@@ -6,7 +6,12 @@ module Reactive.Banana.Internal.Types2 (
     Event (..), Behavior (..), Moment (..)
     ) where
 
+import Control.Applicative
+import Control.Monad
+import Control.Monad.Fix
+
 import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
+
 
 {-| @Event t a@ represents a stream of events as they occur in time.
 Semantically, you can think of @Event t a@ as an infinite list of values
@@ -33,3 +38,15 @@ which is indicated by the type parameter @t@.
 -}
 newtype Moment t a = M { unM :: Prim.Moment a }
 
+
+-- boilerplate class instances
+instance Monad (Moment t) where
+    return  = M . return
+    m >>= g = M $ unM m >>= unM . g
+
+instance Applicative (Moment t) where
+    pure    = M . pure
+    f <*> a = M $ unM f <*> unM a
+
+instance MonadFix (Moment t) where   mfix f  = M $ mfix (unM . f)
+instance Functor  (Moment t) where   fmap f  = M . fmap f . unM

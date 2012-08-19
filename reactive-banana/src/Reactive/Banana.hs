@@ -6,7 +6,7 @@
 
 module Reactive.Banana (
     module Reactive.Banana.Combinators,
-    module Reactive.Banana.Frameworks,
+    Moment, compile,
     ) where
 
 import Reactive.Banana.Combinators
