@@ -23,7 +23,7 @@ import Data.Functor.Identity
 import Control.Monad (join, (<=<))
 import Control.Monad.Fix
 import Control.Monad.IO.Class
-import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Class (lift)
 
 import qualified Reactive.Banana.Internal.PulseLatch0 as Prim
 import Reactive.Banana.Internal.Cached

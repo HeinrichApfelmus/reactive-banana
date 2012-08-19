@@ -16,7 +16,7 @@ module Reactive.Banana.Frameworks (
     NetworkDescription, compile,
     AddHandler, fromAddHandler, fromChanges, fromPoll,
     reactimate, initial, changes,
-    FrameworksMoment, execute, liftIONow, liftIOLater,
+    FrameworksMoment(..), execute, liftIONow, liftIOLater,
     
     -- * Running event networks
     EventNetwork, actuate, pause,
@@ -127,7 +127,6 @@ singletonsE = E . Prim.mapE (:[])
 -- outside the 'NetworkDescription' monad.
 type NetworkDescription = Moment
 
-class Setup t
 
 {- | Output.
     Execute the 'IO' action whenever the event occurs.

@@ -3,10 +3,10 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Internal.DependencyGraph (
+    -- | Utilities for operating with dependency graphs.
     Deps,
     empty, dependOn, topologicalSort, 
     ) where
--- | Utilities for operating with dependency graphs.
 
 import Data.Hashable
 import qualified Data.HashMap.Lazy as Map

@@ -11,3 +11,4 @@ module Reactive.Banana (
 
 import Reactive.Banana.Combinators
 import Reactive.Banana.Frameworks
+import Reactive.Banana.Internal.Types2
