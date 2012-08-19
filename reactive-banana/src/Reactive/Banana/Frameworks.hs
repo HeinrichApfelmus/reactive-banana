@@ -16,7 +16,7 @@ module Reactive.Banana.Frameworks (
     NetworkDescription, compile,
     AddHandler, fromAddHandler, fromChanges, fromPoll,
     reactimate, initial, changes,
-    execute, liftIONow, liftIOLater,
+    FrameworksMoment, execute, liftIONow, liftIOLater,
     
     -- * Running event networks
     EventNetwork, actuate, pause,
@@ -38,6 +38,7 @@ import Reactive.Banana.AddHandler
 
 import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
 import Reactive.Banana.Internal.Types2
+import Reactive.Banana.Internal.Phantom
 
 {-----------------------------------------------------------------------------
     Documentation
@@ -147,7 +148,7 @@ class Setup t
     of your event-based framework.
 
 -}
-reactimate :: Setup t => Event t (IO ()) -> Moment t ()
+reactimate :: Frameworks t => Event t (IO ()) -> Moment t ()
 reactimate = M . Prim.addReactimate . Prim.mapE sequence_ . unE
 
 -- | Input,
@@ -156,7 +157,7 @@ reactimate = M . Prim.addReactimate . Prim.mapE sequence_ . unE
 -- When the event network is actuated,
 -- this will register a callback function such that
 -- an event will occur whenever the callback function is called.
-fromAddHandler :: Setup t => AddHandler a -> Moment t (Event t a)
+fromAddHandler :: Frameworks t => AddHandler a -> Moment t (Event t a)
 fromAddHandler = M . fmap singletonsE . Prim.fromAddHandler
 
 -- | Input,
@@ -171,7 +172,7 @@ fromAddHandler = M . fmap singletonsE . Prim.fromAddHandler
 -- Ideally, the argument IO action just polls a mutable variable,
 -- it should not perform expensive computations.
 -- Neither should its side effects affect the event network significantly.
-fromPoll :: Setup t => IO a -> Moment t (Behavior t a)
+fromPoll :: Frameworks t => IO a -> Moment t (Behavior t a)
 fromPoll poll = return undefined
 {- do
     (i,e) <- newInput
@@ -185,7 +186,7 @@ fromPoll poll = return undefined
 -- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
 -- 
 -- This is essentially just an application of the 'stepper' combinator.
-fromChanges :: Setup t => a -> AddHandler a -> Moment t (Behavior t a)
+fromChanges :: Frameworks t => a -> AddHandler a -> Moment t (Behavior t a)
 fromChanges initial changes = stepper initial <$> fromAddHandler changes
 
 -- | Output,
@@ -206,7 +207,7 @@ fromChanges initial changes = stepper initial <$> fromAddHandler changes
 -- until event processing is complete. Use them within 'reactimate'.
 -- If you try to access them before that, the program
 -- will be thrown into an infinite loop.
-changes :: Setup t => Behavior t a -> Moment t (Event t a)
+changes :: Frameworks t => Behavior t a -> Moment t (Event t a)
 changes = return . singletonsE . Prim.changesB . unB
 
 -- | Output,
@@ -216,37 +217,39 @@ initial = M . Prim.initialB . unB
 
 
 -- | Dummy type needed to simulate impredicative polymorphism.
-newtype SetupMoment a = SM { unSM :: Prim.Moment a }
+newtype FrameworksMoment a
+    = FrameworksMoment
+    { runFrameworksMoment :: forall t. Frameworks t => Moment t a }
 
-setupMoment :: (forall t. Setup t => Moment t a) -> SetupMoment a
-setupMoment m = SM (unM m)
+unFM :: FrameworksMoment a -> Moment (FrameworksD,t) a
+unFM = runFrameworksMoment
 
 -- | Set up new events on the fly.
 execute
-    :: Setup t
-    => Event t (SetupMoment a)
+    :: Frameworks t
+    => Event t (FrameworksMoment a)
     -> Moment t (Event t a)
 execute = M
     . fmap singletonsE . Prim.executeE
-    . Prim.mapE (fmap last . sequence . map unSM )
+    . Prim.mapE (fmap last . sequence . map (unM . unFM) )
     . unE
 
 -- | Lift an 'IO' action into the 'Moment' monad.
-liftIONow :: Setup t => IO a -> Moment t a
+liftIONow :: Frameworks t => IO a -> Moment t a
 liftIONow = M . Prim.liftIONow
 
 -- | Lift an 'IO' action into the 'Moment' monad,
 -- but defer its execution until compilation time.
 -- This can be useful for recursive definitions using 'MonadFix'.
-liftIOLater :: Setup t => IO () -> Moment t ()
+liftIOLater :: Frameworks t => IO () -> Moment t ()
 liftIOLater = M . Prim.liftIOLater
 
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
-compile :: (forall t. Setup t => Moment t ()) -> IO EventNetwork
+compile :: (forall t. Moment (FrameworksD,t) ()) -> IO EventNetwork
 compile m = do
     Prim.compile (unM m)
-    -- FIXME: don't return dummy network
+    -- FIXME: return something better than dummy network
     return $ EventNetwork (return ()) (return ())
 
 
@@ -341,7 +344,7 @@ interpretAsHandler f addHandlerA = \handlerB -> do
 -- 
 -- This function is mainly useful for passing callback functions
 -- inside a 'reactimate'.
-newEvent :: Setup t => Moment t (Event t a, a -> IO ())
+newEvent :: Frameworks t => Moment t (Event t a, a -> IO ())
 newEvent = do
     (addHandler, fire) <- liftIONow $ newAddHandler
     e <- fromAddHandler addHandler
