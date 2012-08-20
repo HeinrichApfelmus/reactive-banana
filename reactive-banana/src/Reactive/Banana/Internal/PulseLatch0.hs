@@ -190,31 +190,31 @@ addInput key pulse channel =
 
 type Reactimate = Pulse (IO ())
 type SetupConf  =
-    ( [Reactimate]       -- reactimate
-    , [IO ()]            -- liftIOLater
+    ( [Reactimate]                -- reactimate
+    , [AddHandler [InputValue]]   -- fromAddHandler
+    , [IO ()]                     -- liftIOLater
     )
 type Setup  = RWST () SetupConf () IO
 
-liftIOLater :: IO () -> Setup ()
-liftIOLater x = tell ([],[x])
-
 addReactimate :: Reactimate -> Setup ()
-addReactimate x = tell ([x],[])
+addReactimate x = tell ([x],[],[])
+
+liftIOLater :: IO () -> Setup ()
+liftIOLater x = tell ([],[],[x])
 
 discardSetup :: Setup a -> IO a
 discardSetup m = do
     (a,_,_) <- runRWST m () ()
     return a
 
--- FIXME: Actually register some event handlers here!
-registerHandler :: AddHandler InputValue -> Setup ()
-registerHandler _ = return ()
+registerHandler :: AddHandler [InputValue] -> Setup ()
+registerHandler x = tell ([],[x],[])
 
-runSetup :: Setup a -> IO (a, [Reactimate])
-runSetup m = do
-    (a,_,(reactimates,liftIOLaters)) <- runRWST m () ()
-    sequence_ liftIOLaters      -- execute late IOs
-                                -- register new event handlers
+runSetup :: Callback -> Setup a -> IO (a, [Reactimate])
+runSetup callback m = do
+    (a,_,(reactimates,addHandlers,liftIOLaters)) <- runRWST m () ()
+    mapM_ ($ callback) addHandlers  -- register new event handlers
+    sequence_ liftIOLaters          -- execute late IOs
     return (a,reactimates)
 
 {-----------------------------------------------------------------------------
@@ -225,18 +225,7 @@ type Callback = [InputValue] -> IO ()
 -- compile to a callback function
 compile :: NetworkSetup () -> IO Callback
 compile setup = do
-    ((_,graph), reactimates)                     -- compile initial graph
-        <- runSetup $ runNetworkAtomicT setup emptyGraph
-    
-    let -- evaluation function
-        step inputs (g0,r0) = do
-            (g2,r1) <- runSetup $ evaluateGraph inputs g0
-            let
-                r2     = r0 ++ r1                -- concatenate reactimates
-                runner = runReactimates (g2,r2)  -- don't run them yet!
-            return (runner, (g2,r2))
-    
-    rstate <- newMVar (graph, reactimates)       -- setup callback machinery
+    rstate <- newEmptyMVar                       -- setup callback machinery
     let
         callback inputs = do
             state0 <- takeMVar rstate            -- read and take lock
@@ -245,11 +234,22 @@ compile setup = do
                 <- step inputs state0            -- calculate new state
             putMVar rstate state1                -- write state
             reactimates                          -- run IO actions afterwards
-    
-        -- register event handlers
-        -- register :: IO (IO ())
-        -- register = fmap sequence_ . sequence . map ($ run) $ inputs
-    
+
+            -- register event handlers
+            -- register :: IO (IO ())
+            -- register = fmap sequence_ . sequence . map ($ run) $ inputs
+
+        step inputs (g0,r0) = do                 -- evaluation function
+            (g2,r1) <- runSetup callback $ evaluateGraph inputs g0
+            let
+                r2     = r0 ++ r1                -- concatenate reactimates
+                runner = runReactimates (g2,r2)  -- don't run them yet!
+            return (runner, (g2,r2))
+
+    ((_,graph), reactimates)                     -- compile initial graph
+        <- runSetup callback $ runNetworkAtomicT setup emptyGraph
+    putMVar rstate (graph,reactimates)           -- set initial state
+        
     return callback
 
 -- make an interpreter

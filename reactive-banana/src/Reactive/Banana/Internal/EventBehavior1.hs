@@ -141,6 +141,6 @@ fromAddHandler :: AddHandler a -> Moment (Event a)
 fromAddHandler addHandler = do
     i <- liftIO newInputChannel
     p <- Prim.liftNetwork $ Prim.inputP i
-    lift $ Prim.registerHandler $ mapIO (return . toValue i) addHandler
+    lift $ Prim.registerHandler $ mapIO (return . (:[]) . toValue i) addHandler
     return $ fromPure p
 

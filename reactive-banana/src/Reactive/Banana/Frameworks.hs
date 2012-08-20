@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE Rank2Types, ImpredicativeTypes #-}
+{-# LANGUAGE Rank2Types #-}
 
 module Reactive.Banana.Frameworks (
     -- * Synopsis
@@ -28,6 +28,7 @@ module Reactive.Banana.Frameworks (
     
     -- * Internal
     interpretFrameworks,
+    module Reactive.Banana.Internal.Phantom,
     ) where
 
 import Control.Monad
