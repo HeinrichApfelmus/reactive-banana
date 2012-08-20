@@ -19,6 +19,10 @@ module Reactive.Banana.Switch (
     Identity(..),
     ) where
 
+import Control.Applicative
+import Control.Monad
+
+import Reactive.Banana.Combinators
 import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
 import Reactive.Banana.Internal.Types2
 
@@ -43,6 +47,13 @@ newtype AnyMoment f a = AnyMoment { now :: forall t. Moment t (f t a) }
 instance Monad (AnyMoment Identity) where
     return x = AnyMoment $ return (Identity x)
     (AnyMoment m) >>= g = AnyMoment $ m >>= \(Identity x) -> now (g x)
+
+instance Functor (AnyMoment Behavior) where
+    fmap f (AnyMoment x) = AnyMoment (fmap (fmap f) x)
+
+instance Applicative (AnyMoment Behavior) where
+    pure x  = AnyMoment $ return $ pure x
+    (AnyMoment f) <*> (AnyMoment x) = AnyMoment $ liftM2 (<*>) f x
 
 anyMoment :: (forall t. Moment t (f t a)) -> AnyMoment f a
 anyMoment = AnyMoment
