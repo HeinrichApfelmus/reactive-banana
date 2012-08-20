@@ -111,17 +111,23 @@ executeE e = Prim.liftNetwork $ do
 
 switchE :: Event (Moment (Event a)) -> Event a
 switchE = liftCached1 $ \p1 -> do
-    p2 <- Prim.mapP (join . fmap runCachedM) p1
+    p2 <- Prim.mapP (runCachedM =<<) p1
     p3 <- Prim.executeP p2
     Prim.switchP p3
 
 switchB :: Behavior a -> Event (Moment (Behavior a)) -> Behavior a
 switchB = liftCached2 $ \(l0,p0) p1 -> do
-    p2 <- Prim.mapP (join . fmap runCachedM) p1
+    p2 <- Prim.mapP (runCachedM =<<) p1
     p3 <- Prim.executeP p2
     lr <- Prim.switchL l0 =<< Prim.mapP fst p3
-    pr <- Prim.unionWith (\_ _ -> ()) p0 =<< Prim.switchP =<< Prim.mapP snd p3
+
+    let c1 = p0                              -- initial behavior changes
+    c2 <- Prim.mapP (const ()) p3            -- or switch happens
+    c3 <- Prim.switchP =<< Prim.mapP snd p3  -- or current behavior changes
+    pr <- merge c1 =<< merge c2 c3
     return (lr, pr)
+
+merge = Prim.unionWith (\_ _ -> ())
 
 {-----------------------------------------------------------------------------
     Combinators - Setup and IO
