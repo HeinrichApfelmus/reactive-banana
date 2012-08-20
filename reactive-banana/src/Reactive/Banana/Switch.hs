@@ -61,7 +61,8 @@ trimB = M . fmap (\x -> AnyMoment (M $ fmap B x)) . Prim.trimB . unB
 -- | Observe a value at those moments in time where
 -- event occurrences happen.
 observeE :: Event t (AnyMoment Identity a) -> Event t a
-observeE = undefined
+observeE = E . Prim.observeE
+    . Prim.mapE (sequence . map (fmap getIdentity . unM . now)) . unE
 
 -- | Value of the 'Behavior' at moment @t@.
 valueB :: Behavior t a -> Moment t a
@@ -71,11 +72,12 @@ valueB = M . Prim.initialB . unB
 switchE
     :: forall t a. Event t (AnyMoment Event a)
     -> Event t a
-switchE = undefined
+switchE = E . Prim.switchE . Prim.mapE (fmap unE . unM . now . last) . unE
 
 -- | Dynamically switch between 'Behavior'.
 switchB
     :: forall t a. Behavior t a
     -> Event t (AnyMoment Behavior a)
     -> Behavior t a
-switchB = undefined
+switchB b e = B $ Prim.switchB (unB b) $
+    Prim.mapE (fmap unB . unM . now . last) (unE e)
