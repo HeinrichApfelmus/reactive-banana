@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.AddHandler (
+module Reactive.Banana.Frameworks.AddHandler (
     -- * Synopsis
     -- | Various utility functions concerning event handlers.
     

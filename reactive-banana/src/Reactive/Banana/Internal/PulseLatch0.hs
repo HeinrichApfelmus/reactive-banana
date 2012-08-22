@@ -18,7 +18,7 @@ import Control.Concurrent.MVar
 import Reactive.Banana.Internal.Cached
 import Reactive.Banana.Internal.InputOutput
 import qualified Reactive.Banana.Internal.DependencyGraph as Deps
-import Reactive.Banana.AddHandler
+import Reactive.Banana.Frameworks.AddHandler
 
 import Data.Hashable
 import Data.Unique.Really

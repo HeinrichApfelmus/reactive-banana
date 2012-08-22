@@ -28,7 +28,7 @@ import Control.Monad.Trans.Class (lift)
 import qualified Reactive.Banana.Internal.PulseLatch0 as Prim
 import Reactive.Banana.Internal.Cached
 import Reactive.Banana.Internal.InputOutput
-import Reactive.Banana.AddHandler
+import Reactive.Banana.Frameworks.AddHandler
 
 type Network = Prim.Network
 type Latch   = Prim.Latch

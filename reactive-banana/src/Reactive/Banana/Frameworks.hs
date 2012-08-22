@@ -24,7 +24,7 @@ module Reactive.Banana.Frameworks (
     -- * Utilities
     -- $utilities
     newAddHandler, newEvent,
-    module Reactive.Banana.AddHandler,
+    module Reactive.Banana.Frameworks.AddHandler,
     
     -- * Internal
     interpretFrameworks,
@@ -35,7 +35,7 @@ import Control.Monad
 import Data.IORef
 
 import Reactive.Banana.Combinators
-import Reactive.Banana.AddHandler
+import Reactive.Banana.Frameworks.AddHandler
 
 import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
 import Reactive.Banana.Internal.Types2
@@ -246,9 +246,9 @@ liftIOLater = M . Prim.liftIOLater
 
 -- | Compile a 'NetworkDescription' into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
-compile :: (forall t. Moment (FrameworksD,t) ()) -> IO EventNetwork
+compile :: (forall t. Frameworks t => Moment t ()) -> IO EventNetwork
 compile m = do
-    Prim.compile (unM m)
+    Prim.compile $ unM (m :: Moment (FrameworksD, t) ())
     -- FIXME: return something better than dummy network
     return $ EventNetwork (return ()) (return ())
 
