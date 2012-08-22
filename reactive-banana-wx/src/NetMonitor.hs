@@ -32,7 +32,7 @@ main = start $ do
     
     t <- timer f [ interval := 500 ] -- timer every 500 ms
 
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
         networkDescription = do
             -- The network statistics are polled when and only when
             -- the event network handles an event.

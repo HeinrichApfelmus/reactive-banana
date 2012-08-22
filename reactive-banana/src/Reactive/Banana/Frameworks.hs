@@ -173,7 +173,7 @@ fromAddHandler = M . fmap singletonsE . Prim.fromAddHandler
 -- it should not perform expensive computations.
 -- Neither should its side effects affect the event network significantly.
 fromPoll :: Frameworks t => IO a -> Moment t (Behavior t a)
-fromPoll poll = error "FIXME"
+fromPoll = M . fmap B . Prim.fromPoll
 {- do
     (i,e) <- newInput
     let poll' = toValue i . (:[]) <$> poll

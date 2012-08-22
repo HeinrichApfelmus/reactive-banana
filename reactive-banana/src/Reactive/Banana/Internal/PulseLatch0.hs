@@ -62,7 +62,7 @@ emptyGraph = Graph
     , grLatch  = Vault.empty
     , grCache  = Vault.empty
     , grDeps   = Deps.empty
-    , grInputs = []
+    , grInputs = [(P alwaysP, const id)]
     }
 
 {-----------------------------------------------------------------------------
@@ -376,6 +376,16 @@ inputP channel = debug "inputP" $ unsafePerformIO $ do
                 }
         addInput key p channel
         return p
+
+-- event that always fires whenever the network processes events
+alwaysP :: Pulse ()
+alwaysP = debug "alwaysP" $ unsafePerformIO $ do
+    uid <- newUnique
+    return $ Pulse
+        { evaluateP = return ()
+        , getValueP = return $ Just ()
+        , uidP      = uid
+        }
 
 -- make latch from initial value, a future value and evaluation function
 latch :: a -> a -> Network (Maybe a) -> Network (Latch a)

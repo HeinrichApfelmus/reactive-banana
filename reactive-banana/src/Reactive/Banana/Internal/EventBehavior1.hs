@@ -15,7 +15,7 @@ module Reactive.Banana.Internal.EventBehavior1 (
     initialB, trimE, trimB, executeE, observeE, switchE, switchB,
     
     -- * Setup and IO
-    addReactimate, fromAddHandler, liftIONow, liftIOLater,
+    addReactimate, fromAddHandler, fromPoll, liftIONow, liftIOLater,
     ) where
 
 import Data.Functor
@@ -151,3 +151,11 @@ fromAddHandler addHandler = do
     lift $ Prim.registerHandler $ mapIO (return . (:[]) . toValue i) addHandler
     return $ fromPure p
 
+fromPoll :: IO a -> Moment (Behavior a)
+fromPoll poll = do
+    a <- liftIO poll
+    e <- Prim.liftNetwork $ do
+        pm <- Prim.mapP (const $ liftIO poll) Prim.alwaysP
+        p  <- Prim.executeP pm
+        return $ fromPure p
+    return $ stepperB a e
