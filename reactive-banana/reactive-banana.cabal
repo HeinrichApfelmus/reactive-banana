@@ -26,6 +26,7 @@ Build-type:          Simple
 
 extra-source-files:     doc/examples/*.hs,
                         src/Reactive/Banana/Tests.hs
+                        src/Reactive/Banana/Tests/Plumbing.hs
 
 Source-repository head
     type:               git
@@ -63,9 +64,11 @@ Library
                         Reactive.Banana,
                         Reactive.Banana.Combinators,
                         Reactive.Banana.Experimental.Calm,
-                        Reactive.Banana.Experimental.Switch,
                         Reactive.Banana.Frameworks,
+                        Reactive.Banana.Frameworks.AddHandler,
+                        Reactive.Banana.Internal.Phantom,
                         Reactive.Banana.Model
+                        Reactive.Banana.Switch
     
     other-modules:
                         Reactive.Banana.Internal.Cached,
@@ -74,8 +77,6 @@ Library
                         Reactive.Banana.Internal.InputOutput
                         Reactive.Banana.Internal.PulseLatch0,
                         Reactive.Banana.Internal.Types2
-                        Reactive.Banana.Test.Plumbing
-                        Reactive.Banana.Test
 
 
 -- compiling the test suite from cabal currently doesn't work

@@ -121,6 +121,7 @@ switchB = liftCached2 $ \(l0,p0) p1 -> do
     p3 <- Prim.executeP p2
     lr <- Prim.switchL l0 =<< Prim.mapP fst p3
 
+    -- TODO: switch away the initial behavior
     let c1 = p0                              -- initial behavior changes
     c2 <- Prim.mapP (const ()) p3            -- or switch happens
     c3 <- Prim.switchP =<< Prim.mapP snd p3  -- or current behavior changes
