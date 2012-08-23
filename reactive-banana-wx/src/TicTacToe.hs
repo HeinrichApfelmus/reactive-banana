@@ -35,7 +35,7 @@ main = start $ do
                     [map widget btns, map widget radios, map widget checks]
                     , floatCenter $ widget label]]
 
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
         networkDescription = do
             -- convert WxHaskell events to FRP events
             let event0s widgets event = forM widgets $ \x -> event0 x event

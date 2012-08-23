@@ -81,7 +81,7 @@ asteroids = do
            ]
     
     -- event network
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
         networkDescription = do
             -- timer
             etick  <- event0 t command

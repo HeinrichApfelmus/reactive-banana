@@ -24,7 +24,7 @@ main = start $ do
             [widget input1, label "+", widget input2
             , label "=", minsize (sz 40 20) $ widget output]]
 
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
         networkDescription = do
         
         binput1  <- behaviorText input1 ""

@@ -30,7 +30,7 @@ main = start $ do
             , label "Amounts update while typing."
             ]]
 
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
         networkDescription = do
         
         euroIn   <- behaviorText euro   "0"

@@ -23,7 +23,7 @@ main = start $ do
     set f [layout := margin 10 $
             column 5 [widget bup, widget bdown, widget output]]
 
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
         networkDescription = do
         
         eup   <- event0 bup   command
