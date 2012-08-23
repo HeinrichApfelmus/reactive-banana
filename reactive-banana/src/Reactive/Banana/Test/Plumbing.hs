@@ -8,6 +8,7 @@ module Reactive.Banana.Test.Plumbing where
 
 import Control.Applicative
 import Control.Monad (liftM)
+import Control.Monad.Fix
 
 import qualified Reactive.Banana.Model as X
 import qualified Reactive.Banana.Internal.EventBehavior1 as Y
@@ -63,6 +64,11 @@ instance Functor Moment where fmap = liftM
 instance Monad Moment where
     return a = M (return a) (return a)
     (M x y) >>= g = M (x >>= fstM . g) (y >>= sndM . g)
+instance MonadFix Moment where
+    mfix f = M (mfix fx) (mfix fy)
+        where
+        fx a = let M x _ = f a in x
+        fy a = let M _ y = f a in y
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE (E x y) = M
@@ -73,7 +79,7 @@ trimB (B x y) = M
     (fmap (fmap bx . mx) $ X.trimB x)
     (fmap (fmap by . my) $ Y.trimB y)
 
-initialB (B x y) = M (X.initialB x) (Y.initialB y)
+initialB ~(B x y) = M (X.initialB x) (Y.initialB y)
 
 observeE :: Event (Moment a) -> Event a
 observeE (E x y) = E (X.observeE $ X.mapE fstM x) (Y.observeE $ Y.mapE sndM y)

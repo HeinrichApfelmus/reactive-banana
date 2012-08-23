@@ -1,6 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE RecursiveDo #-}
 module Reactive.Banana.Internal.EventBehavior1 (
     -- * Interpreter
     interpret, compile,
@@ -67,10 +68,15 @@ mapE f      = liftCached1 $ Prim.mapP f
 applyE      = liftCached2 $ \(lf,_) px -> Prim.applyP lf px
 
 changesB    = liftCached1 $ \(lx,px) -> Prim.tagFuture lx px
-stepperB a  = liftCached1 $ \p1 -> do
+
+-- Note: to enable more recursion,
+-- first create the latch and then create the event that is accumulated
+stepperB a  = \c1 -> mkCached $ mdo
     l  <- Prim.stepperL a p1
+    p1 <- runCached c1
     p2 <- Prim.mapP (const ()) p1
-    return (l, p2)
+    return (l,p2)
+
 pureB a = stepperB a never
 applyB = liftCached2 $ \(l1,p1) (l2,p2) -> do
     p3 <- Prim.unionWith const p1 p2
@@ -82,9 +88,9 @@ mapB f = applyB (pureB f)
     Combinators - dynamic event switching
 ------------------------------------------------------------------------------}
 initialB :: Behavior a -> Moment a
-initialB b = do
-    ~(l,_) <- runCachedM b
-    Prim.liftNetwork $ Prim.valueL l
+initialB b = Prim.liftNetwork $ do
+    ~(l,_) <- runCached b
+    Prim.valueL l
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = do
