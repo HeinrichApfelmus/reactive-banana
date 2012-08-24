@@ -34,7 +34,7 @@ import qualified Graphics.UI.WXCore as WXCore
 ------------------------------------------------------------------------------}
 -- | Event with exactly one parameter.
 event1 :: Frameworks t =>
-    w -> WX.Event w (a -> IO ()) -> NetworkDescription t (Event t a)
+    w -> WX.Event w (a -> IO ()) -> Moment t (Event t a)
 event1 widget e = do
     addHandler <- liftIONow $ event1ToAddHandler widget e
     fromAddHandler addHandler
@@ -46,13 +46,13 @@ event1 widget e = do
 
 -- | Event without parameters.
 event0 :: Frameworks t =>
-    w -> WX.Event w (IO ()) -> NetworkDescription t (Event t ())
+    w -> WX.Event w (IO ()) -> Moment t (Event t ())
 event0 widget = event1 widget . event0ToEvent1
 
 -- | Behavior from an attribute.
 -- Uses 'fromPoll', so may behave as you expect.
 behavior :: Frameworks t =>
-    w -> WX.Attr w a -> NetworkDescription t (Behavior t a)
+    w -> WX.Attr w a -> Moment t (Behavior t a)
 behavior widget attr = fromPoll $ get widget attr
 
 -- | Variant of wx properties that accept a 'Behavior'.
@@ -62,7 +62,7 @@ infixr 0 :==
 
 -- | "Animate" a property with a behavior
 sink :: Frameworks t =>
-    w -> [Prop' t w] -> NetworkDescription t ()
+    w -> [Prop' t w] -> Moment t ()
 sink widget props = mapM_ sink1 props
     where
     sink1 (attr :== b) = do
@@ -77,7 +77,7 @@ sink widget props = mapM_ sink1 props
 -- | Event that occurs when the /user/ changed
 -- the text in text edit widget.
 eventText :: Frameworks t =>
-    TextCtrl w -> NetworkDescription t (Event t String)
+    TextCtrl w -> Moment t (Event t String)
 eventText w = do
     addHandler <- liftIONow $ event1ToAddHandler w (event0ToEvent1 onText)
     fromAddHandler
@@ -94,13 +94,13 @@ onText = WX.newEvent "onText" WXCore.controlGetOnText WXCore.controlOnText
 
 -- | Behavior corresponding to user input the text field.
 behaviorText :: Frameworks t =>
-    TextCtrl w -> String -> NetworkDescription t (Behavior t String)
+    TextCtrl w -> String -> Moment t (Behavior t String)
 behaviorText w s = stepper s <$> eventText w
 
 -- | Event that occurs when the /user/ changed
 -- the selection marker in a list box widget.
 eventSelection :: Frameworks t =>
-    SingleListBox b -> NetworkDescription t (Event t Int)
+    SingleListBox b -> Moment t (Event t Int)
 eventSelection w = do
     liftIONow $ fixSelectionEvent w
     addHandler <- liftIONow $ event1ToAddHandler w (event0ToEvent1 select)

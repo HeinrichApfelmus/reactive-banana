@@ -178,7 +178,7 @@ reactiveListDisplay :: forall t a b. (Ord a, Frameworks t)
         (Tidings t (Maybe a))   -- current selection as item (possibly empty)
 reactiveListDisplay w bitems bsel bdisplay = do
     -- animate output items
-    MomentliftIONow $ putStrLn "test"
+    liftIONow $ putStrLn "test"
     sink w [ items :== map <$> bdisplay <*> bitems ]
    
     -- animate output selection
