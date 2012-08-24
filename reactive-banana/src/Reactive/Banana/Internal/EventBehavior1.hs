@@ -17,6 +17,7 @@ module Reactive.Banana.Internal.EventBehavior1 (
     
     -- * Setup and IO
     addReactimate, fromAddHandler, fromPoll, liftIONow, liftIOLater,
+    EventNetwork, pause, actuate,
     ) where
 
 import Data.Functor
@@ -54,8 +55,8 @@ inputE = mkCached . Prim.inputP
 interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
 interpret f = Prim.interpret (\pulse -> runCachedM =<< f (fromPure pulse))
 
-compile :: Moment () -> IO ()
-compile m = Prim.compile m >> return ()
+compile :: Moment () -> IO EventNetwork
+compile = Prim.compile
 
 {-----------------------------------------------------------------------------
     Combinators - basic
@@ -165,3 +166,7 @@ fromPoll poll = do
         p  <- Prim.executeP pm
         return $ fromPure p
     return $ stepperB a e
+
+type EventNetwork = Prim.EventNetwork
+pause   = Prim.pause
+actuate = Prim.actuate

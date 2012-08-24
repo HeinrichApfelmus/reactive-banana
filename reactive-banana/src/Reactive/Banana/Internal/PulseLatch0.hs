@@ -11,6 +11,7 @@ import Control.Monad.Fix
 import Control.Monad.Trans.RWS
 import Control.Monad.IO.Class
 
+import Data.IORef
 import Data.Monoid (Endo(..))
 
 import Control.Concurrent.MVar
@@ -218,16 +219,24 @@ runSetup callback m = do
     return (a,reactimates)
 
 {-----------------------------------------------------------------------------
-    State machine and IO stuff
+    Compilation.
+    State machine IO stuff.
 ------------------------------------------------------------------------------}
 type Callback = [InputValue] -> IO ()
 
--- compile to a callback function
-compile :: NetworkSetup () -> IO Callback
+data EventNetwork = EventNetwork
+    { actuate :: IO ()
+    , pause   :: IO ()
+    }
+
+-- compile to an event network
+compile :: NetworkSetup () -> IO EventNetwork
 compile setup = do
-    rstate <- newEmptyMVar                       -- setup callback machinery
+    actuated <- newIORef False                   -- flag to set running status
+    rstate   <- newEmptyMVar                     -- setup callback machinery
     let
-        callback inputs = do
+        whenFlag flag action = readIORef flag >>= \b -> when b action
+        callback inputs = whenFlag actuated $ do
             state0 <- takeMVar rstate            -- read and take lock
             -- pollValues <- sequence polls      -- poll mutable data
             (reactimates, state1)
@@ -250,7 +259,10 @@ compile setup = do
         <- runSetup callback $ runNetworkAtomicT setup emptyGraph
     putMVar rstate (graph,reactimates)           -- set initial state
         
-    return callback
+    return $ EventNetwork
+        { actuate = writeIORef actuated True
+        , pause   = writeIORef actuated False
+        }
 
 -- make an interpreter
 interpret :: (Pulse a -> NetworkSetup (Pulse b)) -> [Maybe a] -> IO [Maybe b]

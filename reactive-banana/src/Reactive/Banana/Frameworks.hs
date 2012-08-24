@@ -240,50 +240,36 @@ liftIOLater = M . Prim.liftIOLater
 --
 -- Event networks are described in the 'Moment' monad
 -- and use the 'Frameworks' class constraint.
-compile :: (forall t. Frameworks t => Moment t ())  -> IO EventNetwork
-compile m = do
-    Prim.compile $ unM (m :: Moment (FrameworksD, t) ())
-    -- FIXME: return something better than dummy network
-    return $ EventNetwork (return ()) (return ())
-
+compile :: (forall t. Frameworks t => Moment t ()) -> IO EventNetwork
+compile m = fmap EN $ Prim.compile $ unM (m :: Moment (FrameworksD, t) ())
 
 {-----------------------------------------------------------------------------
     Running event networks
 ------------------------------------------------------------------------------}
 -- | Data type that represents a compiled event network.
 -- It may be paused or already running.
-data EventNetwork = EventNetwork {
-    -- | Actuate an event network.
-    -- The inputs will register their event handlers, so that
-    -- the networks starts to produce outputs in response to input events.
-    actuate :: IO (),
-    
-    -- | Pause an event network.
-    -- Immediately stop producing output and
-    -- unregister all event handlers for inputs.
-    -- Hence, the network stops responding to input events,
-    -- but it's state will be preserved.
-    --
-    -- You can resume the network with 'actuate'.
-    --
-    -- Note: You can stop a network even while it is processing events,
-    -- i.e. you can use 'pause' as an argument to 'reactimate'.
-    -- The network will /not/ stop immediately though, only after
-    -- the current event has been processed completely.
-    pause :: IO ()
-    }
+newtype EventNetwork = EN { unEN :: Prim.EventNetwork }
 
-{-
--- Make an event network from a function that registers all event handlers
-makeEventNetwork :: IO (IO ()) -> IO EventNetwork
-makeEventNetwork register = do
-    let nop = return ()
-    unregister <- newIORef nop
-    let
-        actuate = register >>= writeIORef unregister
-        pause   = readIORef unregister >>= id >> writeIORef unregister nop
-    return $ EventNetwork actuate pause
--}
+-- | Actuate an event network.
+-- The inputs will register their event handlers, so that
+-- the networks starts to produce outputs in response to input events.
+actuate :: EventNetwork -> IO ()
+actuate = Prim.actuate . unEN
+
+-- | Pause an event network.
+-- Immediately stop producing output and
+-- unregister all event handlers for inputs.
+-- Hence, the network stops responding to input events,
+-- but it's state will be preserved.
+--
+-- You can resume the network with 'actuate'.
+--
+-- Note: You can stop a network even while it is processing events,
+-- i.e. you can use 'pause' as an argument to 'reactimate'.
+-- The network will /not/ stop immediately though, only after
+-- the current event has been processed completely.
+pause :: EventNetwork -> IO ()
+pause   = Prim.pause . unEN
 
 {-----------------------------------------------------------------------------
     Simple use
