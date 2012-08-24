@@ -3,7 +3,7 @@
     
     Example: Bar tab with a variable number of widgets
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
 
 import Data.Maybe (listToMaybe)

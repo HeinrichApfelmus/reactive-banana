@@ -3,7 +3,7 @@
     
     Example: Very simple arithmetic
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 
 import Data.Maybe
 
@@ -24,7 +24,7 @@ main = start $ do
             [widget input1, label "+", widget input2
             , label "=", minsize (sz 40 20) $ widget output]]
 
-    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
         
         binput1  <- behaviorText input1 ""

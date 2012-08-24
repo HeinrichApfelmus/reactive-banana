@@ -4,7 +4,7 @@
     Example: A version of TicTacToe with eclectic interface elements
     Original Author: Gideon Sireling
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 
 import Control.Monad
 import Data.Array
@@ -35,7 +35,7 @@ main = start $ do
                     [map widget btns, map widget radios, map widget checks]
                     , floatCenter $ widget label]]
 
-    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
             -- convert WxHaskell events to FRP events
             let event0s widgets event = forM widgets $ \x -> event0 x event

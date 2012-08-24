@@ -86,7 +86,7 @@ payout Triple = 200
 
 -- Set up the program logic in terms of events and behaviors.
 setupNetwork :: forall t. Frameworks t => 
-    (EventSource (), EventSource ()) -> NetworkDescription t ()
+    (EventSource (), EventSource ()) -> Moment t ()
 setupNetwork (escoin,esplay) = do
     -- initial random number generator
     initialStdGen <- liftIONow $ newStdGen

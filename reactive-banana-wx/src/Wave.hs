@@ -5,7 +5,7 @@
         Demonstrates that reactive-banana is capable of emitting timed events,
         even though it has no built-in notion of time.
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 
 import Control.Monad
 import qualified Data.List as List
@@ -38,7 +38,7 @@ main = start $ do
     -- we're going to need a timer
     t  <- timer f []
     
-    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
 
             eLeft  <- event0 left command
@@ -91,7 +91,7 @@ type Enqueue a = Queue a
 -- Schedule events to happen after a given duration from their occurrence
 -- However, new events will *not* be scheduled before the old ones have finished.
 scheduleQueue :: Frameworks t =>
-    Timer -> Event t (Enqueue a) -> NetworkDescription t (Event t a)
+    Timer -> Event t (Enqueue a) -> Moment t (Event t a)
 scheduleQueue t e = do
     liftIONow $ set t [ enabled := False ]
     eAlarm <- event0 t command

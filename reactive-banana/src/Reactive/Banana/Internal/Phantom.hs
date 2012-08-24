@@ -12,8 +12,9 @@ module Reactive.Banana.Internal.Phantom (
 
 import Reactive.Banana.Internal.Types2
 
--- | Constraint indicating that we can set up connections
--- with external event-based frameworks.
+-- | Class constraint on the type parameter @t@ of the 'Moment' monad.
+-- 
+-- Indicates that we can add input and output to an event network.
 class Frameworks t
 
 -- | Data type for discharging the 'Frameworks' constraint.

@@ -3,7 +3,7 @@
     
     Example: Minuscule network monitor
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 
 import Data.Char
 import Data.List
@@ -32,7 +32,7 @@ main = start $ do
     
     t <- timer f [ interval := 500 ] -- timer every 500 ms
 
-    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
             -- The network statistics are polled when and only when
             -- the event network handles an event.

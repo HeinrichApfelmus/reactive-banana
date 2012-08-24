@@ -13,6 +13,8 @@ Description:
     No semantic bugs expected.
     Significant API changes are likely in future versions,
     though the main interface is beginning to stabilize.
+    The @Reactive.Banana.Switch@ module is quite experimental.
+    There is currently /no/ garbage collection for dynamically created events.
 
 Homepage:            http://haskell.org/haskellwiki/Reactive-banana
 License:             BSD3
@@ -66,7 +68,6 @@ Library
                         Reactive.Banana.Experimental.Calm,
                         Reactive.Banana.Frameworks,
                         Reactive.Banana.Frameworks.AddHandler,
-                        Reactive.Banana.Internal.Phantom,
                         Reactive.Banana.Model
                         Reactive.Banana.Switch
     
@@ -75,6 +76,7 @@ Library
                         Reactive.Banana.Internal.DependencyGraph,
                         Reactive.Banana.Internal.EventBehavior1,
                         Reactive.Banana.Internal.InputOutput
+                        Reactive.Banana.Internal.Phantom,
                         Reactive.Banana.Internal.PulseLatch0,
                         Reactive.Banana.Internal.Types2
 

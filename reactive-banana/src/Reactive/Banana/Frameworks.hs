@@ -13,7 +13,7 @@ module Reactive.Banana.Frameworks (
 
     -- * Building event networks with input/output
     -- $build
-    NetworkDescription, compile,
+    compile, Frameworks,
     AddHandler, fromAddHandler, fromChanges, fromPoll,
     reactimate, initial, changes,
     FrameworksMoment(..), execute, liftIONow, liftIOLater,
@@ -28,7 +28,6 @@ module Reactive.Banana.Frameworks (
     
     -- * Internal
     interpretFrameworks,
-    module Reactive.Banana.Internal.Phantom,
     ) where
 
 import Control.Monad
@@ -44,42 +43,42 @@ import Reactive.Banana.Internal.Phantom
 {-----------------------------------------------------------------------------
     Documentation
 ------------------------------------------------------------------------------}
--- FIXME: Fix documentation text!
-
 {-$build
 
-    After having read all about 'Event's and 'Behavior's,
-    you want to hook them up to an existing event-based framework,
-    like @wxHaskell@ or @Gtk2Hs@.
-    How do you do that?
+After having read all about 'Event's and 'Behavior's,
+you want to hook them up to an existing event-based framework,
+like @wxHaskell@ or @Gtk2Hs@.
+How do you do that?
 
-    The module presented here allows you to obtain /input/ events
-    from external sources
-    and it allows you perform /output/ in reaction to events.
-    
-    In constrast, the functions from "Reactive.Banana.Model" allow you 
-    to express the output events in terms of the input events.
-    This expression is called an /event graph/.
-    
-    An /event network/ is an event graph together with inputs and outputs.
-    To build an event network,
-    describe the inputs, outputs and event graph in the
-    'NetworkDescription' monad 
-    and use the 'compile' function to obtain an event network from that.
+The module presented here allows you to
 
-    To /activate/ an event network, use the 'actuate' function.
-    The network will register its input event handlers and start 
-    producing output.
+* obtain /input/ events from external sources and to
 
-    A typical setup looks like this:
-    
+* perform /output/ in reaction to events.
+
+In constrast, the functions from "Reactive.Banana.Combinators" allow you 
+to express the output events in terms of the input events.
+This expression is called an /event graph/.
+
+An /event network/ is an event graph together with inputs and outputs.
+To build an event network,
+describe the inputs, outputs and event graph in the
+'Moment' monad 
+and use the 'compile' function to obtain an event network from that.
+
+To /activate/ an event network, use the 'actuate' function.
+The network will register its input event handlers and start 
+producing output.
+
+A typical setup looks like this:
+   
 > main = do
 >   -- initialize your GUI framework
 >   window <- newWindow
 >   ...
 >
 >   -- describe the event network
->   let networkDescription :: forall t. NetworkDescription t ()
+>   let networkDescription :: forall t. Frameworks t => Moment t ()
 >       networkDescription = do
 >           -- input: obtain  Event  from functions that register event handlers
 >           emouse    <- fromAddHandler $ registerMouseEvent window
@@ -99,16 +98,17 @@ import Reactive.Banana.Internal.Phantom
 >           reactimate $ fmap print event15
 >           reactimate $ fmap drawCircle eventCircle
 >
->       -- compile network description into a network
->       network <- compile networkDescription
->       -- register handlers and start producing outputs
->       actuate network
+>   -- compile network description into a network
+>   network <- compile networkDescription
+>   -- register handlers and start producing outputs
+>   actuate network
 
-    In short, you use 'fromAddHandler' to obtain /input/ events.
-    The library uses this to register event handlers
-    with your event-based framework.
-    
-    To animate /output/ events, use the 'reactimate' function.
+In short,
+
+* Use 'fromAddHandler' to obtain /input/ events.
+The library uses this to register event handlers with your event-based framework.
+
+* Use 'reactimate' to animate /output/ events.
 
 -}
 
@@ -118,34 +118,28 @@ import Reactive.Banana.Internal.Phantom
 singletonsE :: Prim.Event a -> Event t a
 singletonsE = E . Prim.mapE (:[])
 
--- | Monad for describing event networks.
--- 
--- The 'NetworkDescription' monad is an instance of 'MonadIO',
--- so 'IO' is allowed inside.
--- 
--- Note: The phantom type @t@ prevents you from smuggling
--- values of types 'Event' or 'Behavior'
--- outside the 'NetworkDescription' monad.
-type NetworkDescription = Moment
-
-
 {- | Output.
-    Execute the 'IO' action whenever the event occurs.
+Execute the 'IO' action whenever the event occurs.
+
+
+Note: If two events occur very close to each other,
+there is no guarantee that the @reactimate@s for one 
+event will have finished before the ones for the next event start executing.
+This does /not/ affect the values of events and behaviors,
+it only means that the @reactimate@ for different events may interleave.
+Fortuantely, this is a very rare occurrence, and only happens if
+
+* you call an event handler from inside 'reactimate',
+
+* or you use concurrency.
+
+In these cases, the @reactimate@s follow the control flow
+of your event-based framework.
     
-    
-    Note: If two events occur very close to each other,
-    there is no guarantee that the @reactimate@s for one 
-    event will have finished before the ones for the next event start executing.
-    This does /not/ affect the values of events and behaviors,
-    it only means that the @reactimate@ for different events may interleave.
-    Fortuantely, this is a very rare occurrence, and only happens if
-    
-    * you call an event handler from inside 'reactimate',
-    
-    * or you use concurrency.
-    
-    In these cases, the @reactimate@s follow the control flow
-    of your event-based framework.
+Note: An event networks essentially behaves like a single,
+huge callback function. The 'IO' action are not run in a separate thread.
+The callback function will throw an exception if one of your 'IO' actions
+does so as well.
 
 -}
 reactimate :: Frameworks t => Event t (IO ()) -> Moment t ()
@@ -174,13 +168,6 @@ fromAddHandler = M . fmap singletonsE . Prim.fromAddHandler
 -- Neither should its side effects affect the event network significantly.
 fromPoll :: Frameworks t => IO a -> Moment t (Behavior t a)
 fromPoll = M . fmap B . Prim.fromPoll
-{- do
-    (i,e) <- newInput
-    let poll' = toValue i . (:[]) <$> poll
-    Prepare $ tell ([],[],[poll'],[])
-    initial <- liftIO $ poll
-    return $ stepper initial e
--}
 
 -- | Input,
 -- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
@@ -193,7 +180,7 @@ fromChanges initial changes = stepper initial <$> fromAddHandler changes
 -- observe when a 'Behavior' changes.
 -- 
 -- Strictly speaking, a 'Behavior' denotes a value that
--- varies *continuously* in time,
+-- varies /continuously/ in time,
 -- so there is no well-defined event which indicates when the behavior changes.
 -- 
 -- Still, for reasons of efficiency, the library provides a way to observe
@@ -211,7 +198,7 @@ changes :: Frameworks t => Behavior t a -> Moment t (Event t a)
 changes = return . singletonsE . Prim.changesB . unB
 
 -- | Output,
--- observe the current value contained in a 'Behavior'.
+-- observe the initial value contained in a 'Behavior'.
 initial :: Behavior t a -> Moment t a
 initial = M . Prim.initialB . unB
 
@@ -224,7 +211,10 @@ newtype FrameworksMoment a
 unFM :: FrameworksMoment a -> Moment (FrameworksD,t) a
 unFM = runFrameworksMoment
 
--- | Set up new events on the fly.
+-- | Dynamically add input and output to an existing event network.
+--
+-- Note: You can even do 'IO' actions here, but there is no
+-- guarantee about the order in which they are executed.
 execute
     :: Frameworks t
     => Event t (FrameworksMoment a)
@@ -244,9 +234,13 @@ liftIONow = M . Prim.liftIONow
 liftIOLater :: Frameworks t => IO () -> Moment t ()
 liftIOLater = M . Prim.liftIOLater
 
--- | Compile a 'NetworkDescription' into an 'EventNetwork'
+-- | Compile the description of an event network
+-- into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
-compile :: (forall t. Frameworks t => Moment t ()) -> IO EventNetwork
+--
+-- Event networks are described in the 'Moment' monad
+-- and use the 'Frameworks' class constraint.
+compile :: (forall t. Frameworks t => Moment t ())  -> IO EventNetwork
 compile m = do
     Prim.compile $ unM (m :: Moment (FrameworksD, t) ())
     -- FIXME: return something better than dummy network

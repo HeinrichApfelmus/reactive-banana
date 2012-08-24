@@ -29,12 +29,19 @@ newtype Behavior t a = B { unB :: Prim.Behavior a }
 
 {-| The 'Moment' monad denotes a value at a particular /moment in time/.
 
-This monad is almost the trivial monad,
-but the type parameter allows for some clever internal bookkeeping.
+This monad is not very interesting, it is mainly used for book-keeping.
+In particular, the type parameter @t@ is used
+to disallow various unhealthy programs.
 
-In particular, an expression of type @Moment t a@ denotes
+This monad is also used to describe event networks
+in the "Reactive.Banana.Frameworks" module.
+This only happens when the type parameter @t@
+is constrained by the 'Frameworks' class.
+
+To be precise, an expression of type @Moment t a@ denotes
 a value of type @a@ that is observed at a moment in time
 which is indicated by the type parameter @t@.
+
 -}
 newtype Moment t a = M { unM :: Prim.Moment a }
 

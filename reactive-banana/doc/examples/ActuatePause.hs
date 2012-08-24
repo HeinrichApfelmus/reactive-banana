@@ -12,6 +12,7 @@ import Debug.Trace
 import Data.IORef
 
 import Reactive.Banana
+import Reactive.Banana.Frameworks
 
 
 main :: IO ()

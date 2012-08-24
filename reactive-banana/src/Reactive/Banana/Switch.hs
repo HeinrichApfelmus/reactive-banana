@@ -75,7 +75,7 @@ observeE :: Event t (AnyMoment Identity a) -> Event t a
 observeE = E . Prim.observeE
     . Prim.mapE (sequence . map (fmap getIdentity . unM . now)) . unE
 
--- | Value of the 'Behavior' at moment @t@.
+-- | Obtain the value of the 'Behavior' at moment @t@.
 valueB :: Behavior t a -> Moment t a
 valueB = M . Prim.initialB . unB
 

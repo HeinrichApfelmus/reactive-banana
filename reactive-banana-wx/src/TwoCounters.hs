@@ -3,7 +3,7 @@
     
     Example: Two Counters.
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 
 import Control.Monad
 
@@ -27,7 +27,7 @@ main = start $ do
                       grid 5 5 [[label "First Counter:" , widget out1]
                                ,[label "Second Counter:", widget out2]]]]
     
-    let networkDescription :: forall t. Frameworks t => NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
 
             eup     <- event0 bup     command
