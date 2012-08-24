@@ -3,7 +3,7 @@
     
     Example: Currency Converter
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 {-# LANGUAGE RecursiveDo #-}
 
 import Data.Bits
@@ -30,7 +30,7 @@ main = start $ do
             , label "Amounts update while typing."
             ]]
 
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
         
         euroIn   <- behaviorText euro   "0"

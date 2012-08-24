@@ -3,7 +3,7 @@
     
     Example: A simple animation.
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 
 import Graphics.UI.WX hiding (Event, Vector)
 import Reactive.Banana
@@ -43,7 +43,7 @@ main = start $ do
     set ff [ layout  := minsize (sz width height) $ widget pp ]
     
     -- event network
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
             etick  <- event0 t command  -- frame timer
             emouse <- event1 pp mouse   -- mouse events

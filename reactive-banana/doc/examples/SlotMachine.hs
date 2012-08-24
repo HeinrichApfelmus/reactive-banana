@@ -14,6 +14,7 @@ import Debug.Trace
 import Data.IORef
 
 import Reactive.Banana as R
+import Reactive.Banana.Frameworks as R
 
 
 main :: IO ()
@@ -84,10 +85,11 @@ payout Triple = 200
 
 
 -- Set up the program logic in terms of events and behaviors.
-setupNetwork :: forall t. (EventSource (), EventSource ()) -> NetworkDescription t ()
+setupNetwork :: forall t. Frameworks t => 
+    (EventSource (), EventSource ()) -> Moment t ()
 setupNetwork (escoin,esplay) = do
     -- initial random number generator
-    initialStdGen <- liftIO $ newStdGen
+    initialStdGen <- liftIONow $ newStdGen
 
     -- Obtain events corresponding to the  coin  and  play  commands
     ecoin <- fromAddHandler (addHandler escoin)

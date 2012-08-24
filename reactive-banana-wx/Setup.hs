@@ -15,7 +15,7 @@ guiApps =
     [mkApp filesAsteroids "Asteroids", mkApp filesAnimation "Animation"] ++ apps
 
 apps = map (mkApp []) $
-    words "Arithmetic Counter CurrencyConverter CRUD"
+    words "Arithmetic BarTab Counter CurrencyConverter CRUD"
     ++ words "NetMonitor TicTacToe TwoCounters Wave"
 filesAsteroids = map ("data/" ++) $
     words "burning.ico rock.ico ship.ico explode.wav"

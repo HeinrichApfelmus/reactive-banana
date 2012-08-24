@@ -24,6 +24,9 @@ Asteroids : src/Asteroids.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/ && macosx-app $@ \
 	    && cp data/* $@.app/Contents/Resources
 
+BarTab : src/BarTab.hs src/Reactive/Banana/WX.hs
+	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/ && macosx-app $@
+
 Counter : src/Counter.hs src/Reactive/Banana/WX.hs
 	$(COMPILE) -o $@ $< -outputdir $(OBJ)/$@.tmp/ && macosx-app $@
 

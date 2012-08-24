@@ -3,14 +3,13 @@
     
     Example: Bar tab with a variable number of widgets
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
 
 import Data.Maybe (listToMaybe)
 
 import Graphics.UI.WX hiding (Event)
 import Reactive.Banana
-import Reactive.Banana.Experimental.Switch
 import Reactive.Banana.WX
 
 import Data.Traversable (sequenceA)
@@ -25,47 +24,51 @@ main = start $ do
     add    <- button f [text := "Add"]
     remove <- button f [text := "Remove"]
     
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
             eAdd    <- event0 add command
             eRemove <- event0 remove command
             
             let
-                newEntry :: NetworkDescription s (TextCtrl (), Trimmed Behavior String) 
+                newEntry :: Frameworks s
+                         => Moment s (TextCtrl (), AnyMoment Behavior String) 
                 newEntry = do
-                    wentry <- liftIO $ entry f []
+                    wentry <- liftIONow $ entry f []
                     bentry <- trimB =<< behaviorText wentry ""
                     return (wentry, bentry)
             
-            eNewEntry <- compileNew $ (F newEntry <$ eAdd)
+            eNewEntry <- execute $ (FrameworksMoment newEntry <$ eAdd)
             
             let
-                eDoRemove = whenE (not . null <$> bentries) eRemove
+                eDoRemove = whenE (not . null <$> bEntries) eRemove
             
-                bentries :: Behavior t [(TextCtrl (), Trimmed Behavior String)]
-                bentries = accumB [] $
+                eEntries :: Event t [(TextCtrl (), AnyMoment Behavior String)]
+                eEntries = accumE [] $
                     ((\x -> (++ [x])) <$> eNewEntry) `union` (init <$ eDoRemove)
             
+                bEntries = stepper [] eEntries
+            
             reactimate $ ((\w -> set w [ visible := False]) . fst . last)
-                <$> bentries <@ eDoRemove
+                <$> bEntries <@ eDoRemove
             
             let
-                bprices  :: Behavior t [Trimmed Behavior Number]
-                bprices = map (fmap readNumber . snd) <$> bentries
+                ePrices :: Event t [AnyMoment Behavior Number]
+                ePrices = map (fmap readNumber . snd) <$> eEntries
                 
-                blayout :: Behavior t Layout
-                blayout = mkLayout . map fst <$> bentries
+                bLayout :: Behavior t Layout
+                bLayout = mkLayout . map fst <$> bEntries
                 
                 mkLayout entries = margin 10 $ column 10 $
                     [row 10 [widget add, widget remove]] ++ map widget entries
                     ++ [row 10 $ [widget msg, minsize (sz 40 20) $ widget total]]
         
-            -- btotal :: Behavior t Number
-            btotal <- switchB $ (fmap sum . sequenceA) <$> bprices
+                bTotal :: Behavior t Number
+                bTotal = switchB (pure Nothing) $
+                            (fmap sum . sequenceA) <$> ePrices
 
-            sink total [text   :== showNumber <$> btotal]   
-            sink f     [layout :== blayout ]
-
+            sink total [text   :== showNumber <$> bTotal]
+            sink f     [layout :== bLayout]
+            
     network <- compile networkDescription    
     actuate network
 

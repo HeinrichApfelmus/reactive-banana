@@ -14,7 +14,7 @@ module Reactive.Banana.Experimental.Calm (
     
     -- * Main types
     Event, Behavior, collect, fromCalm,
-    interpretModel, interpretPushGraph,
+    interpret,
     
     -- * Core Combinators
     module Control.Applicative,
@@ -59,17 +59,11 @@ fromCalm = unE
 
 singleton x = [x]
 
--- | Interpret with model implementation.
+-- | Interpretation function.
 -- Useful for testing.
-interpretModel :: (forall t. Event t a -> Event t b) -> [a] -> IO [Maybe b]
-interpretModel f xs =
-    map listToMaybe <$> Prim.interpretModel (unE . f . E) (map singleton xs)
-
--- | Interpret with push-based implementation.
--- Useful for testing.
-interpretPushGraph :: (forall t. Event t a -> Event t b) -> [a] -> IO [Maybe b]
-interpretPushGraph f xs =
-    map listToMaybe <$> Prim.interpretPushGraph (unE . f . E) (map singleton xs)
+interpret :: (forall t. Event t a -> Event t b) -> [a] -> IO [Maybe b]
+interpret f xs =
+    map listToMaybe <$> Prim.interpret (unE . f . E) (map singleton xs)
 
 {-----------------------------------------------------------------------------
     Core Combinators
