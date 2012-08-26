@@ -11,7 +11,7 @@
     https://github.com/killerswan/wxAsteroids/issues/1
     http://comments.gmane.org/gmane.comp.lang.haskell.wxhaskell.general/1086
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 
 import Graphics.UI.WX hiding (Event)
 import Graphics.UI.WXCore as WXCore
@@ -81,7 +81,7 @@ asteroids = do
            ]
     
     -- event network
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
             -- timer
             etick  <- event0 t command

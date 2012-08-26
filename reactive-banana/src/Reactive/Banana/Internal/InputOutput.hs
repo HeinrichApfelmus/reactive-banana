@@ -62,10 +62,10 @@ fromStateful f s = Step $ \i -> do
     return (a, fromStateful f s')
 
 -- | Apply an automaton to a list of input values
-unfoldAutomaton :: Automaton b -> InputChannel a -> [a] -> IO [Maybe b]
-unfoldAutomaton _    _ []     = return []
-unfoldAutomaton auto i (x:xs) = do
-    (b, auto) <- runStep auto $ [toValue i x]
-    bs        <- unfoldAutomaton auto i xs
+unfoldAutomaton :: Automaton b -> InputChannel a -> [Maybe a] -> IO [Maybe b]
+unfoldAutomaton _    _ []       = return []
+unfoldAutomaton auto i (mx:mxs) = do
+    (b, auto) <- runStep auto $ maybe [] (\x -> [toValue i x]) mx
+    bs        <- unfoldAutomaton auto i mxs
     return (b:bs)
     

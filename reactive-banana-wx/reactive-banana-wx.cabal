@@ -1,5 +1,5 @@
 Name:                reactive-banana-wx
-Version:             0.6.0.1
+Version:             0.7.0.0
 Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,
@@ -12,10 +12,6 @@ Description:
     To build and install the example, use the @buildExamples@ flag like this
     .
     @cabal install reactive-banana-wx -fbuildExamples@
-    .
-    IMPORTANT NOTE:
-    There are a few issues with WxWidgets 2.9.3 and some examples may crash.
-    These problems are only solved in wx-0.90.0.1 and higher.
     .
     Stability forecast: The wrapper functions are rather provisional.
 
@@ -32,7 +28,7 @@ Build-type:          Custom
 Extra-source-files:  Makefile
 
 data-dir:            data
-data-files:          *.ico, *.wav, *.png
+data-files:          *.ico, *.wav
 
 flag buildExamples
   description: Build example executables
@@ -42,9 +38,8 @@ Library
     hs-source-dirs:  src
     build-depends:   base >= 4.2 && < 5,
                      cabal-macosx >= 0.1 && < 0.3,
-                     reactive-banana >= 0.6.0.0 && < 0.7,
-                     wxcore (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.91),
-                     wx (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.91)
+                     reactive-banana >= 0.7.0.0 && < 0.8,
+                     wx >= 0.90 && < 0.91, wxcore >= 0.90 && < 0.91
     extensions:      ExistentialQuantification
     exposed-modules: Reactive.Banana.WX
 
@@ -55,17 +50,8 @@ Source-repository    head
 
 Executable Animation
     if flag(buildExamples)
-        build-depends:
-            process >= 1.0 && < 1.2,
-            random == 1.0.*,
-            executable-path == 0.0.*,
-            filepath >= 1.1 && <= 1.4,
-            reactive-banana,
-            wx,
-            wxcore,
-            base
-        cpp-options: -DbuildExamples
-        
+        cpp-options:    -DbuildExamples
+        build-depends:  reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
@@ -74,12 +60,7 @@ Executable Animation
 
 Executable Arithmetic
     if flag(buildExamples)
-        build-depends:
-            process >= 1.0 && < 1.2,
-            reactive-banana,
-            wx,
-            wxcore,
-            base
+        build-depends: reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
@@ -91,10 +72,7 @@ Executable Asteroids
             random == 1.0.*,
             executable-path == 0.0.*,
             filepath >= 1.1 && <= 1.4,
-            reactive-banana,
-            wx,
-            wxcore,
-            base
+            reactive-banana, wx, wxcore, base
         cpp-options: -DbuildExamples
     else
         buildable: False
@@ -102,13 +80,17 @@ Executable Asteroids
     other-modules:   Paths_reactive_banana_wx, Paths
     main-is:         Asteroids.hs
 
+Executable BarTab
+    if flag(buildExamples)
+        build-depends: reactive-banana, wx, wxcore, base
+    else
+        buildable: False
+    hs-source-dirs:  src
+    main-is:         BarTab.hs
+
 Executable Counter
     if flag(buildExamples)
-        build-depends:
-            reactive-banana,
-            wx,
-            wxcore,
-            base
+        build-depends: reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
@@ -116,12 +98,8 @@ Executable Counter
 
 Executable CurrencyConverter
     if flag(buildExamples)
-        build-depends:
-            process >= 1.0.1 && < 1.2,
-            reactive-banana,
-            wx,
-            wxcore,
-            base
+        build-depends: process >= 1.0.1 && < 1.2,
+                       reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
@@ -129,12 +107,8 @@ Executable CurrencyConverter
 
 Executable CRUD
     if flag(buildExamples)
-        build-depends:
-            containers >= 0.3 && < 0.6,
-            reactive-banana,
-            wx,
-            wxcore,
-            base
+        build-depends: containers >= 0.3 && < 0.5,
+                       reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
@@ -143,12 +117,8 @@ Executable CRUD
 
 Executable NetMonitor
     if flag(buildExamples)
-        build-depends:
-            process >= 1.0 && < 1.2,
-            reactive-banana,
-            wx,
-            wxcore,
-            base
+        build-depends: process >= 1.0 && < 1.2,
+                       reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
@@ -156,12 +126,8 @@ Executable NetMonitor
 
 Executable TicTacToe
     if flag(buildExamples)
-        build-depends:
-            array >= 0.3 && < 0.5,
-            reactive-banana,
-            wx,
-            wxcore,
-            base
+        build-depends: array >= 0.3 && < 0.5,
+                       reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
@@ -169,11 +135,7 @@ Executable TicTacToe
 
 Executable TwoCounters
     if flag(buildExamples)
-        build-depends:
-            reactive-banana,
-            wx,
-            wxcore,
-            base
+        build-depends: reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
@@ -181,11 +143,7 @@ Executable TwoCounters
 
 Executable Wave
     if flag(buildExamples)
-        build-depends:
-            reactive-banana,
-            wx,
-            wxcore,
-            base
+        build-depends: reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src

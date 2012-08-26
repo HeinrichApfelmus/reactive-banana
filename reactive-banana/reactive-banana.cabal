@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.6.0.0
+Version:             0.7.0.0
 Synopsis:            Practical library for functional reactive programming (FRP).
 Description:         
     Reactive-banana is a practical library for Functional Reactive Programming (FRP).
@@ -13,6 +13,8 @@ Description:
     No semantic bugs expected.
     Significant API changes are likely in future versions,
     though the main interface is beginning to stabilize.
+    The @Reactive.Banana.Switch@ module is quite experimental.
+    There is currently /no/ garbage collection for dynamically created events.
 
 Homepage:            http://haskell.org/haskellwiki/Reactive-banana
 License:             BSD3
@@ -21,10 +23,12 @@ Author:              Heinrich Apfelmus
 Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Stability:           Experimental
 Category:            FRP
-Cabal-version:       >=1.6
+Cabal-version:       >= 1.9.2
 Build-type:          Simple
 
-extra-source-files:  doc/examples/*.hs
+extra-source-files:     doc/examples/*.hs,
+                        src/Reactive/Banana/Test.hs
+                        src/Reactive/Banana/Test/Plumbing.hs
 
 Source-repository head
     type:               git
@@ -52,7 +56,7 @@ Library
         extensions:     TypeFamilies, GADTs, MultiParamTypeClasses,
                         BangPatterns, TupleSections,
                         EmptyDataDecls
-        build-depends:  QuickCheck >= 1.2 && < 2.5,
+        build-depends:  QuickCheck >= 1.2 && < 2.6,
                         fclabels == 1.1.*,
                         unordered-containers >= 0.2.1.0 && < 0.3,
                         hashable == 1.1.*
@@ -63,22 +67,29 @@ Library
                         Reactive.Banana.Combinators,
                         Reactive.Banana.Experimental.Calm,
                         Reactive.Banana.Frameworks,
+                        Reactive.Banana.Frameworks.AddHandler,
                         Reactive.Banana.Model
+                        Reactive.Banana.Switch
     
     other-modules:
-                        Reactive.Banana.Internal.InputOutput,
-                        Reactive.Banana.Tests
-    
-    if flag(UseExtensions)
-        other-modules:
-                        Reactive.Banana.Internal.AST,
-                        Reactive.Banana.Internal.InterpretModel,
-                        Reactive.Banana.Internal.PushGraph,
-                        Reactive.Banana.Internal.TotalOrder
-    else
-        other-modules:
-                        Reactive.Banana.Internal.CompileModel
+                        Reactive.Banana.Internal.Cached,
+                        Reactive.Banana.Internal.DependencyGraph,
+                        Reactive.Banana.Internal.EventBehavior1,
+                        Reactive.Banana.Internal.InputOutput
+                        Reactive.Banana.Internal.Phantom,
+                        Reactive.Banana.Internal.PulseLatch0,
+                        Reactive.Banana.Internal.Types2
 
-                        
+
+-- compiling the test suite from cabal currently doesn't work
+Test-Suite tests
+    type:               exitcode-stdio-1.0
+    hs-source-dirs:     src
+    main-is:            Reactive/Banana/Test.hs
+    build-depends:      base >= 4.2 && < 5,
+                        HUnit >= 1.2 && < 2,
+                        test-framework == 0.6.*,
+                        test-framework-hunit == 0.2.*,
+                        reactive-banana
 
 

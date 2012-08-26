@@ -7,7 +7,7 @@
     that the database is updated. This is perfectly fine for rapid prototyping.
     A more sophisticated approach would use incremental updates.
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 {-# LANGUAGE RecursiveDo, NoMonomorphismRestriction #-}
 
 import Prelude hiding (lookup)
@@ -49,7 +49,7 @@ main = start $ do
                 ]]
 
     -- event network
-    let networkDescription :: forall t. NetworkDescription t ()
+    let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = mdo
             -- events from buttons
             eCreate <- event0 createBtn command       
@@ -60,15 +60,14 @@ main = start $ do
                 tFilter = isPrefixOf <$> tFilterString
                 bFilter = facts  tFilter
                 eFilter = rumors tFilter
-            
+
             -- list box with selection
             eSelection <- rumors <$> reactiveListDisplay listBox
                 bListBoxItems bSelection bShowDataItem
-
             -- data item display
             eDataItemIn <- rumors <$> reactiveDataItem (firstname,lastname)
                 bSelectionDataItem
-            
+
             let -- database
                 bDatabase :: Behavior t (Database DataItem)
                 bDatabase = accumB emptydb $ unions
@@ -106,6 +105,7 @@ main = start $ do
             let
                 bDisplayItem :: Behavior t Bool
                 bDisplayItem = maybe False (const True) <$> bSelection
+            
             sink deleteBtn [ enabled :== bDisplayItem ]
             sink firstname [ enabled :== bDisplayItem ]
             sink lastname  [ enabled :== bDisplayItem ]
@@ -134,11 +134,10 @@ type DataItem = (String, String)
 showDataItem (firstname, lastname) = lastname ++ ", " ++ firstname
 
 -- single text entry
-reactiveTextEntry
-    :: TextCtrl a
-    -> Behavior t String      -- text value
-    -> NetworkDescription t
-        (Tidings t String)    -- user changes
+reactiveTextEntry :: Frameworks t
+    => TextCtrl a
+    -> Behavior t String              -- text value
+    -> Moment t (Tidings t String)    -- user changes
 reactiveTextEntry w btext = do
     eUser <- eventText w        -- user changes
 
@@ -152,11 +151,10 @@ reactiveTextEntry w btext = do
     return $ tidings btext eUser
 
 -- whole data item (consisting of two text entries)
-reactiveDataItem
-    :: (TextCtrl a, TextCtrl b)
+reactiveDataItem :: Frameworks t
+    => (TextCtrl a, TextCtrl b)
     -> Behavior t (Maybe DataItem)
-    -> NetworkDescription t
-        (Tidings t DataItem)
+    -> Moment t (Tidings t DataItem)
 reactiveDataItem (firstname,lastname) binput = do
     t1 <- reactiveTextEntry firstname (fst . maybe ("","") id <$> binput)
     t2 <- reactiveTextEntry lastname  (snd . maybe ("","") id <$> binput)
@@ -171,17 +169,18 @@ reactiveDataItem (firstname,lastname) binput = do
     Changing the set may unselect the current item,
         but will not change it to another item.
 ------------------------------------------------------------------------------}
-reactiveListDisplay :: forall t a b. Ord a
+reactiveListDisplay :: forall t a b. (Ord a, Frameworks t)
     => SingleListBox b          -- ListBox widget to use
     -> Behavior t [a]           -- list of items
     -> Behavior t (Maybe a)     -- selected element
     -> Behavior t (a -> String) -- display an item
-    -> NetworkDescription t
+    -> Moment t
         (Tidings t (Maybe a))   -- current selection as item (possibly empty)
 reactiveListDisplay w bitems bsel bdisplay = do
     -- animate output items
+    liftIONow $ putStrLn "test"
     sink w [ items :== map <$> bdisplay <*> bitems ]
-
+   
     -- animate output selection
     let bindices :: Behavior t (Map.Map a Int)
         bindices = (Map.fromList . flip zip [0..]) <$> bitems
@@ -206,7 +205,7 @@ reactiveListDisplay w bitems bsel bdisplay = do
 {- Currently exported from Reactive.Banana.WX
 
 -- user input event - text for text entries
-eventText :: TextCtrl w -> NetworkDescription t (Event t String)
+eventText :: TextCtrl w -> Moment t (Event t String)
 eventText w = do
     -- Should probably be  wxEVT_COMMAND_TEXT_UPDATED ,
     -- but that's missing from wxHaskell.
@@ -220,7 +219,7 @@ keyboardUp  :: WX.Event (Window a) (EventKey -> IO ())
 keyboardUp  = WX.newEvent "keyboardUp" WXCore.windowGetOnKeyUp WXCore.windowOnKeyUp
 
 -- user input event - selection marker for list events
-eventSelection :: SingleListBox b -> NetworkDescription t (Event t Int)
+eventSelection :: SingleListBox b -> Moment t (Event t Int)
 eventSelection w = do
     liftIO $ fixSelectionEvent w
     addHandler <- liftIO $ event1ToAddHandler w (event0ToEvent1 select)

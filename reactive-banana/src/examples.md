@@ -16,6 +16,8 @@ The server has a gui where you can see all the circles as they move around, tagg
 * "Open" systems, i.e. involving external data, like network, file system etc.
 * Color picker, font chooser, file chooser
 
+* How about a Morse code signal generator using a single key of a keyboard and a corresponding signal decoder?  I'd think that would be a very enlightening example.
+
 ### Difficult examples
 * small vector drawing application (or GUI designer)
     events from drawn shapes

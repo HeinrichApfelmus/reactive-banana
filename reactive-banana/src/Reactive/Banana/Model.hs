@@ -9,15 +9,21 @@ module Reactive.Banana.Model (
     -- $model
 
     -- * Combinators
-    Event(..), Behavior(..),
-    never, filterE, unionWith, applyE, accumE, stepperB,
-    mapE, pureB, applyB, mapB,
-    
+    -- ** Data types
+    Event, Behavior,
+    -- ** Basic
+    never, filterJust, unionWith, mapE, accumE, applyE,
+    stepperB, pureB, applyB, mapB,
+    -- ** Dynamic event switching
+    Moment,
+    initialB, trimE, trimB, observeE, switchE, switchB,
+        
     -- * Interpretation
-    interpretModel,
+    interpret,
     ) where
 
 import Control.Applicative
+import Control.Monad (join)
 
 {-$model
 
@@ -40,16 +46,19 @@ Implementations are free to be much more efficient.
 -}
 
 {-----------------------------------------------------------------------------
-    Combinators
+    Basic Combinators
 ------------------------------------------------------------------------------}
-type Event a    = [Maybe a]
-data Behavior a = StepperB a (Event a)
+type Event a    = [Maybe a]             -- should be abstract
+data Behavior a = StepperB a (Event a)  -- should be abstract
+
+interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
+interpret f e = f e 0
 
 never :: Event a
 never = repeat Nothing
 
-filterE :: (a -> Bool) -> Event a -> Event a
-filterE p = map (>>= \x -> if p x then Just x else Nothing)
+filterJust :: Event (Maybe a) -> Event a
+filterJust = map join
 
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
 unionWith f = zipWith g
@@ -58,6 +67,8 @@ unionWith f = zipWith g
     g (Just x) Nothing  = Just x
     g Nothing  (Just y) = Just y
     g Nothing  Nothing  = Nothing
+
+mapE f  = applyE (pureB f)
 
 applyE :: Behavior (a -> b) -> Event a -> Event b
 applyE _               []     = []
@@ -71,11 +82,8 @@ accumE x []           = []
 accumE x (Nothing:fs) = Nothing : accumE x fs
 accumE x (Just f :fs) = let y = f x in y `seq` (Just y:accumE y fs) 
 
-stepperB :: a -> [Maybe a] -> Behavior a
+stepperB :: a -> Event a -> Behavior a
 stepperB = StepperB
-
--- functor
-mapE f  = applyE (pureB f)
 
 -- applicative functor
 pureB x = stepperB x never
@@ -90,5 +98,54 @@ applyB (StepperB f fe) (StepperB x xe) =
 
 mapB f = applyB (pureB f)
 
-interpretModel :: (Event a -> Event b) -> Event a -> IO (Event b)
-interpretModel = (return .)
+{-----------------------------------------------------------------------------
+    Dynamic Event Switching
+------------------------------------------------------------------------------}
+type Time     = Int
+type Moment a = Time -> a     -- should be abstract
+
+{-
+instance Monad Moment where
+    return  = const
+    m >>= g = \time -> g (m time) time
+-}
+
+initialB :: Behavior a -> Moment a
+initialB (StepperB x _) = return x
+
+trimE :: Event a -> Moment (Moment (Event a))
+trimE e = \now -> \later -> drop (later - now) e
+
+trimB :: Behavior a -> Moment (Moment (Behavior a))
+trimB b = \now -> \later -> bTrimmed !! (later - now)
+    where
+    bTrimmed = iterate drop1 b
+
+    drop1 (StepperB x []          ) = StepperB x never
+    drop1 (StepperB x (Just y :ys)) = StepperB y ys
+    drop1 (StepperB x (Nothing:ys)) = StepperB x ys
+
+observeE :: Event (Moment a) -> Event a
+observeE = zipWith (\time -> fmap ($ time)) [0..]
+
+switchE :: Event (Moment (Event a)) -> Event a
+switchE = step never . observeE
+    where
+    step ys     []           = ys
+    step (y:ys) (Nothing:xs) = y : step ys xs 
+    step (y:ys) (Just zs:xs) = y : step (drop 1 zs) xs
+    -- assume that the dynamic events are at least as long as the
+    -- switching event
+
+switchB :: Behavior a -> Event (Moment (Behavior a)) -> Behavior a
+switchB (StepperB x e) = stepperB x . step e . observeE
+    where
+    step ys     []                        = ys
+    step (y:ys) (Nothing             :xs) =          y : step ys xs 
+    step (y:ys) (Just (StepperB x zs):xs) = Just value : step (drop 1 zs) xs
+        where
+        value = case zs of
+            Just z : _ -> z -- new behavior changes right away
+            _          -> x -- new behavior stays constant for a while
+
+
