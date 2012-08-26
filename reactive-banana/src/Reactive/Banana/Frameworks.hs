@@ -136,10 +136,11 @@ Fortuantely, this is a very rare occurrence, and only happens if
 In these cases, the @reactimate@s follow the control flow
 of your event-based framework.
     
-Note: An event networks essentially behaves like a single,
+Note: An event network essentially behaves like a single,
 huge callback function. The 'IO' action are not run in a separate thread.
 The callback function will throw an exception if one of your 'IO' actions
 does so as well.
+Your event-based framework will have to handle this situation.
 
 -}
 reactimate :: Frameworks t => Event t (IO ()) -> Moment t ()
