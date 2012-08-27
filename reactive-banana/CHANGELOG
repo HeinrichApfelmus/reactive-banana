@@ -1,6 +1,13 @@
 Changelog
 ---------
 
+version 0.7.0.0
+
+* features dynamic event switching, add module Reactive.Banana.Switch
+* rename `NetworkDescription` to `Moment`, add class constraint `Frameworks t`
+* no longer compiles with the JavaScript backend of the Utrecht Haskell compiler
+* change `changes` combinator to be less useful
+
 version 0.6.0.0
 
 * can now be compiled with the JavaScript backend of the Utrecht Haskell compiler

@@ -1,7 +1,8 @@
 {-----------------------------------------------------------------------------
     Reactive Banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE Rank2Types, MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE Rank2Types, MultiParamTypeClasses,
+    TypeSynonymInstances, FlexibleInstances #-}
 
 module Reactive.Banana.Experimental.Calm (
     -- * Synopsis

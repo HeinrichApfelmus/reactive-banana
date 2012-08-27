@@ -1,10 +1,8 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
--- #define UseExtensions 1
 
 module Reactive.Banana.Combinators (
     -- * Synopsis

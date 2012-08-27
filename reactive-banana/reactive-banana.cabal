@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.7.0.0
+Version:             0.7.0.1
 Synopsis:            Practical library for functional reactive programming (FRP).
 Description:         
     Reactive-banana is a practical library for Functional Reactive Programming (FRP).
@@ -36,7 +36,7 @@ Source-repository head
     subdir:             reactive-banana/
 
 flag UseExtensions
-    description: Use language extensions like type families or GADTs.
+    description: Use GHC-specific language extensions.
                  This enables the efficient push-driven implementation,
                  but doesn't necessarily work with compilers other than GHC.
 -- Cabal checks if the package can be build with  UseExtensions = True,
@@ -45,22 +45,25 @@ flag UseExtensions
 Library
     hs-source-dirs:     src
     
-    extensions:         CPP,
-                        Rank2Types, NoMonomorphismRestriction, FlexibleInstances
+    extensions:         RecursiveDo,
+                        Rank2Types, ScopedTypeVariables,
+                        ExistentialQuantification,
+                        TypeSynonymInstances, FlexibleInstances,
+                        NoMonomorphismRestriction
     
-    build-depends:      base >= 4.2 && < 5, containers >= 0.3 && < 0.6,
+    build-depends:      base >= 4.2 && < 5,
+                        containers >= 0.3 && < 0.6,
                         transformers >= 0.2 && < 0.4,
                         vault == 0.2.*
-    
-    if flag(UseExtensions)
-        extensions:     TypeFamilies, GADTs, MultiParamTypeClasses,
-                        BangPatterns, TupleSections,
-                        EmptyDataDecls
-        build-depends:  QuickCheck >= 1.2 && < 2.6,
-                        fclabels == 1.1.*,
+
+    extensions:         EmptyDataDecls,
+                        BangPatterns
+
+    build-depends:      QuickCheck >= 1.2 && < 2.6,
                         unordered-containers >= 0.2.1.0 && < 0.3,
                         hashable == 1.1.*
-        CPP-options:    -DUseExtensions
+
+--      CPP-options:    -DUseExtensions
         
     exposed-modules:
                         Reactive.Banana,

@@ -1,7 +1,6 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Internal.DependencyGraph (
     -- | Utilities for operating with dependency graphs.
     Deps,
