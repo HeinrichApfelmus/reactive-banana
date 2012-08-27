@@ -33,7 +33,7 @@ import Reactive.Banana.Internal.Types2
 -- Unlike 'Data.Functor.Constant',
 -- this functor is constant in the /second/ argument.
 
-data Identity t a = Identity { getIdentity :: a }
+newtype Identity t a = Identity { getIdentity :: a }
 
 instance Functor (Identity t) where
     fmap f (Identity a) = Identity (f a)
