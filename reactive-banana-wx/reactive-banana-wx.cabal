@@ -1,5 +1,5 @@
 Name:                reactive-banana-wx
-Version:             0.7.0.0
+Version:             0.7.0.1
 Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,
@@ -28,7 +28,7 @@ Build-type:          Custom
 Extra-source-files:  Makefile
 
 data-dir:            data
-data-files:          *.ico, *.wav
+data-files:          *.ico, *.wav, *.png
 
 flag buildExamples
   description: Build example executables
@@ -39,7 +39,8 @@ Library
     build-depends:   base >= 4.2 && < 5,
                      cabal-macosx >= 0.1 && < 0.3,
                      reactive-banana >= 0.7.0.0 && < 0.8,
-                     wx >= 0.90 && < 0.91, wxcore >= 0.90 && < 0.91
+                     wxcore (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.91),
+                     wx (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.91)      
     extensions:      ExistentialQuantification
     exposed-modules: Reactive.Banana.WX
 
@@ -50,8 +51,13 @@ Source-repository    head
 
 Executable Animation
     if flag(buildExamples)
-        cpp-options:    -DbuildExamples
-        build-depends:  reactive-banana, wx, wxcore, base
+        build-depends:
+            process >= 1.0 && < 1.2,
+            random == 1.0.*,
+            executable-path == 0.0.*,
+            filepath >= 1.1 && <= 1.4,
+            reactive-banana, wx, wxcore, base
+        cpp-options: -DbuildExamples
     else
         buildable: False
     hs-source-dirs:  src
@@ -98,8 +104,7 @@ Executable Counter
 
 Executable CurrencyConverter
     if flag(buildExamples)
-        build-depends: process >= 1.0.1 && < 1.2,
-                       reactive-banana, wx, wxcore, base
+        build-depends: reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
