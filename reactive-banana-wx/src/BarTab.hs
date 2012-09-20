@@ -33,7 +33,7 @@ main = start $ do
                 newEntry :: Frameworks s
                          => Moment s (TextCtrl (), AnyMoment Behavior String) 
                 newEntry = do
-                    wentry <- liftIONow $ entry f []
+                    wentry <- liftIO $ entry f []
                     bentry <- trimB =<< behaviorText wentry ""
                     return (wentry, bentry)
             

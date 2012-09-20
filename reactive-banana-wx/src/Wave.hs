@@ -93,7 +93,7 @@ type Enqueue a = Queue a
 scheduleQueue :: Frameworks t =>
     Timer -> Event t (Enqueue a) -> Moment t (Event t a)
 scheduleQueue t e = do
-    liftIONow $ set t [ enabled := False ]
+    liftIO $ set t [ enabled := False ]
     eAlarm <- event0 t command
     let
         -- (Queue that keeps track of events to schedule

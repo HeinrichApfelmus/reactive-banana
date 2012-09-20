@@ -36,7 +36,7 @@ import qualified Graphics.UI.WXCore as WXCore
 event1 :: Frameworks t =>
     w -> WX.Event w (a -> IO ()) -> Moment t (Event t a)
 event1 widget e = do
-    addHandler <- liftIONow $ event1ToAddHandler widget e
+    addHandler <- liftIO $ event1ToAddHandler widget e
     fromAddHandler addHandler
 
     -- NOTE: Some events don't work, for instance   leftKey  and  rightKey
@@ -79,7 +79,7 @@ sink widget props = mapM_ sink1 props
 eventText :: Frameworks t =>
     TextCtrl w -> Moment t (Event t String)
 eventText w = do
-    addHandler <- liftIONow $ event1ToAddHandler w (event0ToEvent1 onText)
+    addHandler <- liftIO $ event1ToAddHandler w (event0ToEvent1 onText)
     fromAddHandler
         $ filterAddHandler (const $ WXCore.textCtrlIsModified w)
         $ mapIO (const $ get w text) addHandler
@@ -102,8 +102,8 @@ behaviorText w s = stepper s <$> eventText w
 eventSelection :: Frameworks t =>
     SingleListBox b -> Moment t (Event t Int)
 eventSelection w = do
-    liftIONow $ fixSelectionEvent w
-    addHandler <- liftIONow $ event1ToAddHandler w (event0ToEvent1 select)
+    liftIO $ fixSelectionEvent w
+    addHandler <- liftIO $ event1ToAddHandler w (event0ToEvent1 select)
     fromAddHandler $ mapIO (const $ get w selection) addHandler
 
 -- Fix @select@ event not being fired when items are *un*selected.
