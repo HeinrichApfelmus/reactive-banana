@@ -21,7 +21,6 @@ module Reactive.Banana.Experimental.Calm (
     module Control.Applicative,
     never, unionWith, filterE, accumE,
     apply, stepper,
-    -- $classes
     
     -- * Derived Combinators
     -- ** Filtering

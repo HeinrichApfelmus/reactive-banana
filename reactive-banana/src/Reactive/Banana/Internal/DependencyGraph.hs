@@ -17,12 +17,12 @@ type Set = Set.HashSet
 {-----------------------------------------------------------------------------
     Dependency graph data type
 ------------------------------------------------------------------------------}
--- depdendency graph
+-- dependency graph
 data Deps a = Deps
     { dChildren :: Map a [a] -- children depend on their parents
     , dParents  :: Map a [a]
     , dRoots    :: Set a
-    } deriving (Eq,Show)
+    } deriving (Show)
 
 -- convenient queries
 children deps x = maybe [] id . Map.lookup x $ dChildren deps

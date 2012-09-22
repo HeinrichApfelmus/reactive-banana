@@ -2,7 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, RecursiveDo, ExistentialQuantification,
-    TypeSynonymInstances #-}
+    TypeSynonymInstances, FlexibleInstances #-}
 module Reactive.Banana.Internal.PulseLatch0 where
 
 import Control.Applicative
@@ -24,14 +24,12 @@ import Reactive.Banana.Frameworks.AddHandler
 import Data.Hashable
 import Data.Unique.Really
 import qualified Data.Vault as Vault
-import qualified Data.HashMap.Lazy as Map
 
 import Data.Functor.Identity
 import System.IO.Unsafe
 
 import Debug.Trace
 
-type Map  = Map.HashMap
 type Deps = Deps.Deps
 
 debug   s m = m
