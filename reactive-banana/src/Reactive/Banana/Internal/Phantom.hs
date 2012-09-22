@@ -10,8 +10,6 @@ module Reactive.Banana.Internal.Phantom (
     Frameworks, FrameworksD,
     ) where
 
-import Reactive.Banana.Internal.Types2
-
 -- | Class constraint on the type parameter @t@ of the 'Moment' monad.
 -- 
 -- Indicates that we can add input and output to an event network.

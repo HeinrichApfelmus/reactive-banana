@@ -16,7 +16,9 @@ module Reactive.Banana.Frameworks (
     compile, Frameworks,
     AddHandler, fromAddHandler, fromChanges, fromPoll,
     reactimate, initial, changes,
-    FrameworksMoment(..), execute, liftIONow, liftIOLater,
+    FrameworksMoment(..), execute, liftIOLater, liftIONow,
+    -- $liftIO
+    module Control.Monad.IO.Class,
     
     -- * Running event networks
     EventNetwork, actuate, pause,
@@ -31,6 +33,7 @@ module Reactive.Banana.Frameworks (
     ) where
 
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.IORef
 
 import Reactive.Banana.Combinators
@@ -225,9 +228,16 @@ execute = M
     . Prim.mapE (fmap last . sequence . map (unM . unFM) )
     . unE
 
--- | Lift an 'IO' action into the 'Moment' monad.
+-- $liftIO
+-- 
+-- > liftIO :: Frameworks t => IO a -> Moment t a
+--
+-- Lift an 'IO' action into the 'Moment' monad.
+
+{-# DEPRECATED liftIONow  "Use  liftIO  instead." #-}
+-- | Deprecated. Use 'liftIO' instead.
 liftIONow :: Frameworks t => IO a -> Moment t a
-liftIONow = M . Prim.liftIONow
+liftIONow = liftIO
 
 -- | Lift an 'IO' action into the 'Moment' monad,
 -- but defer its execution until compilation time.
@@ -327,6 +337,6 @@ interpretAsHandler f addHandlerA = \handlerB -> do
 -- inside a 'reactimate'.
 newEvent :: Frameworks t => Moment t (Event t a, a -> IO ())
 newEvent = do
-    (addHandler, fire) <- liftIONow $ newAddHandler
+    (addHandler, fire) <- liftIO $ newAddHandler
     e <- fromAddHandler addHandler
     return (e,fire)

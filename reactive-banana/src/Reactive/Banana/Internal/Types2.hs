@@ -8,10 +8,11 @@ module Reactive.Banana.Internal.Types2 (
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.IO.Class
 import Control.Monad.Fix
 
 import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
-
+import Reactive.Banana.Internal.Phantom
 
 {-| @Event t a@ represents a stream of events as they occur in time.
 Semantically, you can think of @Event t a@ as an infinite list of values
@@ -57,3 +58,6 @@ instance Applicative (Moment t) where
 
 instance MonadFix (Moment t) where   mfix f  = M $ mfix (unM . f)
 instance Functor  (Moment t) where   fmap f  = M . fmap f . unM
+
+instance Frameworks t => MonadIO (Moment t) where
+    liftIO = M . Prim.liftIONow
