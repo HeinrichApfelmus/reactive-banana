@@ -59,8 +59,7 @@ Library
     extensions:         EmptyDataDecls,
                         BangPatterns
 
-    build-depends:      QuickCheck >= 1.2 && < 2.6,
-                        unordered-containers >= 0.2.1.0 && < 0.3,
+    build-depends:      unordered-containers >= 0.2.1.0 && < 0.3,
                         hashable == 1.1.*
 
 --      CPP-options:    -DUseExtensions
@@ -93,6 +92,7 @@ Test-Suite tests
                         HUnit >= 1.2 && < 2,
                         test-framework == 0.6.*,
                         test-framework-hunit == 0.2.*,
-                        reactive-banana
+                        reactive-banana, vault, containers, transformers,
+                        unordered-containers, hashable
 
 
