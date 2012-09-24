@@ -81,10 +81,7 @@ Library
                         Reactive.Banana.Internal.InputOutput
                         Reactive.Banana.Internal.Phantom,
                         Reactive.Banana.Internal.PulseLatch0,
-                        Reactive.Banana.Internal.Types2,
-                        JS.Data.Hashable,
-                        JS.Data.HashMap.Lazy,
-                        JS.Data.HashSet
+                        Reactive.Banana.Internal.Types2
 
 
 -- compiling the test suite from cabal currently doesn't work

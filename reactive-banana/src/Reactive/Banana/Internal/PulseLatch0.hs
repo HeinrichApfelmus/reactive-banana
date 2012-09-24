@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE CPP, Rank2Types, RecursiveDo, ExistentialQuantification,
+{-# LANGUAGE Rank2Types, RecursiveDo, ExistentialQuantification,
     TypeSynonymInstances, FlexibleInstances #-}
 module Reactive.Banana.Internal.PulseLatch0 where
 
@@ -21,11 +21,7 @@ import Reactive.Banana.Internal.InputOutput
 import qualified Reactive.Banana.Internal.DependencyGraph as Deps
 import Reactive.Banana.Frameworks.AddHandler
 
-#if __GLASGOW_HASKELL__ && !__HASTE__
 import Data.Hashable
-#else
-import JS.Data.Hashable
-#endif
 import Data.Unique.Really
 import qualified Data.Vault as Vault
 

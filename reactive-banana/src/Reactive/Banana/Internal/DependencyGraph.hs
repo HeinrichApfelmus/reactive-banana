@@ -1,23 +1,15 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE CPP #-}
 module Reactive.Banana.Internal.DependencyGraph (
     -- | Utilities for operating with dependency graphs.
     Deps,
     empty, dependOn, topologicalSort, 
     ) where
 
-#if FALSE
---#if __GLASGOW_HASKELL__ && !__HASTE__
 import Data.Hashable
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.HashSet as Set
-#else
-import JS.Data.Hashable
-import qualified JS.Data.HashMap.Lazy as Map
-import qualified JS.Data.HashSet as Set
-#endif
 
 type Map = Map.HashMap
 type Set = Set.HashSet
