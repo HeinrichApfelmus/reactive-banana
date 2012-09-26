@@ -1,13 +1,24 @@
-.PHONY: all libraries vault
+.PHONY: all single libraries vault
 
 HASTEC=hastec -odir obj -hidir obj
 
-# Compile all programs with cabal
+# compile in a single run to avoid dependencies messing up
+single : CurrencyConverter/CurrencyConverter.hs
+	cd obj && $(HASTEC) \
+		-hide-all-packages \
+		-package base -package containers -package haste-compiler \
+		-i../libraries/transformers-0.3.0.0 \
+		-i../libraries/vault/src/ \
+		-i../libraries/base/ \
+		-i../libraries/unordered-containers/ \
+		-i../../reactive-banana/src/ \
+		../CurrencyConverter/CurrencyConverter.hs
+	
+# compile all examples
 all : CurrencyConverter/CurrencyConverter.js
 
 CurrencyConverter/CurrencyConverter.js : CurrencyConverter/CurrencyConverter.hs
 	cd CurrencyConverter && $(HASTEC) CurrencyConverter.hs
-
 
 # compile the library environment
 libraries : vault libraries/transformers-0.3.0.0
