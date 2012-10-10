@@ -19,7 +19,7 @@ module Reactive.Banana.Frameworks (
     FrameworksMoment(..), execute, liftIONow, liftIOLater,
     
     -- * Running event networks
-    EventNetwork, actuate, pause,
+    EventNetwork, actuate, pause, justGo,
     
     -- * Utilities
     -- $utilities
@@ -271,6 +271,14 @@ actuate = Prim.actuate . unEN
 -- the current event has been processed completely.
 pause :: EventNetwork -> IO ()
 pause   = Prim.pause . unEN
+
+-- | Given a 'forall t. Frameworks t => Moment t ()', 'compile', and 'actuate'
+-- it, returning the EventNetwork so you can 'pause' it
+justGo :: (forall t. Frameworks t => Moment t ()) -> IO (EventNetwork)
+justGo moment = do
+    evNet <- compile moment
+    actuate evNet
+    return evNet
 
 {-----------------------------------------------------------------------------
     Simple use
