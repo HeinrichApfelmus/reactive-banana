@@ -5,7 +5,7 @@ OBJ=dist/build
 COMPILE= \
 	ghc --make -i$(OBJ) -L/usr/lib -L$(OBJ) \
 	-isrc -i../reactive-banana/src -idist/build/autogen \
-	-DbuildExamples
+	-DbuildExamples -DUseGHC
 
 # Compile all programs with cabal
 all:

@@ -24,8 +24,9 @@ lookup k m = List.lookup k =<< Map.lookup (hash k) (unM m)
 
 insertWith :: (Eq k, Hashable k) =>
     (v -> v -> v) -> k -> v -> HashMap k v -> HashMap k v
-insertWith f k new = M . Map.insertWith helper (hash k) [(k,new)] . unM
+insertWith f k v = M . Map.insertWith insert (hash k) [(k,v)] . unM
     where
-    helper list _ = [(k,f new old) | (k1,old) <- list, k1 == k]
+    insert _ oldlist = [ (key,new) | (key,old) <- oldlist
+                       , let new = if k == key then f v old else old]
 
 #endif

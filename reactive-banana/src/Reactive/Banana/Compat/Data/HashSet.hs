@@ -23,9 +23,9 @@ member :: (Eq k, Hashable k) => k -> HashSet k -> Bool
 member k = (== Just True) . fmap (List.elem k) . Map.lookup (hash k) . unS
 
 insert :: (Eq k, Hashable k) => k -> HashSet k -> HashSet k
-insert k = S . Map.insertWith helper (hash k) [k] . unS
+insert k = S . Map.insertWith insert (hash k) [k] . unS
     where
-    helper old _ = k : filter (/= k) old
+    insert _ old = k : filter (/= k) old
 
 delete :: (Eq k, Hashable k) => k -> HashSet k -> HashSet k
 delete k = S . Map.delete (hash k) . unS
