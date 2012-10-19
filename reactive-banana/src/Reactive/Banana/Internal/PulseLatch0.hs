@@ -21,7 +21,7 @@ import Reactive.Banana.Internal.InputOutput
 import qualified Reactive.Banana.Internal.DependencyGraph as Deps
 import Reactive.Banana.Frameworks.AddHandler
 
-import Data.Hashable
+import Reactive.Banana.Compat.Data.Hashable
 import Data.Unique.Really
 import qualified Data.Vault as Vault
 

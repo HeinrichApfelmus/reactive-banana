@@ -35,12 +35,12 @@ Source-repository head
     location:           git://github.com/HeinrichApfelmus/reactive-banana.git
     subdir:             reactive-banana/
 
-flag UseExtensions
-    description: Use GHC-specific language extensions.
-                 This enables the efficient push-driven implementation,
-                 but doesn't necessarily work with compilers other than GHC.
+flag UseGHC
+    description:        Use GHC-specific packages and language extensions.
+                        Disabling this flag makes it easier to compile
+                        the library with other compilers.
 -- Cabal checks if the package can be build with  UseExtensions = True,
--- otherewise it is set to  False .
+-- otherwise it is set to  False .
 
 Library
     hs-source-dirs:     src
@@ -49,21 +49,13 @@ Library
                         Rank2Types, ScopedTypeVariables,
                         ExistentialQuantification,
                         TypeSynonymInstances, FlexibleInstances,
-                        NoMonomorphismRestriction
+                        NoMonomorphismRestriction,
+                        EmptyDataDecls
     
     build-depends:      base >= 4.2 && < 5,
                         containers >= 0.3 && < 0.6,
                         transformers >= 0.2 && < 0.4,
                         vault == 0.2.*
-
-    extensions:         EmptyDataDecls,
-                        BangPatterns
-
-    build-depends:      QuickCheck >= 1.2 && < 2.6,
-                        unordered-containers >= 0.2.1.0 && < 0.3,
-                        hashable == 1.1.*
-
---      CPP-options:    -DUseExtensions
         
     exposed-modules:
                         Reactive.Banana,
@@ -81,7 +73,17 @@ Library
                         Reactive.Banana.Internal.InputOutput
                         Reactive.Banana.Internal.Phantom,
                         Reactive.Banana.Internal.PulseLatch0,
-                        Reactive.Banana.Internal.Types2
+                        Reactive.Banana.Internal.Types2,
+                        Reactive.Banana.Compat.Data.Hashable,
+                        Reactive.Banana.Compat.Data.HashMap.Lazy,
+                        Reactive.Banana.Compat.Data.HashSet
+    
+    if flag(UseGHC)
+        CPP-options:    -DUseGHC
+        build-depends:
+                        QuickCheck >= 1.2 && < 2.6,
+                        unordered-containers >= 0.2.1.0 && < 0.3,
+                        hashable == 1.1.*
 
 
 -- compiling the test suite from cabal currently doesn't work

@@ -23,8 +23,8 @@ import qualified Data.List
 import Data.Maybe
 import Data.Ord
 
-import Data.Hashable
-import qualified Data.HashMap.Strict as Map
+import Reactive.Banana.Compat.Data.Hashable
+import qualified Reactive.Banana.Compat.Data.HashMap.Strict as Map
 import qualified Data.Set as Set
 
 type Map = Map.HashMap

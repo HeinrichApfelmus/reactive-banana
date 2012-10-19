@@ -7,9 +7,9 @@ module Reactive.Banana.Internal.DependencyGraph (
     empty, dependOn, topologicalSort, 
     ) where
 
-import Data.Hashable
-import qualified Data.HashMap.Lazy as Map
-import qualified Data.HashSet as Set
+import Reactive.Banana.Compat.Data.Hashable
+import qualified Reactive.Banana.Compat.Data.HashMap.Lazy as Map
+import qualified Reactive.Banana.Compat.Data.HashSet as Set
 
 type Map = Map.HashMap
 type Set = Set.HashSet
