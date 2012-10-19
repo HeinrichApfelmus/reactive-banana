@@ -10,7 +10,6 @@ single : CurrencyConverter/CurrencyConverter.hs
 		-i../libraries/transformers-0.3.0.0 \
 		-i../libraries/vault/src/ \
 		-i../libraries/base/ \
-		-i../libraries/unordered-containers/ \
 		-i../../reactive-banana/src/ \
 		../CurrencyConverter/CurrencyConverter.hs
 	
@@ -23,10 +22,10 @@ CurrencyConverter/CurrencyConverter.js : CurrencyConverter/CurrencyConverter.hs
 # compile the library environment
 libraries : vault
 	haste-inst install transformers
-	cd ./libraries/vault && haste-inst install -f-UseGHC
-	$(HASTEC) --libinstall -i./libraries/base/ Data.Unique Control.Monad.ST
-	$(HASTEC) --libinstall -i./libraries/unordered-containers/ Data.HashMap.Lazy Data.Hashable Data.HashSet
-	$(HASTEC) --libinstall -i../reactive-banana/src Reactive.Banana
+	cd ./libraries/vault && haste-inst install vault -f-UseGHC
+	cd ../reactive-banana && haste-inst install reactive-banana -f-UseGHC
+	#$(HASTEC) --libinstall -i./libraries/base/ Data.Unique Control.Monad.ST
+	#$(HASTEC) --libinstall -i../reactive-banana/src Reactive.Banana
 	#cd ../reactive-banana/ && haste-inst install
 
 
