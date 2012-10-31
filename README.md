@@ -15,34 +15,57 @@ I'm writing documentation on a call-by-need basis. So, feel free to write me an 
 
 ## Compilation
 
+To build and install the core library, simply type
+
+    cd reactive-banana && cabal install && cd ..
+
+However, to try out the GUI examples, you have to install one of the of the additional packages.
+
+### GUI examples using wxHaskell
+
 Prerequisites: the wxHaskell package
 
     cabal install wx
 
 Note that you need to have a development version of the wxWidgets libraries installed before building wx. If you run into `ExitFailure 1` exceptions, please follow the [wxHaskell Quick Start](http://www.haskell.org/haskellwiki/WxHaskell/Building) instructions and try again.
 
-To build the reactive-banana libraries, type
+To build the wx examples, type
 
-    cd reactive-banana && cabal configure && cabal build && cd ..
-    cd reactive-banana-wx && cabal configure && cabal build && cd ..
+    cd reactive-banana-wx
+    cabal configure -fbuildExamples && cabal build
+    cd ..
+
+### GUI examples using Ji
+
+Prerequisites: Chris Done's [ji][] library.
+
+    git clone git://github.com/chrisdone/ji.git
+    cabal install
+
+To build the ji examples, type
+
+    cd reactive-banana-ji
+    cabal configure -fbuildExamples && cabal build
+    cd ..
 
 ## How is the source code structured?
 
-The project contains two directories:
+The project contains several directories:
 
-* `reactive-banana` - the library itself
+* `reactive-banana` - the core library
 * `reactive-banana-wx` - bindings to the [wxHaskell][] GUI library, includes many examples
+* `reactive-banana-ji` - experimental bindings to Chris Done's [ji][] library for the web browser
 
   [wxhaskell]: http://haskell.org/haskellwiki/WxHaskell
+  [ji]: https://github.com/chrisdone/ji
 
 The reactive-banana library actually contains *two* FRP implementations:
 
 1. [Reactive.Banana.Model][model] - A model implementation for testing and understanding the semantics. You are encouraged to look at the source code.
-2. [Reactive.Banana.Internal.PushGraph][push] - The efficient push-driven implementation used for production code. Contains hard to understand trade secrets. ;-)
+2. [Reactive.Banana.Internal][push] - The efficient push-driven implementation used for production code. Contains hard to understand trade secrets. ;-)
 
   [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Model.hs
-  [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Internal/PushIO.hs
-  [wxhaskell]: http://haskell.org/haskellwiki/WxHaskell
+  [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Internal/
 
 ## Contribute
 
