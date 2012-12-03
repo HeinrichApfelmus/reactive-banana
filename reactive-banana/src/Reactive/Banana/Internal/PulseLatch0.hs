@@ -69,7 +69,7 @@ emptyGraph = Graph
 ------------------------------------------------------------------------------}
 -- evaluate all the nodes in the graph once
 evaluateGraph :: [InputValue] -> Graph -> Setup Graph
-evaluateGraph inputs = fmap snd
+evaluateGraph inputs = {-# SCC evaluateGraph #-} fmap snd
     . uncurry (runNetworkAtomicT . performEvaluation)
     . buildEvaluationOrder
     . writeInputValues inputs
@@ -86,7 +86,7 @@ concatenate :: [a -> a] -> (a -> a)
 concatenate = foldr (.) id
 
 performEvaluation :: [SomeNode] -> NetworkSetup ()
-performEvaluation = mapM_ evaluate
+performEvaluation = {-# SCC performEvaluation #-} mapM_ evaluate
     where
     evaluate (P p) = evaluateP p
     evaluate (L l) = liftNetwork $ evaluateL l
@@ -355,7 +355,7 @@ pulse' eval = unsafePerformIO $ do
     key <- Vault.newKey
     uid <- newUnique
     return $ return $ Pulse
-        { evaluateP = liftNetwork . writePulse key =<< eval
+        { evaluateP = {-# SCC evaluateP #-} liftNetwork . writePulse key =<< eval
         , getValueP = getPulse key
         , uidP      = uid
         }
@@ -409,7 +409,7 @@ latch now future eval = unsafePerformIO $ do
         writeLatchFuture key future
         
         return $ Latch
-            { evaluateL = maybe (return ()) (writeLatchFuture key) =<< eval
+            { evaluateL = {-# SCC evaluateL #-} maybe (return ()) (writeLatchFuture key) =<< eval
             , valueL    = readLatch key
             , futureL   = readLatchFuture key
             , uidL      = uid
