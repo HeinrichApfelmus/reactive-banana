@@ -70,7 +70,7 @@ applyE      = liftCached2 $ \(lf,_) px -> Prim.applyP lf px
 
 changesB    = liftCached1 $ \(lx,px) -> Prim.tagFuture lx px
 
--- Note: to enable more recursion,
+-- Note: To enable more recursion,
 -- first create the latch and then create the event that is accumulated
 stepperB a  = \c1 -> mkCached $ mdo
     l  <- Prim.stepperL a p1

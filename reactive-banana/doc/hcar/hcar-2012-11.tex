@@ -1,4 +1,3 @@
-%!TEX root = template.tex
 % reactivebanana-Hr.tex
 \begin{hcarentry}[updated]{reactive-banana}
 \report{Heinrich Apfelmus}%11/12
@@ -25,7 +24,7 @@ The goal of the library is to provide a solid foundation.
 
 \emph{Status.} Version 0.7.0.0 of the reactive-banana library has been released on hackage.
 
-Compared to the previous report, the library now features efficient \emph{dynamic event switching}, also known as \emph{first class events}. This means that events and behaviors can now be created on the fly, they no longer have to specified fully at compilation time. For instance, it is now possible to implement a GUI where text entry widgets can be added and removed on user command. The source code example \verb!BarTab.hs! demonstrates this.
+Compared to the previous report, the library now features efficient \emph{dynamic event switching}, also known as \emph{first class events}. This means that events and behaviors can now be created on the fly, they no longer have to be specified fully at compilation time. For instance, it is now possible to implement a GUI where text entry widgets can be added and removed on user command. The source code example \verb!BarTab.hs! demonstrates this.
 
 This is a significant milestone because in very early approaches to FRP, dynamic event switching has been the cause of major inefficiencies, namely the so-called time leaks. By using the type system, reactive-banana can rule out these gross inefficiencies.
 
@@ -34,7 +33,7 @@ The API for dynamic event switching explores a different part of the design spac
 \emph{Current development.}
 Programming GUIs for the world wide web has become very important in recent years. Fortunately, efforts to compile Haskell to JavaScript are reaching the point of becoming usable now, and I intend to make FRP with reactive-banana available for the web as soon as possible, for instance by reducing dependencies on GHC extensions and libraries.
 
-Reactive-banana's implementation of dynamic event switching adresses the grossest of inefficiencies, but some more benign efficiency problems still remain, in particular concerning garbage collection of dynamic events. They will be adressed in a future version.
+Reactive-banana's implementation of dynamic event switching addresses the grossest of inefficiencies, but some more benign efficiency problems still remain, in particular concerning garbage collection of dynamic events. They will be addressed in a future version.
 
 \emph{Notable use cases.} In his reactive-balsa library, Henning Thielemann uses reactive-banana to control digital musical instruments with MIDI in real-time.
 
