@@ -1,6 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE BangPatterns #-}
 module Reactive.Banana.Model (
     -- * Synopsis
     -- | Model implementation of the abstract syntax tree.
@@ -48,8 +49,8 @@ Implementations are free to be much more efficient.
 {-----------------------------------------------------------------------------
     Basic Combinators
 ------------------------------------------------------------------------------}
-type Event a    = [Maybe a]             -- should be abstract
-data Behavior a = StepperB a (Event a)  -- should be abstract
+type Event a    = [Maybe a]              -- should be abstract
+data Behavior a = StepperB !a (Event a)  -- should be abstract
 
 interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
 interpret f e = f e 0

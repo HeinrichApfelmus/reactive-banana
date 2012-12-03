@@ -445,24 +445,31 @@ instance Hashable SomeNode where
 ------------------------------------------------------------------------------}
 stepperL :: a -> Pulse a -> Network (Latch a)
 stepperL a p = debug "stepperL" $ do
-    -- @a@ is indeed the future latch value. See note [LatchCreation].
-    x <- latch a a (valueP p)
-    L x `dependOn` P p
-    return x
+        -- @a@ is indeed the future latch value. See note [LatchCreation].
+        x <- latch a a (forceMaybe <$> valueP p)
+        L x `dependOn` P p
+        return x
+    where
+    -- Note: Any value that is stored in the graph over a longer
+    -- period of time must be stored in WHNF.
+    -- This implies that the values in a latch must be forced to WHNF before
+    -- storing them.
+    -- Conversely, since latches are the only way to store
+    -- values over time, this is enough.
+    forceMaybe Nothing  = Nothing
+    forceMaybe (Just x) = x `seq` (Just x)
 
 accumP :: a -> Pulse (a -> a) -> Network (Pulse a)
 accumP a p = debug "accumP" $ mdo
-        x       <- stepperL a result
-        result  <- pulse $ eval <$> valueL x <*> valueP p
-        -- Evaluation order of the result pulse does *not*
-        -- depend on the latch. It does depend on latch value,
-        -- though, so don't garbage collect that one.
-        P result `dependOn` P p
-        return result
-    where
-    eval _ Nothing  = Nothing
-    eval x (Just f) = let y = f x in y `seq` Just y  -- strict evaluation
+    x       <- stepperL a result
+    result  <- pulse $ (\x -> fmap ($ x)) <$> valueL x <*> valueP p
+    -- Evaluation order of the result pulse does *not*
+    -- depend on the latch. It does depend on latch value,
+    -- though, so don't garbage collect that one.
+    P result `dependOn` P p
+    return result
 
+    
 applyP :: Latch (a -> b) -> Pulse a -> Network (Pulse b)
 applyP f x = debug "applyP" $ do
     result <- pulse $ fmap <$> valueL f <*> valueP x
