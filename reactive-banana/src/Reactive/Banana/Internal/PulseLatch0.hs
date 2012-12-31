@@ -2,19 +2,22 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, RecursiveDo, ExistentialQuantification,
-    TypeSynonymInstances, FlexibleInstances #-}
+    TypeSynonymInstances, FlexibleInstances, BangPatterns #-}
 module Reactive.Banana.Internal.PulseLatch0 where
 
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.Trans.RWS
+import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
 
 import Data.IORef
 import Data.Monoid (Endo(..))
+-- import Data.Strict.Tuple
 
 import Control.Concurrent.MVar
+import qualified Control.Exception as Strict (evaluate)
 
 import Reactive.Banana.Internal.Cached
 import Reactive.Banana.Internal.InputOutput
@@ -28,6 +31,7 @@ import qualified Data.Vault as Vault
 import Data.Functor.Identity
 import System.IO.Unsafe
 
+
 import Debug.Trace
 
 type Deps = Deps.Deps
@@ -38,183 +42,231 @@ debugIO s m = liftIO (putStrLn s) >> m
 {-----------------------------------------------------------------------------
     Graph data type
 ------------------------------------------------------------------------------}
+-- A 'Graph' represents the connections between pulses and events.
 data Graph = Graph
-    { grPulse   :: Values                    -- pulse values
-    , grLatch   :: Values                    -- latch values
-    
+    { grInputs  :: [Input]                   -- input  nodes
+    , grOutputs :: [Output]                  -- output actions
+
     , grCache   :: Values                    -- cache for initialization
 
     , grDeps    :: Deps SomeNode             -- dependency information
-    , grInputs  :: [Input]                   -- input  nodes
     }
 
 type Values = Vault.Vault
 type Key    = Vault.Key
 type Input  =
     ( SomeNode
-    , InputValue -> Values -> Values         -- write input value into graph
+    , InputValue -> Values -> Values         -- write input value into latch values
     )
+type Output = Pulse (IO ())
+type Reactimate = IO ()
 
 emptyGraph :: Graph
 emptyGraph = Graph
-    { grPulse  = Vault.empty
-    , grLatch  = Vault.empty
-    , grCache  = Vault.empty
-    , grDeps   = Deps.empty
-    , grInputs = [(P alwaysP, const id)]
+    { grCache   = Vault.empty
+    , grDeps    = Deps.empty
+    , grInputs  = [(P alwaysP, const id)]
+    , grOutputs = []
     }
+
+-- A 'NetworkState' represents the state of a pulse network,
+-- which consists of a 'Graph' and the values of all latches in the graph.
+data NetworkState = NetworkState
+    { nsGraph       :: !Graph
+    , nsLatchValues :: !Values
+    }
+
+emptyState :: NetworkState
+emptyState = NetworkState emptyGraph Vault.empty
 
 {-----------------------------------------------------------------------------
     Graph evaluation
 ------------------------------------------------------------------------------}
--- evaluate all the nodes in the graph once
-evaluateGraph :: [InputValue] -> Graph -> Setup Graph
-evaluateGraph inputs = {-# SCC evaluateGraph #-} fmap snd
-    . uncurry (runNetworkAtomicT . performEvaluation)
-    . buildEvaluationOrder
-    . writeInputValues inputs
+-- Evaluate all the pulses in the graph,
+-- rebuild the graph as necessary and update the latch values.
+step :: Callback -> [InputValue] -> NetworkState -> IO (Reactimate, NetworkState)
+step callback inputs state1 = {-# SCC step #-} mdo
+    let graph1 = nsGraph state1
+        latch1 = nsLatchValues state1
+        pulse1 = writeInputs graph1 inputs
+    
+    (pulse2, state2) <- runBuildIO callback state1
+            $ runEvalP latch2 pulse1
+            $ evaluatePulses graph1
+    
+    let
+        graph2 = nsGraph state2
+        latch2 = evaluateLatches graph2 pulse2 $ nsLatchValues state2
+        output = readOutputs graph2 pulse2
 
-runReactimates (graph,reactimates) =
-        sequence_ [action | pulse <- reactimates
-                          , Just action <- [readPulseValue pulse graph]]
-readPulseValue p = getValueP p . grPulse
+    -- make sure that state is WHNF
+    state3 <- Strict.evaluate $ NetworkState graph2 latch2
+    return (output, state3)
 
-writeInputValues inputs graph = graph { grPulse =
-    concatenate [f x | (_,f) <- grInputs graph, x <- inputs] Vault.empty }
+-- Evaluate all pulses in the graph.
+evaluatePulses :: Graph -> EvalP ()
+evaluatePulses = mapM_ evaluatePulse . buildEvaluationOrder
+    where
+    evaluatePulse (P p) = evaluateP p
+    evaluatePulse (L _) = return ()
+
+-- Update all latch values.
+evaluateLatches :: Graph -> Values -> Values -> Values
+evaluateLatches graph pulse latch = {-# SCC evaluateLatches #-}
+    runEvalL pulse latch . mapM_ evaluateLatch $ buildEvaluationOrder graph
+    where
+    evaluateLatch (P _) = return ()
+    evaluateLatch (L l) = evaluateL l   
+
+readOutputs graph pulses =
+    sequence_ [action | out <- grOutputs graph
+                      , Just action <- [getValueP out pulses]]
+
+writeInputs graph inputs =
+    concatenate [f x | (_,f) <- grInputs graph, x <- inputs] Vault.empty
 
 concatenate :: [a -> a] -> (a -> a)
 concatenate = foldr (.) id
 
-performEvaluation :: [SomeNode] -> NetworkSetup ()
-performEvaluation = {-# SCC performEvaluation #-} mapM_ evaluate
-    where
-    evaluate (P p) = evaluateP p
-    evaluate (L l) = liftNetwork $ evaluateL l
 
 -- Figure out which nodes need to be evaluated.
 --
 -- All nodes that are connected to current input nodes must be evaluated.
 -- The other nodes don't have to be evaluated, because they yield
 -- Nothing / don't change anyway.
-buildEvaluationOrder :: Graph -> ([SomeNode], Graph)
-buildEvaluationOrder graph = (Deps.topologicalSort $ grDeps graph, graph)
+buildEvaluationOrder :: Graph -> [SomeNode]
+buildEvaluationOrder = Deps.topologicalSort . grDeps
+
+{-----------------------------------------------------------------------------
+    Evaluation monads / monoids
+------------------------------------------------------------------------------}
+-- The 'EvalP' monad is used to evaluate pulses.
+type EvalP = RWST Values () Values BuildIO
+    -- read : future latch values
+    -- state: current pulse values
+
+runEvalP :: Values -> Values -> EvalP a -> BuildIO Values
+runEvalP latch pulse m = do
+    (_,s,_) <- runRWST m latch pulse
+    return s
+
+readLatchP  :: Latch a -> EvalP a
+readLatchP latch = lift $ getValueL latch . nsLatchValues <$> get
+
+readLatchFutureP :: Latch a -> EvalP a
+readLatchFutureP latch = getValueL latch <$> ask
+
+writePulseP :: Key a -> a -> EvalP ()
+writePulseP key a = modify $ Vault.insert key a
+
+readPulseP  :: Pulse a -> EvalP (Maybe a)
+readPulseP pulse = getValueP pulse <$> get
+
+liftBuildIOP :: BuildIO a -> EvalP a
+liftBuildIOP = lift
+
+liftBuildP :: Build a -> EvalP a
+liftBuildP = liftBuildIOP . liftBuild
+
+
+-- The 'EvalL' monad is used to evaluate latches.
+type EvalL = RWS Values () Values
+    -- read  : current pulse values
+    -- state : current latch values
+
+runEvalL :: Values -> Values -> EvalL () -> Values
+runEvalL pulse latch1 m = let (_,latch2,_) = runRWS m pulse latch1 in latch2
+
+readLatchL  :: Latch a -> EvalL a
+readLatchL latch = getValueL latch <$> get
+
+-- TODO: Writing a latch should be strict in both value and key!
+writeLatchL :: Key a -> a -> EvalL ()
+writeLatchL key a = modify $ Vault.insert key a
+
+readPulseL :: Pulse a -> EvalL (Maybe a)
+readPulseL pulse = getValueP pulse <$> ask
 
 
 {-----------------------------------------------------------------------------
-    Network monad
+    Build monad
 ------------------------------------------------------------------------------}
--- The 'Network' monad is used for evaluation and changes
--- the state of the graph.
-type NetworkT     = RWST Graph (Endo Graph) Graph
-type Network      = NetworkT Identity
-type NetworkSetup = NetworkT Setup
+-- The 'Build' monad is used to change the graph, for instance to
+-- * add nodes
+-- * change dependencies
+-- * add inputs or outputs
+type BuildT  = RWST () BuildConf NetworkState
+type Build   = BuildT Identity 
+type BuildIO = BuildT IO
 
--- lift pure Network computation into any monad
--- very useful for its laziness
-liftNetwork :: Monad m => Network a -> NetworkT m a
-liftNetwork m = RWST $ \r s -> return . runIdentity $ runRWST m r s
+type BuildConf =
+    ( [AddHandler [InputValue]]   -- fromAddHandler
+    , [IO ()]                     -- liftIOLater
+    )
+
+{- Note [BuildT]
+
+It is very convenient to be able to perform some IO functions
+while (re)building a network graph. At the same time,
+we need a good  MonadFix  instance to build recursive networks.
+These requirements clash, so the solution is to split the types
+into a pure variant and IO variant, the former having a good
+MonadFix  instance while the latter can do arbitrary IO.
+
+-}
+
+-- Lift a pure  Build  computation into any monad.
+-- See note [BuildT]
+liftBuild :: Monad m => Build a -> BuildT m a
+liftBuild m = RWST $ \r s -> return . runIdentity $ runRWST m r s
+
+runBuildIO :: Callback -> NetworkState -> BuildIO a -> IO (a, NetworkState)
+runBuildIO callback s1 m = do
+    (a,s2,(addHandlers,liftIOLaters)) <- runRWST m () s1
+    mapM_ ($ callback) addHandlers  -- register new event handlers
+    sequence_ liftIOLaters          -- execute late IOs
+    return (a,s2)
+
+modifyGraph f = modify $ \s -> s { nsGraph = f (nsGraph s) }
+
+addLatchValue :: Key a -> a -> Build ()
+addLatchValue key a = modify $ \s ->
+    s { nsLatchValues = Vault.insert key a (nsLatchValues s) }
+
+readLatchB :: Latch a -> Build a
+readLatchB latch = getValueL latch . nsLatchValues <$> get
 
 -- access initialization cache
-instance (MonadFix m, Functor m) => HasVault (NetworkT m) where
-    retrieve key = Vault.lookup key . grCache <$> get
-    write key a  = modify $ \g -> g { grCache = Vault.insert key a (grCache g) }
+instance (MonadFix m, Functor m) => HasVault (BuildT m) where
+    retrieve key = Vault.lookup key . grCache . nsGraph <$> get
+    write key a  = modifyGraph $ \g -> g { grCache = Vault.insert key a (grCache g) }
 
--- change a graph "atomically"
-runNetworkAtomicT :: MonadFix m => NetworkT m a -> Graph -> m (a, Graph)
-runNetworkAtomicT m g1 = mdo
-    (x, g2, w2) <- runRWST m g3 g1  -- apply early graph gransformations
-    let g3 = appEndo w2 g2          -- apply late  graph transformations
-    return (x, g3)
+-- Add a dependency.
+dependOn :: SomeNode -> SomeNode -> Build ()
+dependOn x y = modifyGraph $ \g -> g { grDeps = Deps.dependOn x y $ grDeps g }
 
--- write pulse value immediately
-writePulse :: Key (Maybe a) -> Maybe a -> Network ()
-writePulse key x =
-    modify $ \g -> g { grPulse = Vault.insert key x $ grPulse g }
-
--- read pulse value immediately
-readPulse :: Key (Maybe a) -> Network (Maybe a)
-readPulse key = (getPulse key . grPulse) <$> get
-
-getPulse key = join . Vault.lookup key
-
--- write latch value immediately
-writeLatch :: Key a -> a -> Network ()
-writeLatch key x =
-    modify $ \g -> g { grLatch = Vault.insert key x $ grLatch g }
-
--- read latch value immediately
-readLatch :: Key a -> Network a
-readLatch key = (maybe err id . Vault.lookup key . grLatch) <$> get
-    where err = error "readLatch: latch not initialized!"
-
--- write latch value for future
-writeLatchFuture :: Key a -> a -> Network ()
-writeLatchFuture key x =
-    tell $ Endo $ \g -> g { grLatch = Vault.insert key x $ grLatch g }
-
--- read future latch value
--- Note [LatchFuture]:
---   warning: forcing the value early will likely result in an infinite loop
-readLatchFuture :: Key a -> Network a
-readLatchFuture key = (maybe err id . Vault.lookup key . grLatch) <$> ask
-    where err = error "readLatchFuture: latch not found!"
-
--- add a dependency
-dependOn :: SomeNode -> SomeNode -> Network ()
-dependOn x y = modify $ \g -> g { grDeps = Deps.dependOn x y $ grDeps g }
-
-dependOns :: SomeNode -> [SomeNode] -> Network ()
+dependOns :: SomeNode -> [SomeNode] -> Build ()
 dependOns x = mapM_ $ dependOn x
 
--- link a Pulse key to an input channel
-addInput :: Key (Maybe a) -> Pulse a -> InputChannel a -> Network ()
+-- Link a 'Pulse' key to an input channel.
+addInput :: Key a -> Pulse a -> InputChannel a -> Build ()
 addInput key pulse channel =
-    modify $ \g -> g { grInputs = (P pulse, input) : grInputs g }
+    modifyGraph $ \g -> g { grInputs = (P pulse, input) : grInputs g }
     where
     input value
         | getChannel value == getChannel channel =
-            Vault.insert key (fromValue channel value)
+            maybe id (Vault.insert key) $ fromValue channel value
         | otherwise = id
 
-{-----------------------------------------------------------------------------
-    Setup monad
-------------------------------------------------------------------------------}
-{-
-    The 'Setup' monad allows us to do administrative tasks
-    during graph evaluation.
-    For instance, we can
-        * add new reactimates
-        * perform IO
--}
+addOutput :: Output -> Build ()
+addOutput x = modifyGraph $ \g -> g { grOutputs = grOutputs g ++ [x] }
 
-type Reactimate = Pulse (IO ())
-type SetupConf  =
-    ( [Reactimate]                -- reactimate
-    , [AddHandler [InputValue]]   -- fromAddHandler
-    , [IO ()]                     -- liftIOLater
-    )
-type Setup  = RWST () SetupConf () IO
+liftIOLater :: IO () -> Build ()
+liftIOLater x = tell ([],[x])
 
-addReactimate :: Reactimate -> Setup ()
-addReactimate x = tell ([x],[],[])
+registerHandler :: AddHandler [InputValue] -> Build ()
+registerHandler x = tell ([x],[])
 
-liftIOLater :: IO () -> Setup ()
-liftIOLater x = tell ([],[],[x])
-
-discardSetup :: Setup a -> IO a
-discardSetup m = do
-    (a,_,_) <- runRWST m () ()
-    return a
-
-registerHandler :: AddHandler [InputValue] -> Setup ()
-registerHandler x = tell ([],[x],[])
-
-runSetup :: Callback -> Setup a -> IO (a, [Reactimate])
-runSetup callback m = do
-    (a,_,(reactimates,addHandlers,liftIOLaters)) <- runRWST m () ()
-    mapM_ ($ callback) addHandlers  -- register new event handlers
-    sequence_ liftIOLaters          -- execute late IOs
-    return (a,reactimates)
 
 {-----------------------------------------------------------------------------
     Compilation.
@@ -228,46 +280,36 @@ data EventNetwork = EventNetwork
     }
 
 -- compile to an event network
-compile :: NetworkSetup () -> IO EventNetwork
+compile :: BuildIO () -> IO EventNetwork
 compile setup = do
     actuated <- newIORef False                   -- flag to set running status
     rstate   <- newEmptyMVar                     -- setup callback machinery
     let
         whenFlag flag action = readIORef flag >>= \b -> when b action
         callback inputs = whenFlag actuated $ do
-            state0 <- takeMVar rstate            -- read and take lock
+            state1 <- takeMVar rstate            -- read and take lock
             -- pollValues <- sequence polls      -- poll mutable data
-            (reactimates, state1)
-                <- step inputs state0            -- calculate new state
-            putMVar rstate state1                -- write state
+            (reactimates, state2)
+                <- step callback inputs state1   -- calculate new state
+            putMVar rstate state2                -- write state
             reactimates                          -- run IO actions afterwards
 
-            -- register event handlers
-            -- register :: IO (IO ())
-            -- register = fmap sequence_ . sequence . map ($ run) $ inputs
-
-        step inputs (g0,r0) = do                 -- evaluation function
-            (g2,r1) <- runSetup callback $ evaluateGraph inputs g0
-            let
-                r2     = r0 ++ r1                -- concatenate reactimates
-                runner = runReactimates (g2,r2)  -- don't run them yet!
-            return (runner, (g2,r2))
-
-    ((_,graph), reactimates)                     -- compile initial graph
-        <- runSetup callback $ runNetworkAtomicT setup emptyGraph
-    putMVar rstate (graph,reactimates)           -- set initial state
+    (_, state) <-
+        runBuildIO callback emptyState setup     -- compile initial graph
+    putMVar rstate state                         -- set initial state
         
     return $ EventNetwork
         { actuate = writeIORef actuated True
         , pause   = writeIORef actuated False
         }
 
+{- TODO
 -- make an interpreter
-interpret :: (Pulse a -> NetworkSetup (Pulse b)) -> [Maybe a] -> IO [Maybe b]
+interpret :: (Pulse a -> BuildIO (Pulse b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
     i <- newInputChannel
     (result,graph) <- discardSetup $
-        runNetworkAtomicT (f =<< liftNetwork (inputP i)) emptyGraph
+        runNetworkAtomicT (f =<< liftBuild (inputP i)) emptyGraph
 
     let
         step Nothing  g0 = return (Nothing,g0)
@@ -276,6 +318,7 @@ interpret f xs = do
             return (readPulseValue result g1, g1)
     
     mapAccumM step graph xs
+-}
 
 mapAccumM :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m [b]
 mapAccumM _ _  []     = return []
@@ -290,31 +333,23 @@ mapAccumM f s0 (x:xs) = do
 {-
     evaluateL/P
         calculates the next value and makes sure that it's cached
-    valueL/P
+    getValueL/P
         retrieves the current value
-    futureL
-        future value of the latch
-        see note [LatchFuture]
     uidL/P
         used for dependency tracking and evaluation order
 -}
 
 data Pulse a = Pulse
-    { evaluateP :: NetworkSetup ()
+    { evaluateP :: EvalP ()
     , getValueP :: Values -> Maybe a
     , uidP      :: Unique
     }
 
 data Latch a = Latch
-    { evaluateL :: Network ()
-    , valueL    :: Network a
-    , futureL   :: Network a
+    { evaluateL :: EvalL ()
+    , getValueL :: Values -> a
     , uidL      :: Unique
     }
-
-
-valueP :: Pulse a -> Network (Maybe a)
-valueP p = getValueP p . grPulse <$> get
 
 {-
 * Note [LatchCreation]
@@ -323,8 +358,9 @@ When creating a new latch from a pulse, we assume that the
 pulse cannot fire at the moment that the latch is created.
 This is important when switching latches, because of note [PulseCreation].
 
-Likewise, when creating a latch, we assume that we do not
-have to calculate the previous latch value.
+When creating a latch, we have to write its past value
+into the network state. In particular, when we are in an  EvalP  context,
+this value has to present.
 
 * Note [PulseCreation]
 
@@ -332,7 +368,6 @@ We assume that we do not have to calculate a pulse occurrence
 at the moment we create the pulse. Otherwise, we would have
 to recalculate the dependencies *while* doing evaluation;
 this is a recipe for desaster.
-
 
 * Note [unsafePerformIO]
 
@@ -350,20 +385,19 @@ my taste right now.
 -}
 
 -- make pulse from evaluation function
-pulse' :: NetworkSetup (Maybe a) -> Network (Pulse a)
-pulse' eval = unsafePerformIO $ do
+mkPulse :: EvalP (Maybe a) -> Build (Pulse a)
+mkPulse eval = unsafePerformIO $ do
     key <- Vault.newKey
     uid <- newUnique
-    return $ return $ Pulse
-        { evaluateP = {-# SCC evaluateP #-} liftNetwork . writePulse key =<< eval
-        , getValueP = getPulse key
-        , uidP      = uid
-        }
+    return $ do
+        let write = maybe (return ()) (writePulseP key)
+        return $ Pulse
+            { evaluateP = {-# SCC evaluateP #-} write =<< eval
+            , getValueP = Vault.lookup key
+            , uidP      = uid
+            }
 
-pulse :: Network (Maybe a) -> Network (Pulse a)
-pulse = pulse' . liftNetwork
-
-neverP :: Network (Pulse a)
+neverP :: Build (Pulse a)
 neverP = debug "neverP" $ unsafePerformIO $ do
     uid <- newUnique
     return $ return $ Pulse
@@ -373,7 +407,7 @@ neverP = debug "neverP" $ unsafePerformIO $ do
         }
 
 -- create a pulse that listens to input values
-inputP :: InputChannel a -> Network (Pulse a)
+inputP :: InputChannel a -> Build (Pulse a)
 inputP channel = debug "inputP" $ unsafePerformIO $ do
     key <- Vault.newKey
     uid <- newUnique
@@ -381,7 +415,7 @@ inputP channel = debug "inputP" $ unsafePerformIO $ do
         let
             p = Pulse
                 { evaluateP = return ()
-                , getValueP = getPulse key
+                , getValueP = Vault.lookup key
                 , uidP      = uid
                 }
         addInput key p channel
@@ -397,31 +431,49 @@ alwaysP = debug "alwaysP" $ unsafePerformIO $ do
         , uidP      = uid
         }
 
--- make latch from initial value, a future value and evaluation function
-latch :: a -> a -> Network (Maybe a) -> Network (Latch a)
-latch now future eval = unsafePerformIO $ do
+{-
+
+* Note [LatchStrictness]
+
+Any value that is stored in the graph over a longer
+period of time must be stored in WHNF.
+
+This implies that the values in a latch must be forced to WHNF
+when storing them. That doesn't have to be immediately
+since we are tying a knot, but it definitely has to be done
+before  evaluateGraph  is done.
+
+Conversely, since latches are the only way to store values over time,
+this is enough to guarantee that there are no space leaks in this regard.
+
+-}
+
+-- make latch from initial value and an evaluation function
+mkLatch :: a -> EvalL (Maybe a) -> Build (Latch a)
+mkLatch now eval = unsafePerformIO $ do
     key <- Vault.newKey
-    uid <- newUnique
+    uid <- {-# SCC "latch/newUnique" #-} newUnique
     return $ do
-        -- Initialize with current and future latch value.
+        -- Initialize with current value.
         -- See note [LatchCreation].
-        writeLatch key now
-        writeLatchFuture key future
+        addLatchValue key $! now
+        
+        -- See note [LatchStrictness].
+        let write = maybe (return ()) (writeLatchL key $!)
+        let err = error "getValueL: latch not initialized!"
         
         return $ Latch
-            { evaluateL = {-# SCC evaluateL #-} maybe (return ()) (writeLatchFuture key) =<< eval
-            , valueL    = readLatch key
-            , futureL   = readLatchFuture key
+            { evaluateL = {-# SCC evaluateL #-} write =<< eval
+            , getValueL = {-# SCC getValueL  #-} maybe err id . Vault.lookup key
             , uidL      = uid
             }
 
-pureL :: a -> Network (Latch a)
+pureL :: a -> Build (Latch a)
 pureL a = debug "pureL" $ unsafePerformIO $ do
     uid <- liftIO newUnique
     return $ return $ Latch
         { evaluateL = return ()
-        , valueL    = return a
-        , futureL   = return a
+        , getValueL = const a
         , uidL      = uid
         }
 
@@ -443,62 +495,54 @@ instance Hashable SomeNode where
 {-----------------------------------------------------------------------------
     Combinators - basic
 ------------------------------------------------------------------------------}
-stepperL :: a -> Pulse a -> Network (Latch a)
+stepperL :: a -> Pulse a -> Build (Latch a)
 stepperL a p = debug "stepperL" $ do
-        -- @a@ is indeed the future latch value. See note [LatchCreation].
-        x <- latch a a (forceMaybe <$> valueP p)
-        L x `dependOn` P p
-        return x
-    where
-    -- Note: Any value that is stored in the graph over a longer
-    -- period of time must be stored in WHNF.
-    -- This implies that the values in a latch must be forced to WHNF before
-    -- storing them.
-    -- Conversely, since latches are the only way to store
-    -- values over time, this is enough.
-    forceMaybe Nothing  = Nothing
-    forceMaybe (Just x) = x `seq` (Just x)
+    x <- mkLatch a $ {-# SCC stepperL #-} readPulseL p
+    L x `dependOn` P p
+    return x
 
-accumP :: a -> Pulse (a -> a) -> Network (Pulse a)
+accumP :: a -> Pulse (a -> a) -> Build (Pulse a)
 accumP a p = debug "accumP" $ mdo
     x       <- stepperL a result
-    result  <- pulse $ (\x -> fmap ($ x)) <$> valueL x <*> valueP p
+    result  <- mkPulse $
+        {-# SCC accumP #-} (\x -> fmap ($ x)) <$> readLatchP x <*> readPulseP p
     -- Evaluation order of the result pulse does *not*
     -- depend on the latch. It does depend on latch value,
     -- though, so don't garbage collect that one.
     P result `dependOn` P p
     return result
 
-    
-applyP :: Latch (a -> b) -> Pulse a -> Network (Pulse b)
+applyP :: Latch (a -> b) -> Pulse a -> Build (Pulse b)
 applyP f x = debug "applyP" $ do
-    result <- pulse $ fmap <$> valueL f <*> valueP x
+    result <- mkPulse $ {-# SCC applyP #-} fmap <$> readLatchP f <*> readPulseP x
     P result `dependOn` P x
     return result
 
--- tag a pulse with future values of a latch
--- Caveat emptor.
-tagFuture :: Latch a -> Pulse b -> Network (Pulse a)
+-- Tag a pulse with future values of a latch.
+-- Caveat emptor. These values are not defined until after the  EvalL  phase.
+tagFuture :: Latch a -> Pulse b -> Build (Pulse a)
 tagFuture f x = debug "tagFuture" $ do
-    result <- pulse $ fmap . const <$> futureL f <*> valueP x
+    result <- mkPulse $ fmap . const <$> readLatchFutureP f <*> readPulseP x
     P result `dependOn` P x
     return result
 
-mapP :: (a -> b) -> Pulse a -> Network (Pulse b)
+
+mapP :: (a -> b) -> Pulse a -> Build (Pulse b)
 mapP f p = debug "mapP" $ do
-    result <- pulse $ fmap f <$> valueP p
+    result <- mkPulse $ {-# SCC mapP #-} fmap f <$> readPulseP p
     P result `dependOn` P p
     return result
 
-filterJustP :: Pulse (Maybe a) -> Network (Pulse a)
+filterJustP :: Pulse (Maybe a) -> Build (Pulse a)
 filterJustP p = debug "filterJustP" $ do
-    result <- pulse $ join <$> valueP p
+    result <- mkPulse $ {-# SCC filterJustP #-} join <$> readPulseP p
     P result `dependOn` P p
     return result
 
-unionWith :: (a -> a -> a) -> Pulse a -> Pulse a -> Network (Pulse a)
+unionWith :: (a -> a -> a) -> Pulse a -> Pulse a -> Build (Pulse a)
 unionWith f px py = debug "unionWith" $ do
-        result <- pulse $ eval <$> valueP px <*> valueP py
+        result <- mkPulse $
+            {-# SCC unionWith #-} eval <$> readPulseP px <*> readPulseP py
         P result `dependOns` [P px, P py]
         return result
     where
@@ -508,65 +552,62 @@ unionWith f px py = debug "unionWith" $ do
     eval Nothing  Nothing  = Nothing
 
 
-applyL :: Latch (a -> b) -> Latch a -> Network (Latch b)
+applyL :: Latch (a -> b) -> Latch a -> Build (Latch b)
 applyL lf lx = debug "applyL" $ do
-        -- The value in the next cycle is always the future value.
-    -- See note [LatchCreation]
-    let eval = ($) <$> futureL lf <*> futureL lx
-    future <- eval
-    now    <- ($) <$> valueL lf <*> valueL lx
-    result <- latch now future $ fmap Just eval
+    let evalL = {-# SCC applyL #-} ($) <$> readLatchL lf <*> readLatchL lx
+    now    <- ($) <$> readLatchB lf <*> readLatchB lx
+    result <- mkLatch now $ Just <$> evalL
     L result `dependOns` [L lf, L lx]
     return result
 
 {-----------------------------------------------------------------------------
     Combinators - dynamic event switching
 ------------------------------------------------------------------------------}
-executeP :: Pulse (NetworkSetup a) -> Network (Pulse a)
+executeP :: Pulse (BuildIO a) -> Build (Pulse a)
 executeP pn = do
-    result <- pulse' $ do
-        mp <- liftNetwork $ valueP pn
+    result <- mkPulse $ do
+        mp <- readPulseP pn
         case mp of
-            Just p  -> Just <$> p
+            Just p  -> liftBuildIOP $ Just <$> p
             Nothing -> return Nothing
     P result `dependOn` P pn
     return result
 
-switchP :: Pulse (Pulse a) -> Network (Pulse a)
+switchP :: Pulse (Pulse a) -> Build (Pulse a)
 switchP pp = mdo
     never <- neverP
     lp    <- stepperL never pp
     let
         eval = do
-            newPulse <- valueP pp
+            newPulse <- readPulseP pp
             case newPulse of
                 Nothing -> return ()
-                Just p  -> P result `dependOn` P p  -- check in new pulse
-            valueP =<< valueL lp                    -- fetch value from old pulse
-            -- we have to use the *old* event value due to note [LatchCreation]
-    result <- pulse eval
+                Just p  -> liftBuildP $
+                                  P result `dependOn` P p  -- check in new pulse
+            readPulseP =<< readLatchP lp                   -- fetch value from old pulse
+    result <- mkPulse eval
     P result `dependOns` [L lp, P pp]
     return result
 
 
-switchL :: Latch a -> Pulse (Latch a) -> Network (Latch a)
+switchL :: Latch a -> Pulse (Latch a) -> Build (Latch a)
 switchL l p = mdo
-    ll <- stepperL l p
-    let
-        -- switch to a new latch
-        switchTo l = do
-            L result `dependOn` L l
-            futureL l
-        -- calculate future value of the result latch
-        eval = do
-            mp <- valueP p
-            case mp of
-                Nothing -> futureL =<< valueL ll
-                Just l  -> switchTo l
-
-    now    <- valueL  l                 -- see note [LatchCreation]
-    future <- futureL l
-    result <- latch now future $ Just <$> eval
+    ll <- stepperL l p2
+    let -- register the new dependency
+        evalP = do
+            ml <- readPulseP p
+            case ml of
+                Just l -> do
+                    liftBuildP $ L result `dependOn` L l
+                    return $ Just l
+                Nothing -> return Nothing
+    p2 <- mkPulse $ evalP
+    
+    let -- calculate value of result latch
+        evalL = readLatchL =<< readLatchL ll
+    
+    now    <- readLatchB l
+    result <- mkLatch now $ Just <$> evalL
     L result `dependOns` [L l, P p]
     return result
 
