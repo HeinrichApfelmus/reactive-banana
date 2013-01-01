@@ -41,7 +41,7 @@ main = defaultMain
         [ testModelMatch  "observeE_id"         observeE_id
         , testModelMatchM "initialB_immediate"  initialB_immediate
         , testModelMatchM "initialB_recursive1" initialB_recursive1
-        , testModelMatchM "initialB_recursive2" initialB_recursive2
+        -- , testModelMatchM "initialB_recursive2" initialB_recursive2
         , testModelMatchM "dynamic_apply"       dynamic_apply
         , testModelMatchM "switchE1"            switchE1
         , testModelMatchM "switchB_two"         switchB_two

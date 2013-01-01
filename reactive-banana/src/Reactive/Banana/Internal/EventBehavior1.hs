@@ -32,19 +32,19 @@ import Reactive.Banana.Internal.Cached
 import Reactive.Banana.Internal.InputOutput
 import Reactive.Banana.Frameworks.AddHandler
 
-type Network = Prim.Network
-type Latch   = Prim.Latch
-type Pulse   = Prim.Pulse
+type Build = Prim.Build
+type Latch = Prim.Latch
+type Pulse = Prim.Pulse
 
 {-----------------------------------------------------------------------------
     Types
 ------------------------------------------------------------------------------}
-type Behavior a = Cached Network (Latch a, Pulse ())
-type Event a    = Cached Network (Pulse a)
-type Moment     = Prim.NetworkSetup
+type Behavior a = Cached Build (Latch a, Pulse ())
+type Event a    = Cached Build (Pulse a)
+type Moment     = Prim.BuildIO
 
-runCachedM :: Cached Network a -> Moment a
-runCachedM = Prim.liftNetwork . runCached
+runCachedM :: Cached Build a -> Moment a
+runCachedM = Prim.liftBuild . runCached
 
 {-----------------------------------------------------------------------------
     Interpretation
@@ -89,9 +89,9 @@ mapB f = applyB (pureB f)
     Combinators - dynamic event switching
 ------------------------------------------------------------------------------}
 initialB :: Behavior a -> Moment a
-initialB b = Prim.liftNetwork $ do
+initialB b = Prim.liftBuild $ do
     ~(l,_) <- runCached b
-    Prim.valueL l
+    Prim.readLatchB l
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = do
@@ -111,7 +111,7 @@ observeE :: Event (Moment a) -> Event a
 observeE = liftCached1 $ Prim.executeP
 
 executeE :: Event (Moment a) -> Moment (Event a)
-executeE e = Prim.liftNetwork $ do
+executeE e = Prim.liftBuild $ do
     p <- runCached e
     result <- Prim.executeP p
     return $ fromPure result
@@ -141,27 +141,28 @@ merge = Prim.unionWith (\_ _ -> ())
     Combinators - Setup and IO
 ------------------------------------------------------------------------------}
 addReactimate :: Event (IO ()) -> Moment ()
-addReactimate e = do
-    p <- runCachedM e
-    lift $ Prim.addReactimate p
+addReactimate e = Prim.liftBuild $ do
+    p <- runCached e
+    Prim.addOutput p
 
 liftIONow :: IO a -> Moment a
 liftIONow = liftIO
 
 liftIOLater :: IO () -> Moment ()
-liftIOLater = lift . Prim.liftIOLater
+liftIOLater = Prim.liftBuild . Prim.liftIOLater
 
 fromAddHandler :: AddHandler a -> Moment (Event a)
 fromAddHandler addHandler = do
     i <- liftIO newInputChannel
-    p <- Prim.liftNetwork $ Prim.inputP i
-    lift $ Prim.registerHandler $ mapIO (return . (:[]) . toValue i) addHandler
-    return $ fromPure p
+    Prim.liftBuild $ do
+        p <- Prim.inputP i
+        Prim.registerHandler $ mapIO (return . (:[]) . toValue i) addHandler
+        return $ fromPure p
 
 fromPoll :: IO a -> Moment (Behavior a)
 fromPoll poll = do
     a <- liftIO poll
-    e <- Prim.liftNetwork $ do
+    e <- Prim.liftBuild $ do
         pm <- Prim.mapP (const $ liftIO poll) Prim.alwaysP
         p  <- Prim.executeP pm
         return $ fromPure p

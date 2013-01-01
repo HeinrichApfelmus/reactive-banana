@@ -303,22 +303,30 @@ compile setup = do
         , pause   = writeIORef actuated False
         }
 
-{- TODO
--- make an interpreter
 interpret :: (Pulse a -> BuildIO (Pulse b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
     i <- newInputChannel
-    (result,graph) <- discardSetup $
-        runNetworkAtomicT (f =<< liftBuild (inputP i)) emptyGraph
-
-    let
-        step Nothing  g0 = return (Nothing,g0)
-        step (Just a) g0 = do
-            g1 <- discardSetup $ evaluateGraph [toValue i a] g0
-            return (readPulseValue result g1, g1)
+    o <- newIORef Nothing
     
-    mapAccumM step graph xs
--}
+    let network = do
+            pin  <- liftBuild $ inputP i
+            pout <- f pin
+            liftBuild $ addOutput =<< mapP (writeIORef o . Just) pout
+        callback _ = return ()
+    
+    -- compile initial network
+    (_, state) <- runBuildIO callback emptyState network
+
+    let go Nothing  s1 = return (Nothing,s1)
+        go (Just a) s1 = do
+            (reactimate,s2) <- step callback [toValue i a] s1
+            reactimate              -- write output
+            ma <- readIORef o       -- read output
+            writeIORef o Nothing
+            return (ma,s2)
+    
+    mapAccumM go state xs         -- run several steps
+
 
 mapAccumM :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m [b]
 mapAccumM _ _  []     = return []
@@ -608,7 +616,7 @@ switchL l p = mdo
     
     now    <- readLatchB l
     result <- mkLatch now $ Just <$> evalL
-    L result `dependOns` [L l, P p]
+    L result `dependOns` [L l, L ll, P p]
     return result
 
 
