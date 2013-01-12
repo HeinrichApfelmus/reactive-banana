@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.7.1.0
+Version:             0.7.1.1
 Synopsis:            Practical library for functional reactive programming (FRP).
 Description:         
     Reactive-banana is a practical library for Functional Reactive Programming (FRP).
@@ -60,7 +60,7 @@ Library
                         BangPatterns
 
     build-depends:      unordered-containers >= 0.2.1.0 && < 0.3,
-                        hashable == 1.1.*
+                        hashable >= 1.1 && < 1.3
 
 --      CPP-options:    -DUseExtensions
         
@@ -90,8 +90,8 @@ Test-Suite tests
     main-is:            Reactive/Banana/Test.hs
     build-depends:      base >= 4.2 && < 5,
                         HUnit >= 1.2 && < 2,
-                        test-framework == 0.6.*,
-                        test-framework-hunit == 0.2.*,
+                        test-framework >= 0.6 && < 0.9,
+                        test-framework-hunit >= 0.2 && < 0.4,
                         reactive-banana, vault, containers, transformers,
                         unordered-containers, hashable
 
