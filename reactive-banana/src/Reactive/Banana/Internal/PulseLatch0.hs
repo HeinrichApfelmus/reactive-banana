@@ -8,7 +8,7 @@ module Reactive.Banana.Internal.PulseLatch0 where
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
-import Control.Monad.Trans.RWS
+import Control.Monad.Trans.RWS.Lazy
 import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
 
@@ -26,7 +26,8 @@ import Reactive.Banana.Frameworks.AddHandler
 
 import Data.Hashable
 import Data.Unique.Really
-import qualified Data.Vault as Vault
+import qualified Data.Vault.Strict as Vault
+import qualified Data.Vault.Lazy as Vault.Lazy
 
 import Data.Functor.Identity
 import System.IO.Unsafe
@@ -37,6 +38,7 @@ import Debug.Trace
 type Deps = Deps.Deps
 
 debug   s m = m
+-- debug   s m = trace s m
 debugIO s m = liftIO (putStrLn s) >> m
 
 {-----------------------------------------------------------------------------
@@ -44,26 +46,26 @@ debugIO s m = liftIO (putStrLn s) >> m
 ------------------------------------------------------------------------------}
 -- A 'Graph' represents the connections between pulses and events.
 data Graph = Graph
-    { grInputs  :: [Input]                   -- input  nodes
-    , grOutputs :: [Output]                  -- output actions
+    { grInputs  :: [Input]              -- input  nodes
+    , grOutputs :: [Output]             -- output actions
 
-    , grCache   :: Values                    -- cache for initialization
+    , grCache   :: Vault.Lazy.Vault     -- cache for initialization
 
-    , grDeps    :: Deps SomeNode             -- dependency information
+    , grDeps    :: Deps SomeNode        -- dependency information
     }
 
 type Values = Vault.Vault
 type Key    = Vault.Key
 type Input  =
     ( SomeNode
-    , InputValue -> Values -> Values         -- write input value into latch values
+    , InputValue -> Values -> Values    -- write input value into latch values
     )
 type Output = Pulse (IO ())
 type Reactimate = IO ()
 
 emptyGraph :: Graph
 emptyGraph = Graph
-    { grCache   = Vault.empty
+    { grCache   = Vault.Lazy.empty
     , grDeps    = Deps.empty
     , grInputs  = [(P alwaysP, const id)]
     , grOutputs = []
@@ -72,8 +74,8 @@ emptyGraph = Graph
 -- A 'NetworkState' represents the state of a pulse network,
 -- which consists of a 'Graph' and the values of all latches in the graph.
 data NetworkState = NetworkState
-    { nsGraph       :: !Graph
-    , nsLatchValues :: !Values
+    { nsGraph       :: Graph
+    , nsLatchValues :: Values
     }
 
 emptyState :: NetworkState
@@ -98,9 +100,9 @@ step callback inputs state1 = {-# SCC step #-} mdo
         graph2 = nsGraph state2
         latch2 = evaluateLatches graph2 pulse2 $ nsLatchValues state2
         output = readOutputs graph2 pulse2
+        state3 = NetworkState graph2 latch2
 
-    -- make sure that state is WHNF
-    state3 <- Strict.evaluate $ NetworkState graph2 latch2
+    Strict.evaluate latch2  -- make sure that the latch values are in WHNF
     return (output, state3)
 
 -- Evaluate all pulses in the graph.
@@ -180,7 +182,6 @@ runEvalL pulse latch1 m = let (_,latch2,_) = runRWS m pulse latch1 in latch2
 readLatchL  :: Latch a -> EvalL a
 readLatchL latch = getValueL latch <$> get
 
--- TODO: Writing a latch should be strict in both value and key!
 writeLatchL :: Key a -> a -> EvalL ()
 writeLatchL key a = modify $ Vault.insert key a
 
@@ -191,7 +192,7 @@ readPulseL pulse = getValueP pulse <$> ask
 {-----------------------------------------------------------------------------
     Build monad
 ------------------------------------------------------------------------------}
--- The 'Build' monad is used to change the graph, for instance to
+-- The 'Build' monad is used to change the graph, for example to
 -- * add nodes
 -- * change dependencies
 -- * add inputs or outputs
@@ -237,9 +238,12 @@ readLatchB :: Latch a -> Build a
 readLatchB latch = getValueL latch . nsLatchValues <$> get
 
 -- access initialization cache
+-- The cache has to be lazy in both spine and values,
+-- so that it can be used for recursion.
 instance (MonadFix m, Functor m) => HasVault (BuildT m) where
-    retrieve key = Vault.lookup key . grCache . nsGraph <$> get
-    write key a  = modifyGraph $ \g -> g { grCache = Vault.insert key a (grCache g) }
+    retrieve key = Vault.Lazy.lookup key . grCache . nsGraph <$> get
+    write key a  = modifyGraph $ \g ->
+        g { grCache = Vault.Lazy.insert key a (grCache g) }
 
 -- Add a dependency.
 dependOn :: SomeNode -> SomeNode -> Build ()
@@ -451,6 +455,11 @@ when storing them. That doesn't have to be immediately
 since we are tying a knot, but it definitely has to be done
 before  evaluateGraph  is done.
 
+It also implies that reading a value from a latch must
+be forced to WHNF before storing it again, so that we don't
+carry around the old collection of latch values.
+This is particularly relevant for `applyL`.
+
 Conversely, since latches are the only way to store values over time,
 this is enough to guarantee that there are no space leaks in this regard.
 
@@ -464,15 +473,14 @@ mkLatch now eval = unsafePerformIO $ do
     return $ do
         -- Initialize with current value.
         -- See note [LatchCreation].
-        addLatchValue key $! now
+        addLatchValue key now
         
-        -- See note [LatchStrictness].
-        let write = maybe (return ()) (writeLatchL key $!)
-        let err = error "getValueL: latch not initialized!"
+        let write = maybe (return ()) (writeLatchL key)
+        let err = error "getValueL: latch not initialized"
         
         return $ Latch
             { evaluateL = {-# SCC evaluateL #-} write =<< eval
-            , getValueL = {-# SCC getValueL  #-} maybe err id . Vault.lookup key
+            , getValueL = {-# SCC getValueL #-} maybe err id . Vault.lookup key
             , uidL      = uid
             }
 
@@ -562,7 +570,8 @@ unionWith f px py = debug "unionWith" $ do
 
 applyL :: Latch (a -> b) -> Latch a -> Build (Latch b)
 applyL lf lx = debug "applyL" $ do
-    let evalL = {-# SCC applyL #-} ($) <$> readLatchL lf <*> readLatchL lx
+    -- see note [LatchStrictness]
+    let evalL = {-# SCC applyL #-} ($!) <$> readLatchL lf <*> readLatchL lx
     now    <- ($) <$> readLatchB lf <*> readLatchB lx
     result <- mkLatch now $ Just <$> evalL
     L result `dependOns` [L lf, L lx]

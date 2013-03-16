@@ -22,7 +22,7 @@ import Control.Applicative
 import Control.Exception (evaluate)
 
 import Data.Unique.Really
-import qualified Data.Vault  as Vault
+import qualified Data.Vault.Strict as Vault
 
 {-----------------------------------------------------------------------------
     Storing heterogenous input values

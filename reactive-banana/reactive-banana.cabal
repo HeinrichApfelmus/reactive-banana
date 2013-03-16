@@ -54,7 +54,7 @@ Library
     build-depends:      base >= 4.2 && < 5,
                         containers >= 0.3 && < 0.6,
                         transformers >= 0.2 && < 0.4,
-                        vault == 0.2.*
+                        vault == 0.3.*
 
     extensions:         EmptyDataDecls,
                         BangPatterns
