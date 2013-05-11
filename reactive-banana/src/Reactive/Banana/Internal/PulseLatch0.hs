@@ -437,8 +437,8 @@ instance Eq SomeNode where
     _     == _      =  False
 
 instance Hashable SomeNode where
-    hashWithSalt s (P p) = hashWithSalt s $ uidP p
-    hashWithSalt s (L l) = hashWithSalt s $ uidL l
+    hashWithSalt s (P p) = hashWithSalt s . hashUnique $ uidP p
+    hashWithSalt s (L l) = hashWithSalt s . hashUnique $ uidL l
 
 {-----------------------------------------------------------------------------
     Combinators - basic
