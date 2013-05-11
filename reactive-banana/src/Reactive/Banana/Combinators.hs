@@ -142,7 +142,10 @@ collect e = E $ Prim.mapE singleton (unE e)
 --
 -- > spill . collect = id
 spill :: Event t [a] -> Event t a
-spill e = E $ Prim.mapE concat (unE e)
+spill e = E $ Prim.filterJust $ Prim.mapE (nonempty . concat) (unE e)
+    where
+    nonempty [] = Nothing
+    nonempty xs = Just xs
 
 -- | Construct a time-varying function from an initial value and 
 -- a stream of new values. Think of it as
