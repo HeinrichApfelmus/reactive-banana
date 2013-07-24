@@ -49,10 +49,10 @@ sink attr b mx = do
 {-----------------------------------------------------------------------------
     Specific widgets
 ------------------------------------------------------------------------------}
--- | Event that occurs when the /user/ changed the value of the input element.
+-- | Event that occurs when the /user/ changes the value of the input element.
 eventValue :: Frameworks t => UI.Element -> Moment t (Event t String)
 eventValue = event $ \widget ->
-    UI.mapIO (const $ get value widget) (domEvent "livechange" widget)
+    UI.mapIO (const $ get value widget) (domEvent "keydown" widget)
 
 -- | Behavior corresponding to user input in the element.
 behaviorValue :: Frameworks t => UI.Element -> String -> Moment t (Behavior t String)
