@@ -56,7 +56,7 @@ Executable Animation
     else
         buildable: False
     hs-source-dirs:  src
-    other-modules:   Paths_reactive_banana_wx, Paths
+    other-modules:   Paths_reactive_banana_threepenny, Paths
     main-is:         Animation.hs
 
 Executable Arithmetic
@@ -78,7 +78,7 @@ Executable Asteroids
     else
         buildable: False
     hs-source-dirs:  src
-    other-modules:   Paths_reactive_banana_wx, Paths
+    other-modules:   Paths_reactive_banana_threepenny, Paths
     main-is:         Asteroids.hs
 
 Executable BarTab
