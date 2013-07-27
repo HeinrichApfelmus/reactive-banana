@@ -17,8 +17,6 @@ import Graphics.UI.Threepenny.Core hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.Threepenny
 
-import Timer
-
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
@@ -43,7 +41,7 @@ setup window = do
                         ,[string "Packets received: ", element out2]]
                   ]]
     
-    timer <- newTimer # set interval 500  -- timer every 500 ms
+    timer <- UI.timer # set UI.interval 500  -- timer every 500 ms
 
     let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
@@ -51,7 +49,7 @@ setup window = do
             -- the event network handles an event.
             bnetwork <- fromPoll getNetworkStatistics
             -- That's why we need a timer that generates regular events to handle.
-            etick    <- event tick timer
+            etick    <- event UI.tick timer
         
             let showSent     = maybe "parse error" show . fst
                 showReceived = maybe "parse error" show . snd
@@ -61,7 +59,7 @@ setup window = do
     
     network <- compile networkDescription
     actuate network
-    start timer
+    UI.start timer
 
 -- Obtain network statistics from the  netstat  utility
 type NetworkStatistics = (Maybe Int, Maybe Int)
