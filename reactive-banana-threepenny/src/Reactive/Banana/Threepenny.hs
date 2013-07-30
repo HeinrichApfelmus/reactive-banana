@@ -13,7 +13,7 @@ module Reactive.Banana.Threepenny (
     module Reactive.Banana.Frameworks,
     
     -- * Specific widgets
-    eventValue, behaviorValue,
+    eventValue, behaviorValue, eventSelection,
     ) where
 
 import Control.Monad (void)
@@ -57,4 +57,10 @@ eventValue = event $ \widget ->
 -- | Behavior corresponding to user input in the element.
 behaviorValue :: Frameworks t => UI.Element -> String -> Moment t (Behavior t String)
 behaviorValue w s = stepper s <$> eventValue w
+
+-- | Event that occurs when the /user/ changes the selection of a @<select>@ element.
+eventSelection :: Frameworks t => UI.Element -> Moment t (Event t (Maybe Int))
+eventSelection = event $ \widget ->
+    UI.mapIO (const $ get UI.selection widget) (UI.click widget)
+
 
