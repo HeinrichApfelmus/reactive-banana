@@ -35,7 +35,7 @@ Library
     hs-source-dirs:  src
     build-depends:   base >= 4.2 && < 5,
                      reactive-banana >= 0.7.1.0 && < 0.8,
-                     threepenny-gui == 0.1.*
+                     threepenny-gui == 0.2.*
     extensions:      ExistentialQuantification
     exposed-modules: Reactive.Banana.Threepenny
 
