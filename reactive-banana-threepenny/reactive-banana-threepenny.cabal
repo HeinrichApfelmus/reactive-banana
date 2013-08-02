@@ -127,6 +127,7 @@ Executable reactiva-banana-threepenny-TicTacToe
         build-depends: array >= 0.3 && < 0.5,
                        filepath >= 1.1 && <= 1.4,
                        reactive-banana, threepenny-gui, base
+        cpp-options: -DbuildExamples
     else
         buildable: False
     hs-source-dirs:  src
