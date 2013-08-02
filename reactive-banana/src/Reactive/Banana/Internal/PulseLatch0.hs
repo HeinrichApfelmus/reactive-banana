@@ -23,7 +23,7 @@ import Reactive.Banana.Frameworks.AddHandler
 
 import Data.Hashable
 import Data.Unique.Really
-import qualified Data.Vault as Vault
+import qualified Data.Vault.Lazy as Vault
 
 import Data.Functor.Identity
 import System.IO.Unsafe

@@ -15,7 +15,7 @@ module Reactive.Banana.Internal.Cached (
 import Control.Monad
 import Control.Monad.Fix
 import Data.Unique.Really
-import qualified Data.Vault as Vault
+import qualified Data.Vault.Lazy as Vault
 import System.IO.Unsafe
 
 {-----------------------------------------------------------------------------

@@ -1,6 +1,10 @@
 Changelog
 ---------
 
+version 0.7.1.3
+
+* bump version of dependency `vault`
+
 version 0.7.1.0
 
 * add `MonadIO` instance for `Moment` monad again, hence the version bump
