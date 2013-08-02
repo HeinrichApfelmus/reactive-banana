@@ -1,0 +1,48 @@
+% reactivebanana-Hr.tex
+\begin{hcarentry}[updated]{reactive-banana}
+\report{Heinrich Apfelmus}%05/13
+\status{active development}
+\makeheader
+
+%**<img width=200 src="./banana.jpg">
+%*ignore
+\begin{center}
+\includegraphics[width=0.2\textwidth]{html/banana.jpg}
+\end{center}
+%*endignore
+
+Reactive-banana is a practical library for functional reactive programming (FRP).
+
+FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. It promises to avoid the spaghetti code that is all too common in traditional approaches to GUI programming.
+
+The goal of the library is to provide a solid foundation.
+\begin{itemize}
+\item Writing \emph{graphical user interfaces} with FRP is made easy. The library can be hooked into any existing event-based framework like wxHaskell or Gtk2Hs. A plethora of example code helps with getting started. You can mix FRP and imperative style. If you don't know how to express functionality in terms of FRP, just temporarily switch back to the imperative style.
+\item Programmers interested in implementing FRP will have a \emph{reference} for a \emph{simple semantics} with a working implementation. The library stays close to the semantics pioneered by Conal Elliott.
+\item It features an \emph{efficient implementation}. No more spooky time leaks, predicting space \& time usage should be straightforward.
+\end{itemize}
+
+\emph{Status.} The latest version of the reactive-banana library is \verb!0.7.1.1!. Compared to the previous report, there has been no new public release as the API and its semantics have reached a stable plateau.
+
+It turned out that the library suffered from a large class of space leaks concerning accumulated behaviors. The space semantics have been refined and the current development version eliminates these issues.
+
+\emph{Current development.}
+Programming graphical user interfaces has always been the driving force behind my efforts to implement an FRP library. Unfortunately, it appears that current Haskell GUI libraries, like Gtk2Hs and wxHaskell, are mostly dormant these days and not widely accessible due to installation woes on different platforms.
+
+Moreover, in recent years, the web browser has emerged as an important platform for programming user interfaces. I would be happy to make reactive-banana available in this context as well, but unfortunately, efforts to compile Haskell to JavaScript are still in early stages of development.
+
+To move forward, I have decided to work on implementing a small GUI framework, called \verb!threepenny-gui!, which uses the web browser to display user interfaces written in Haskell. It is derived from Christopher Done's former \verb!ji! project. While not directly related to FRP, I hope that this effort will make reactive-banana more widely accessible and help test its mettle in real-world tasks.
+
+Concerning the development of reactive-banana itself, there are still some efficiency problems remaining, in particular concerning garbage collection of dynamic events. However, I feel that work on these remaining efficiency issues needs to be informed by practical applications and I wish to focus on the aforementioned GUI framework to lay a foundation for that first.
+
+\emph{Notable use cases.} In his reactive-balsa library, Henning Thielemann uses reactive-banana to control digital musical instruments with MIDI in real-time.
+
+\FurtherReading
+\begin{compactitem}
+\item Project homepage: \url{http://haskell.org/haskellwiki/Reactive-banana}
+\item Example code: \url{http://haskell.org/haskellwiki/Reactive-banana/Examples}
+\item BarTab example: \url{http://haskell.org/haskellwiki/Reactive-banana/Examples#bartab}
+\item reactive-balsa: \url{http://www.haskell.org/haskellwiki/Reactive-balsa}
+\item threepenny-gui: \url{https://github.com/HeinrichApfelmus/threepenny-gui}
+\end{compactitem}
+\end{hcarentry}
