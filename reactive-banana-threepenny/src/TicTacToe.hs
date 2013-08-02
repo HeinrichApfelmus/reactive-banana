@@ -94,7 +94,7 @@ end window result = do
             None -> "Draw!"
     clear window
 
-alert w s = runFunction w "alert" [s]
+alert w s = runFunction w (ffi "alert(%1)" s)
 
 {-----------------------------------------------------------------------------
     Game Logic

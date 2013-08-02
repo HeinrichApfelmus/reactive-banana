@@ -6,14 +6,12 @@ import System.IO.Unsafe
 
 #if buildExamples
 -- using cabal
-import System.Environment.Executable
-import System.Info
-import qualified Paths_reactive_banana_wx (getDataDir)
+-- import System.Environment.Executable
+-- import System.Info
+import qualified Paths_reactive_banana_threepenny (getDataDir)
 
-getDataDir
-    | os == "darwin" =
-        fmap (\x -> takeDirectory x </> ".." </> "Resources") getExecutablePath 
-    | otherwise      = Paths_reactive_banana_wx.getDataDir
+getDataDir :: IO FilePath
+getDataDir = Paths_reactive_banana_threepenny.getDataDir
 
 #else
 -- using GHCi

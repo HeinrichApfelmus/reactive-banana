@@ -1,5 +1,5 @@
 Name:                reactive-banana-threepenny
-Version:             0.7.1.0
+Version:             0.7.1.3
 Synopsis:            Examples for the reactive-banana library, using threepenny-gui.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,
@@ -25,7 +25,7 @@ Cabal-version:       >=1.8
 Build-type:          Simple
 
 data-dir:            data
-data-files:          *.ico, *.wav, *.png
+data-files:          *.wav, *.png
 
 flag buildExamples
   description: Build example executables
@@ -44,14 +44,13 @@ Source-repository    head
     location:        git://github.com/HeinrichApfelmus/reactive-banana.git
     subdir:          reactive-banana-threepenny
 
-Executable Animation
+Executable reactiva-banana-threepenny-Animation
     if flag(buildExamples)
         build-depends:
             process >= 1.0 && < 1.2,
             random == 1.0.*,
-            executable-path == 0.0.*,
             filepath >= 1.1 && <= 1.4,
-            reactive-banana, threepenny-gui
+            base, reactive-banana, threepenny-gui
         cpp-options: -DbuildExamples
     else
         buildable: False
@@ -59,19 +58,18 @@ Executable Animation
     other-modules:   Paths_reactive_banana_threepenny, Paths
     main-is:         Animation.hs
 
-Executable Arithmetic
+Executable reactiva-banana-threepenny-Arithmetic
     if flag(buildExamples)
-        build-depends: reactive-banana, threepenny-gui, base
+        build-depends: base, reactive-banana, threepenny-gui
     else
         buildable: False
     hs-source-dirs:  src
     main-is:         Arithmetic.hs
 
-Executable Asteroids
+Executable reactiva-banana-threepenny-Asteroids
     if flag(buildExamples)
         build-depends:
             random == 1.0.*,
-            executable-path == 0.0.*,
             filepath >= 1.1 && <= 1.4,
             reactive-banana, threepenny-gui, base
         cpp-options: -DbuildExamples
@@ -81,7 +79,7 @@ Executable Asteroids
     other-modules:   Paths_reactive_banana_threepenny, Paths
     main-is:         Asteroids.hs
 
-Executable BarTab
+Executable reactiva-banana-threepenny-BarTab
     if flag(buildExamples)
         build-depends: reactive-banana, threepenny-gui, base
     else
@@ -89,7 +87,7 @@ Executable BarTab
     hs-source-dirs:  src
     main-is:         BarTab.hs
 
-Executable Counter
+Executable reactiva-banana-threepenny-Counter
     if flag(buildExamples)
         build-depends: reactive-banana, threepenny-gui, base
     else
@@ -97,7 +95,7 @@ Executable Counter
     hs-source-dirs:  src
     main-is:         Counter.hs
 
-Executable CurrencyConverter
+Executable reactiva-banana-threepenny-CurrencyConverter
     if flag(buildExamples)
         build-depends: reactive-banana, threepenny-gui, base
     else
@@ -105,9 +103,9 @@ Executable CurrencyConverter
     hs-source-dirs:  src
     main-is:         CurrencyConverter.hs
 
-Executable CRUD
+Executable reactiva-banana-threepenny-CRUD
     if flag(buildExamples)
-        build-depends: containers >= 0.3 && < 0.5,
+        build-depends: containers >= 0.4 && < 0.6,
                        reactive-banana, threepenny-gui, base
     else
         buildable: False
@@ -115,7 +113,7 @@ Executable CRUD
     main-is:         CRUD.hs
     other-modules:   Tidings
 
-Executable NetMonitor
+Executable reactiva-banana-threepenny-NetMonitor
     if flag(buildExamples)
         build-depends: process >= 1.0 && < 1.2,
                        reactive-banana, threepenny-gui, base
@@ -124,16 +122,18 @@ Executable NetMonitor
     hs-source-dirs:  src
     main-is:         NetMonitor.hs
 
-Executable TicTacToe
+Executable reactiva-banana-threepenny-TicTacToe
     if flag(buildExamples)
         build-depends: array >= 0.3 && < 0.5,
+                       filepath >= 1.1 && <= 1.4,
                        reactive-banana, threepenny-gui, base
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Paths_reactive_banana_threepenny, Paths
     main-is:         TicTacToe.hs
 
-Executable TwoCounters
+Executable reactiva-banana-threepenny-TwoCounters
     if flag(buildExamples)
         build-depends: reactive-banana, threepenny-gui, base
     else
@@ -141,7 +141,7 @@ Executable TwoCounters
     hs-source-dirs:  src
     main-is:         TwoCounters.hs
 
-Executable Wave
+Executable reactiva-banana-threepenny-Wave
     if flag(buildExamples)
         build-depends: reactive-banana, threepenny-gui, base
     else
