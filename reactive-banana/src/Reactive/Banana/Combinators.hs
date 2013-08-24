@@ -197,14 +197,6 @@ apply bf ex = E $ Prim.applyE (Prim.mapB map $ unB bf) (unE ex)
 
 /Further combinators that Haddock can't document properly./
 
-> instance Monoid (Event t (a -> a))
-
-This monoid instance is /not/ the straightforward instance
-that you would obtain from 'never' and 'union'.
-Instead of just merging event streams, we use 'unionWith' to compose
-the functions. This is very useful in the context of 'accumE' and 'accumB'
-where simultaneous event occurrences are best avoided.
-
 > instance Applicative (Behavior t)
 
 'Behavior' is an applicative functor. In particular, we have the following functions.
