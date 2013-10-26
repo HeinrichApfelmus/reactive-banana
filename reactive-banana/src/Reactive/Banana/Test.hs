@@ -45,6 +45,7 @@ main = defaultMain
         , testModelMatchM "dynamic_apply"       dynamic_apply
         , testModelMatchM "switchE1"            switchE1
         , testModelMatchM "switchB_two"         switchB_two
+        -- the last test sometimes works and sometimes doesn't...
         ]
     -- TODO:
     --  * algebraic laws
@@ -115,6 +116,12 @@ recursive2 e1 = e2
     e2 = applyE b e1
     b  = (+) <$> stepperB 0 e3
     e3 = applyE (id <$> b) e1   -- actually equal to e2
+-- Why the test fails:
+-- The current value of  stepperB 0  is available when  e3  is built,
+-- but the current value of  b  is not available until both arguments of <$>
+-- have been built! This bites us when building  id <$> b .
+-- Still, the value of  b  should not be required while building  e3 ,
+-- as the latter one is an *event*.
 
 type Dummy = Int
 

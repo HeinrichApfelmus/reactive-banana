@@ -109,13 +109,12 @@ setQueue :: MyQueue a -> Set (Pair Int a) -> MyQueue a
 setQueue q b = q { queue = b }
 
 -- find the index of a particular element in a Total Order
-position :: (Hashable a, Eq a) => TotalOrder a -> a -> Int
-position (TO order) x = pos
-    where Just pos = Map.lookup x order
+position :: (Hashable a, Eq a) => TotalOrder a -> a -> Maybe Int
+position (TO order) x = Map.lookup x order
 
 instance Queue MyQueue where
     insert x q = q { queue = Set.insert (Pair pos x) (queue q) }
-        where pos = position (order q) x
+        where pos = maybe (-1) id $ position (order q) x
     minView  q = f <$> Set.minView (queue q)
         where f (Pair _ a,set) = (a, setQueue q set)
     size     q = Set.size (queue q)

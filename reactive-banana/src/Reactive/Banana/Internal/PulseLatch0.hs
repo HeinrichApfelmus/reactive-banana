@@ -2,7 +2,8 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, RecursiveDo, ExistentialQuantification,
-    TypeSynonymInstances, FlexibleInstances, BangPatterns #-}
+    TypeSynonymInstances, FlexibleInstances, BangPatterns,
+    CPP #-}
 module Reactive.Banana.Internal.PulseLatch0 where
 
 import Control.Applicative
@@ -22,12 +23,13 @@ import qualified Control.Exception as Strict (evaluate)
 import Reactive.Banana.Internal.Cached
 import Reactive.Banana.Internal.InputOutput
 import qualified Reactive.Banana.Internal.DependencyGraph as Deps
+import qualified Reactive.Banana.Internal.TotalOrder      as Deps
 import Reactive.Banana.Frameworks.AddHandler
 
 import Data.Hashable
 import Data.Unique.Really
 import qualified Data.Vault.Strict as Vault
-import qualified Data.Vault.Lazy as Vault.Lazy
+import qualified Data.Vault.Lazy   as Vault.Lazy
 
 import Data.Functor.Identity
 import System.IO.Unsafe
@@ -37,9 +39,11 @@ import Debug.Trace
 
 type Deps = Deps.Deps
 
-debug   s m = m
--- debug   s m = trace s m
+-- debug   s m = m
+debug   s m = trace s m
 debugIO s m = liftIO (putStrLn s) >> m
+
+traceWith f x = trace (f x) x
 
 {-----------------------------------------------------------------------------
     Graph data type
@@ -105,21 +109,6 @@ step callback inputs state1 = {-# SCC step #-} mdo
     Strict.evaluate latch2  -- make sure that the latch values are in WHNF
     return (output, state3)
 
--- Evaluate all pulses in the graph.
-evaluatePulses :: Graph -> EvalP ()
-evaluatePulses = mapM_ evaluatePulse . buildEvaluationOrder
-    where
-    evaluatePulse (P p) = evaluateP p
-    evaluatePulse (L _) = return ()
-
--- Update all latch values.
-evaluateLatches :: Graph -> Values -> Values -> Values
-evaluateLatches graph pulse latch = {-# SCC evaluateLatches #-}
-    runEvalL pulse latch . mapM_ evaluateLatch $ buildEvaluationOrder graph
-    where
-    evaluateLatch (P _) = return ()
-    evaluateLatch (L l) = evaluateL l   
-
 readOutputs graph pulses =
     sequence_ [action | out <- grOutputs graph
                       , Just action <- [getValueP out pulses]]
@@ -130,6 +119,54 @@ writeInputs graph inputs =
 concatenate :: [a -> a] -> (a -> a)
 concatenate = foldr (.) id
 
+-- update all pulses in the graph
+evaluatePulses  :: Graph -> EvalP ()
+-- update all latches in the graph
+evaluateLatches :: Graph -> Values -> Values -> Values
+
+#define PUSH_BASED_IMPLEMENTATION 1
+#ifdef PUSH_BASED_IMPLEMENTATION
+
+evaluatePulses graph = {-# SCC evaluatePulses #-}
+        Deps.withTotalOrder
+            (Deps.ancestorOrder $ grDeps graph)
+            (traverse . Deps.insertList inputs)
+    where
+    inputs         = map fst $ grInputs graph
+    traverse queue = case Deps.minView queue of
+        Nothing                   -> return ()
+        Just (      L _ , queue2) -> return ()
+        Just (node@(P p), queue2) -> do
+            evaluateP p
+            -- check whether event occurrence has happened
+            mp <- readPulseP p
+            case mp of
+                Nothing -> return ()
+                Just _  -> do
+                    let children = Deps.children (grDeps graph) node
+                    let queue3   = Deps.insertList children queue2
+                    traverse queue3
+
+evaluateLatches graph pulse latch = {-# SCC evaluateLatches #-}
+    runEvalL pulse latch . mapM_ evaluateLatch
+    . Deps.topologicalSort . grDeps
+    $ graph
+    where
+    evaluateLatch (P _) = return ()
+    evaluateLatch (L l) = trace "evalLatch" $ evaluateL l   
+
+#else
+
+evaluatePulses = mapM_ evaluatePulse . buildEvaluationOrder
+    where
+    evaluatePulse (P p) = evaluateP p
+    evaluatePulse (L _) = return ()
+
+evaluateLatches graph pulse latch = {-# SCC evaluateLatches #-}
+    runEvalL pulse latch . mapM_ evaluateLatch $ buildEvaluationOrder graph
+    where
+    evaluateLatch (P _) = return ()
+    evaluateLatch (L l) = evaluateL l   
 
 -- Figure out which nodes need to be evaluated.
 --
@@ -138,6 +175,8 @@ concatenate = foldr (.) id
 -- Nothing / don't change anyway.
 buildEvaluationOrder :: Graph -> [SomeNode]
 buildEvaluationOrder = Deps.topologicalSort . grDeps
+#endif
+
 
 {-----------------------------------------------------------------------------
     Evaluation monads / monoids

@@ -3,13 +3,16 @@
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Internal.DependencyGraph (
     -- | Utilities for operating with dependency graphs.
-    Deps,
-    empty, dependOn, topologicalSort, 
+    Deps, children, parents,
+    empty, dependOn,
+    topologicalSort, ancestorOrder,
     ) where
 
 import Data.Hashable
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.HashSet as Set
+
+import qualified Reactive.Banana.Internal.TotalOrder as TO
 
 type Map = Map.HashMap
 type Set = Set.HashSet
@@ -65,6 +68,10 @@ topologicalSort deps = go (Set.toList $ dRoots deps) Set.empty
         seen2         = Set.insert x seen1
         adultChildren = filter isAdult (children deps x)
         isAdult y     = all (`Set.member` seen2) (parents deps y)
+
+-- order the nodes in a way such that no child comes before its parent
+ancestorOrder :: (Eq a, Hashable a) => Deps a -> TO.TotalOrder a
+ancestorOrder = TO.fromAscList . topologicalSort
 
 {-----------------------------------------------------------------------------
     Small tests
