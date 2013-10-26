@@ -2,7 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo #-}
-module Reactive.Banana.Internal.Cached (
+module Reactive.Banana.Internal1.Cached (
     -- | Utility for executing monadic actions once
     -- and then retrieving values from a cache.
     -- 

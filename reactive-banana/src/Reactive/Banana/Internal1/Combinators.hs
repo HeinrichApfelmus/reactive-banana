@@ -2,9 +2,9 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo #-}
-module Reactive.Banana.Internal.EventBehavior1 (
+module Reactive.Banana.Internal1.Combinators (
     -- * Interpreter
-    interpret, compile,
+    interpret,
     
     -- * Basic combinators
     Event, Behavior,
@@ -16,8 +16,7 @@ module Reactive.Banana.Internal.EventBehavior1 (
     initialB, trimE, trimB, executeE, observeE, switchE, switchB,
     
     -- * Setup and IO
-    addReactimate, fromAddHandler, fromPoll, liftIONow, liftIOLater,
-    EventNetwork, pause, actuate,
+    newEvent, addHandler, liftIONow, liftIOLater,
     ) where
 
 import Data.Functor
@@ -27,10 +26,12 @@ import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class (lift)
 
-import qualified Reactive.Banana.Internal.PulseLatch0 as Prim
-import Reactive.Banana.Internal.Cached
-import Reactive.Banana.Internal.InputOutput
-import Reactive.Banana.Frameworks.AddHandler
+import qualified Reactive.Banana.Internal0.Combinators as Prim
+import qualified Reactive.Banana.Internal0.IO          as Prim
+import qualified Reactive.Banana.Internal0.Monads      as Prim
+import qualified Reactive.Banana.Internal0.Types       as Prim
+
+import Reactive.Banana.Internal1.Cached
 
 type Build = Prim.Build
 type Latch = Prim.Latch
@@ -49,20 +50,14 @@ runCachedM = Prim.liftBuild . runCached
 {-----------------------------------------------------------------------------
     Interpretation
 ------------------------------------------------------------------------------}
-inputE :: InputChannel a -> Event a
-inputE = mkCached . Prim.inputP
-
 interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
 interpret f = Prim.interpret (\pulse -> runCachedM =<< f (fromPure pulse))
-
-compile :: Moment () -> IO EventNetwork
-compile = Prim.compile
 
 {-----------------------------------------------------------------------------
     Combinators - basic
 ------------------------------------------------------------------------------}
 never       = mkCached $ Prim.neverP
-unionWith f = liftCached2 $ Prim.unionWith f
+unionWith f = liftCached2 $ Prim.unionWithP f
 filterJust  = liftCached1 $ Prim.filterJustP
 accumE x    = liftCached1 $ Prim.accumP x
 mapE f      = liftCached1 $ Prim.mapP f
@@ -80,7 +75,7 @@ stepperB a  = \c1 -> mkCached $ mdo
 
 pureB a = stepperB a never
 applyB = liftCached2 $ \(l1,p1) (l2,p2) -> do
-    p3 <- Prim.unionWith const p1 p2
+    p3 <- Prim.unionWithP const p1 p2
     l3 <- Prim.applyL l1 l2
     return (l3,p3)
 mapB f = applyB (pureB f)
@@ -135,15 +130,18 @@ switchB = liftCached2 $ \(l0,p0) p1 -> do
     pr <- merge c1 =<< merge c2 c3
     return (lr, pr)
 
-merge = Prim.unionWith (\_ _ -> ())
+merge = Prim.unionWithP (\_ _ -> ())
 
 {-----------------------------------------------------------------------------
     Combinators - Setup and IO
 ------------------------------------------------------------------------------}
-addReactimate :: Event (IO ()) -> Moment ()
-addReactimate e = Prim.liftBuild $ do
+newEvent :: Moment (Event a, a -> Moment ())
+newEvent = undefined
+
+addHandler :: Event a -> (a -> IO ()) -> Moment ()
+addHandler e f = Prim.liftBuild $ do
     p <- runCached e
-    Prim.addOutput p
+    Prim.addHandler p f
 
 liftIONow :: IO a -> Moment a
 liftIONow = liftIO
@@ -151,14 +149,7 @@ liftIONow = liftIO
 liftIOLater :: IO () -> Moment ()
 liftIOLater = Prim.liftBuild . Prim.liftIOLater
 
-fromAddHandler :: AddHandler a -> Moment (Event a)
-fromAddHandler addHandler = do
-    i <- liftIO newInputChannel
-    Prim.liftBuild $ do
-        p <- Prim.inputP i
-        Prim.registerHandler $ mapIO (return . (:[]) . toValue i) addHandler
-        return $ fromPure p
-
+{-
 fromPoll :: IO a -> Moment (Behavior a)
 fromPoll poll = do
     a <- liftIO poll
@@ -167,7 +158,4 @@ fromPoll poll = do
         p  <- Prim.executeP pm
         return $ fromPure p
     return $ stepperB a e
-
-type EventNetwork = Prim.EventNetwork
-pause   = Prim.pause
-actuate = Prim.actuate
+-}

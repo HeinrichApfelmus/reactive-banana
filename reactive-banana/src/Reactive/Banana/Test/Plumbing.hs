@@ -11,8 +11,7 @@ import Control.Monad (liftM)
 import Control.Monad.Fix
 
 import qualified Reactive.Banana.Model as X
-import qualified Reactive.Banana.Internal.EventBehavior1 as Y
-import qualified Reactive.Banana.Internal.InputOutput as Y
+import qualified Reactive.Banana.Internal1.Combinators as Y
 
 {-----------------------------------------------------------------------------
     Types as pairs

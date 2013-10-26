@@ -40,8 +40,8 @@ import Data.Maybe (isJust, catMaybes)
 import Data.Monoid (Monoid(..))
 
 
-import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
-import Reactive.Banana.Internal.Types2 
+import qualified Reactive.Banana.Internal1.EventBehavior1 as Prim
+import Reactive.Banana.Types
 
 
 {-----------------------------------------------------------------------------

@@ -2,7 +2,7 @@
     Reactive Banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, BangPatterns #-}
-module Reactive.Banana.Internal.TotalOrder (
+module Reactive.Banana.Internal0.TotalOrder (
     -- * Synopsis
     -- | Data structure that represents a total order.
     
