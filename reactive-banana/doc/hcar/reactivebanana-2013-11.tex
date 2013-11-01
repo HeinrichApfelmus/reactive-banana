@@ -1,0 +1,40 @@
+% reactivebanana-Hr.tex
+\begin{hcarentry}[updated]{reactive-banana}
+\report{Heinrich Apfelmus}%11/13
+\status{active development}
+\makeheader
+
+%**<img width=200 src="./banana.jpg">
+%*ignore
+\begin{center}
+\includegraphics[width=0.2\textwidth]{html/banana.jpg}
+\end{center}
+%*endignore
+
+Reactive-banana is a practical library for functional reactive programming (FRP).
+
+FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. It promises to avoid the spaghetti code that is all too common in traditional approaches to GUI programming.
+
+The goal of the library is to provide a solid foundation.
+\begin{itemize}
+\item Writing \emph{graphical user interfaces} with FRP is made easy. The library can be hooked into any existing event-based framework like wxHaskell or Gtk2Hs. A plethora of example code helps with getting started. You can mix FRP and imperative style. If you don't know how to express functionality in terms of FRP, just temporarily switch back to the imperative style.
+\item Programmers interested in implementing FRP will have a \emph{reference} for a \emph{simple semantics} with a working implementation. The library stays close to the semantics pioneered by Conal Elliott.
+\item It features an \emph{efficient implementation}. No more spooky time leaks, predicting space \& time usage should be straightforward.
+\end{itemize}
+
+\emph{Status.} The latest version of the reactive-banana library is \verb!0.7.1.3!. Compared to the previous report, there has been no new public release as the API and its semantics have reached a stable plateau.
+
+It turned out that the library suffered from a large class of space leaks concerning accumulated behaviors. This has been fixed in the development version, but not yet incorporated into a new release.
+
+\emph{Current development.}
+As foreshadowed in the last report, not much development has occurred on the reactive-banana library itself. Most of my efforts have been spent on the \verb`threepenny-gui` project, which is a library for writing graphical user interfaces in Haskell \cref{threepenny-gui}.
+
+Fortunately, these development efforts are directly relevant to reactive-banana;  graphical user interfaces have always been my main motivation for FRP in the first place. In particular, I have implemented a new FRP module specifically for the \verb`threepenny-gui` project, and this reimplementation has taught me many valuable lessons, which I hope to reintegrate into reactive-banana soon. The most important lesson is that the current API for reactive-banana is too complex -- the type parameter \verb!t! that indicates starting times just isn't worth it. I have also learned that recursion is best implemented differently from how I did it before, which leads to a fix for certain situations where reactive-banana couldn't handle recursion.
+
+\FurtherReading
+\begin{compactitem}
+\item Project homepage: \url{http://haskell.org/haskellwiki/Reactive-banana}
+\item Example code: \url{http://haskell.org/haskellwiki/Reactive-banana/Examples}
+\item threepenny-gui: \url{http://haskell.org/haskellwiki/Threepenny-gui}
+\end{compactitem}
+\end{hcarentry}
