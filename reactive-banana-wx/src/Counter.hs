@@ -5,8 +5,6 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 
-import Control.Monad
-
 import Graphics.UI.WX hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.WX
