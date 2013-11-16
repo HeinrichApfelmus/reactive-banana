@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
 {-# LANGUAGE RecursiveDo #-}
 
--- import Control.Monad
+import Control.Monad (join)
 import qualified Data.List
 import Data.Maybe
 import qualified Data.Map as Map
@@ -257,7 +257,7 @@ fixSelectionEvent listbox =
     handler _ = do
         propagateEvent
         s <- get listbox selection
-        when (s == -1) $ (get listbox (on select)) >>= id
+        when (s == -1) $ join $ get listbox (on select)
         
 
 
