@@ -61,7 +61,7 @@ main = start $ do
                 
                 mkLayout entries = margin 10 $ column 10 $
                     [row 10 [widget add, widget remove]] ++ map widget entries
-                    ++ [row 10 $ [widget msg, minsize (sz 40 20) $ widget total]]
+                    ++ [row 10 [widget msg, minsize (sz 40 20) $ widget total]]
         
                 bTotal :: Behavior t Number
                 bTotal = switchB (pure Nothing) $

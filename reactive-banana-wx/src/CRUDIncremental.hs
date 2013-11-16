@@ -190,7 +190,7 @@ reactimateListBox listBox database filter = do
               `union` (filterUpdate <$> valueDB database <@> changes filter)
     
     -- "animate" changes to the list box
-    reactimate $ eListBoxUpdates
+    reactimate eListBoxUpdates
     -- debug: reactimate $ fmap print $ bDisplayMap <@ eListBoxUpdates
         
     -- event: item selection, maps to database key

@@ -21,7 +21,7 @@ main = start $ do
     input2    <- entry f []
     output    <- staticText f []
     
-    set f [layout := margin 10 $ row 10 $
+    set f [layout := margin 10 $ row 10
             [widget input1, label "+", widget input2
             , label "=", minsize (sz 40 20) $ widget output]]
 

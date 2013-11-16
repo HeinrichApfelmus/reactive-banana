@@ -123,7 +123,7 @@ scheduleQueue t e = do
         -- The queue is never empty when the alarm rings.
         eout = fmap (snd . head) $ bQueue <@ eAlarm
     
-    reactimate $ eSetNewAlarmDuration
+    reactimate eSetNewAlarmDuration
     return eout
 
     
