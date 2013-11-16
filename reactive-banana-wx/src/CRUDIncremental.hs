@@ -73,7 +73,7 @@ main = start $ do
                         readDatabase database =<< m
 
             -- automatically enable / disable editing
-            let dDisplayItem = maybe False (const True) <$> dSelectedItem
+            let dDisplayItem = isJust <$> dSelectedItem
             sink delete  [ enabled :== dDisplayItem ]
             sink name    [ enabled :== dDisplayItem ]
             sink surname [ enabled :== dDisplayItem ]
@@ -119,7 +119,7 @@ accumDatabase e = DatabaseTime valueDB initialDB changesDB
     initialDB = emptyDatabase
     
     valid (Create Nothing _) = True
-    valid cud = maybe False (const True) $ getKey cud
+    valid cud = isJust $ getKey cud
     
     -- accumulation function
     acc (Create Nothing x)    (Database newkey db)  

@@ -101,7 +101,7 @@ main = start $ do
             -- automatically enable / disable editing
             let
                 bDisplayItem :: Behavior t Bool
-                bDisplayItem = maybe False (const True) <$> bSelection
+                bDisplayItem = isJust <$> bSelection
             
             sink deleteBtn [ enabled :== bDisplayItem ]
             sink firstname [ enabled :== bDisplayItem ]
