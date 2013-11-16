@@ -17,6 +17,7 @@ import Reactive.Banana.WX
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
+main :: IO ()
 main = start $ do
     -- FIXME: Why does tab traversal not work?
     f        <- frame   [ text := "Currency Converter", tabTraversal := True ]

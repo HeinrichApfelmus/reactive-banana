@@ -17,6 +17,7 @@ import Data.Traversable (sequenceA)
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
+main :: IO ()
 main = start $ do
     f      <- frame [text := "Bar Tab"]
     msg    <- staticText f [ text := "Sum:" ]

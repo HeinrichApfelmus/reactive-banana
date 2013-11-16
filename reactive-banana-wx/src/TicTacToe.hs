@@ -21,6 +21,7 @@ import Reactive.Banana.WX
     User Interface
 ------------------------------------------------------------------------------}
 
+main :: IO ()
 main = start $ do
     -- create the main window
     window <- frame [text := "OX"]

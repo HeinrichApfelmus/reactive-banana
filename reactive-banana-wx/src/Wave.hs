@@ -23,6 +23,7 @@ lightCount = 15  -- number of lights that comprise the wave
 waveLength = 4   -- number of lights that are lit at once
 dt         = 70  -- half the cycle duration
 
+main :: IO ()
 main = start $ do
     -- create window and widgets
     f        <- frame    [text := "Waves of Light"]
