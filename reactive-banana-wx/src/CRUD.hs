@@ -13,13 +13,9 @@
 import Prelude hiding (lookup)
 import Data.List (isPrefixOf)
 import Data.Maybe
-import Data.Monoid
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 
-import qualified Graphics.UI.WX as WX
 import Graphics.UI.WX hiding (Event)
-import qualified Graphics.UI.WXCore as WXCore
 import Reactive.Banana
 import Reactive.Banana.WX
 

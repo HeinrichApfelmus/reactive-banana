@@ -9,7 +9,6 @@
 
 import Control.Monad
 import qualified Data.List as List
-import Data.Maybe
 import Data.Ord
 
 import Graphics.UI.WX hiding (Event)

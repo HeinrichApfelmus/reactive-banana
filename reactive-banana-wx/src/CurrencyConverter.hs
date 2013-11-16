@@ -6,7 +6,6 @@
 {-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 {-# LANGUAGE RecursiveDo #-}
 
-import Data.Bits
 import Data.Maybe
 import Text.Printf
 
