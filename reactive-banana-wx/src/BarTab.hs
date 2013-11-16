@@ -86,5 +86,8 @@ instance Num Number where
     signum = fmap signum
     fromInteger = pure . fromInteger
 
+readNumber :: Read a => String -> Maybe a
 readNumber s = listToMaybe [x | (x,"") <- reads s]    
+
+showNumber :: Maybe Double -> String
 showNumber   = maybe "--" show

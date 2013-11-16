@@ -116,18 +116,30 @@ main = start $ do
 type DatabaseKey = Int
 data Database a  = Database { nextKey :: !Int, db :: Map.Map DatabaseKey a }
 
+emptydb :: Database a
 emptydb = Database 0 Map.empty
+
+keys :: Database a -> [DatabaseKey]
 keys    = Map.keys . db
 
+create :: a -> Database a -> Database a
 create x     (Database newkey db) = Database (newkey+1) $ Map.insert newkey x db
+
+update :: DatabaseKey -> a -> Database a -> Database a
 update key x (Database newkey db) = Database newkey     $ Map.insert key    x db
+
+delete :: DatabaseKey -> Database a -> Database a
 delete key   (Database newkey db) = Database newkey     $ Map.delete key db
+
+lookup :: DatabaseKey -> Database a -> Maybe a
 lookup key   (Database _      db) = Map.lookup key db
 
 {-----------------------------------------------------------------------------
     Data items that are stored in the data base
 ------------------------------------------------------------------------------}
 type DataItem = (String, String)
+
+showDataItem :: ([Char], [Char]) -> [Char]
 showDataItem (firstname, lastname) = lastname ++ ", " ++ firstname
 
 -- single text entry

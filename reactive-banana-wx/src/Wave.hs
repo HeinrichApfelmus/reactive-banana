@@ -18,8 +18,13 @@ import Reactive.Banana.WX
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
+lightCount :: Int
 lightCount = 15  -- number of lights that comprise the wave
+
+waveLength :: Int
 waveLength = 4   -- number of lights that are lit at once
+
+dt :: Int
 dt         = 70  -- half the cycle duration
 
 main :: IO ()
@@ -77,7 +82,10 @@ wave f = deltas $ merge ons offs
     ons  = [(k*2*dt, (f k, True)) | k <- [1..lightCount]]
     offs = [(dt+(waveLength+k)*2*dt, (f k, False)) | k <- [1..lightCount]]
 
+waveLeft :: [(Duration, Action)]
 waveLeft  = wave id
+
+waveRight :: [(Duration, Action)]
 waveRight = wave (\k -> lightCount - k + 1)
 
 

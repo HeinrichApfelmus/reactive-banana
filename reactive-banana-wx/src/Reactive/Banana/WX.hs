@@ -107,6 +107,7 @@ eventSelection w = do
     fromAddHandler $ mapIO (const $ get w selection) addHandler
 
 -- Fix @select@ event not being fired when items are *un*selected.
+fixSelectionEvent :: (Selecting w, Reactive w, Selection w) => w -> IO ()
 fixSelectionEvent listbox =
     set listbox [ on unclick := handler ]
     where
