@@ -114,7 +114,7 @@ fixSelectionEvent listbox =
     handler _ = do
         propagateEvent
         s <- get listbox selection
-        when (s == -1) $ (get listbox (on select)) >>= id
+        when (s == -1) $ get listbox (on select) >>= id
 
 
 {-----------------------------------------------------------------------------

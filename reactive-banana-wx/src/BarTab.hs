@@ -38,7 +38,7 @@ main = start $ do
                     bentry <- trimB =<< behaviorText wentry ""
                     return (wentry, bentry)
             
-            eNewEntry <- execute $ (FrameworksMoment newEntry <$ eAdd)
+            eNewEntry <- execute $ FrameworksMoment newEntry <$ eAdd
             
             let
                 eDoRemove = whenE (not . null <$> bEntries) eRemove
