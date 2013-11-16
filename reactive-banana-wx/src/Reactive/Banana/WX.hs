@@ -63,7 +63,7 @@ infixr 0 :==
 -- | "Animate" a property with a behavior
 sink :: Frameworks t =>
     w -> [Prop' t w] -> Moment t ()
-sink widget props = mapM_ sink1 props
+sink widget = mapM_ sink1
     where
     sink1 (attr :== b) = do
         x <- initial b

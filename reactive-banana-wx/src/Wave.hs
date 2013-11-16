@@ -33,7 +33,7 @@ main = start $ do
     f        <- frame    [text := "Waves of Light"]
     left     <- button f [text := "Left"]
     right    <- button f [text := "Right"]
-    lights   <- sequence $ replicate lightCount $ staticText f [text := "•"]
+    lights   <- replicateM lightCount $ staticText f [text := "•"]
     
     set f [layout := margin 10 $
             column 10 [row 5 [widget left, widget right],
