@@ -69,7 +69,7 @@ main = start $ do
                 outDataItem = stepperD ("","") $
                     lookup <$> valueDB database <@> changes dSelectedItem
                     where
-                    lookup database m = maybe ("","") id $
+                    lookup database m = fromMaybe ("","") $
                         readDatabase database =<< m
 
             -- automatically enable / disable editing

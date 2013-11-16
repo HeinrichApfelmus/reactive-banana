@@ -165,8 +165,8 @@ reactiveDataItem :: Frameworks t
     -> Behavior t (Maybe DataItem)
     -> Moment t (Tidings t DataItem)
 reactiveDataItem (firstname,lastname) binput = do
-    t1 <- reactiveTextEntry firstname (fst . maybe ("","") id <$> binput)
-    t2 <- reactiveTextEntry lastname  (snd . maybe ("","") id <$> binput)
+    t1 <- reactiveTextEntry firstname (fst . fromMaybe ("","") <$> binput)
+    t2 <- reactiveTextEntry lastname  (snd . fromMaybe ("","") <$> binput)
     return $ (,) <$> t1 <*> t2
 
 
@@ -193,7 +193,7 @@ reactiveListDisplay w bitems bsel bdisplay = do
     -- animate output selection
     let bindices :: Behavior t (Map.Map a Int)
         bindices = (Map.fromList . flip zip [0..]) <$> bitems
-        bindex   = (\m a -> maybe (-1) id $ flip Map.lookup m =<< a) <$>
+        bindex   = (\m a -> fromMaybe (-1) $ flip Map.lookup m =<< a) <$>
                     bindices <*> bsel
     sink w [ selection :== bindex ]
 
