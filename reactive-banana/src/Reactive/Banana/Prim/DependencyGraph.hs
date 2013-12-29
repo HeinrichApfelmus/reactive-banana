@@ -1,20 +1,20 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Internal0.DependencyGraph (
+module Reactive.Banana.Prim.DependencyGraph (
     -- | Utilities for operating with dependency graphs.
     Deps, children, parents,
     empty, dependOn,
     topologicalSort, ancestorOrder,
-    module Reactive.Banana.Internal0.TotalOrder,
+    module Reactive.Banana.Prim.TotalOrder,
     ) where
 
 import Data.Hashable
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.HashSet as Set
 
-import qualified Reactive.Banana.Internal0.TotalOrder
-import qualified Reactive.Banana.Internal0.TotalOrder as TO
+import qualified Reactive.Banana.Prim.TotalOrder
+import qualified Reactive.Banana.Prim.TotalOrder as TO
 
 type Map = Map.HashMap
 type Set = Set.HashSet

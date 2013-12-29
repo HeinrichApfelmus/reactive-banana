@@ -2,7 +2,7 @@
     Reactive Banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, BangPatterns #-}
-module Reactive.Banana.Internal0.TotalOrder (
+module Reactive.Banana.Prim.TotalOrder (
     -- * Synopsis
     -- | Data structure that represents a total order.
     
@@ -19,13 +19,12 @@ module Reactive.Banana.Internal0.TotalOrder (
 import Control.Applicative
 import Control.Arrow (second)
 
-import qualified Data.List
-import Data.Maybe
-import Data.Ord
-
-import Data.Hashable
 import qualified Data.HashMap.Strict as Map
-import qualified Data.Set as Set
+import           Data.Hashable
+import qualified Data.List
+import           Data.Maybe
+import           Data.Ord
+import qualified Data.Set            as Set
 
 type Map = Map.HashMap
 type Set = Set.Set

@@ -2,7 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
-module Reactive.Banana.Internal0.Monads where
+module Reactive.Banana.Prim.Monads where
 
 import Control.Monad.Fix
 import Control.Monad.Trans.RWS.Lazy
@@ -14,8 +14,8 @@ import Data.Functor
 import qualified Data.Vault.Strict as Vault
 import qualified Data.Vault.Lazy   as Vault.Lazy
 
-import qualified Reactive.Banana.Internal0.DependencyGraph as Deps
-import           Reactive.Banana.Internal0.Types
+import qualified Reactive.Banana.Prim.DependencyGraph as Deps
+import           Reactive.Banana.Prim.Types
 import           Reactive.Banana.Internal1.Cached          (HasVault(..))
 
 

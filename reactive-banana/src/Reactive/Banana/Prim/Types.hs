@@ -2,24 +2,24 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE ExistentialQuantification #-}
-module Reactive.Banana.Internal0.Types where
+module Reactive.Banana.Prim.Types where
 
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
-import Control.Monad.Trans.RWS.Lazy
-import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.RWS.Lazy
 import Data.Functor.Identity
 
 import Reactive.Banana.Frameworks.AddHandler
 
-import Data.Hashable
-import Data.Unique.Really
-import qualified Data.Vault.Strict as Vault
-import qualified Data.Vault.Lazy   as Vault.Lazy
+import           Data.Hashable
+import           Data.Unique.Really
+import qualified Data.Vault.Lazy    as Vault.Lazy
+import qualified Data.Vault.Strict  as Vault
 
-import qualified Reactive.Banana.Internal0.DependencyGraph as Deps
+import qualified Reactive.Banana.Prim.DependencyGraph as Deps
 
 import System.IO.Unsafe
 

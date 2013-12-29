@@ -1,17 +1,17 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Internal0.IO where
+module Reactive.Banana.Prim.IO where
 
 import Data.IORef
 import Data.Unique.Really
 import qualified Data.Vault.Strict as Vault
 import System.IO.Unsafe
 
-import Reactive.Banana.Internal0.Combinators (mapP)
-import Reactive.Banana.Internal0.Evaluation  (step)
-import Reactive.Banana.Internal0.Monads
-import Reactive.Banana.Internal0.Types
+import Reactive.Banana.Prim.Combinators (mapP)
+import Reactive.Banana.Prim.Evaluation  (step)
+import Reactive.Banana.Prim.Monads
+import Reactive.Banana.Prim.Types
 
 {-----------------------------------------------------------------------------
     Simple interpretation

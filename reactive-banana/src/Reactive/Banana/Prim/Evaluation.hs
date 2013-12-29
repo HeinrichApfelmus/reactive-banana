@@ -2,15 +2,15 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE CPP, RecursiveDo #-}
-module Reactive.Banana.Internal0.Evaluation where
+module Reactive.Banana.Prim.Evaluation where
 
 import qualified Control.Exception as Strict (evaluate)
 
-import Reactive.Banana.Internal0.Types
-import Reactive.Banana.Internal0.Monads
+import Reactive.Banana.Prim.Types
+import Reactive.Banana.Prim.Monads
 
-import qualified Reactive.Banana.Internal0.DependencyGraph as Deps
-import qualified Reactive.Banana.Internal0.TotalOrder      as Deps
+import qualified Reactive.Banana.Prim.DependencyGraph as Deps
+import qualified Reactive.Banana.Prim.TotalOrder      as Deps
 
 {-----------------------------------------------------------------------------
     Graph evaluation

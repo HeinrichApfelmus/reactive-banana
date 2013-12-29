@@ -2,17 +2,17 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo #-}
-module Reactive.Banana.Internal0.Combinators where
+module Reactive.Banana.Prim.Combinators where
 
 import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
 
-import Data.Unique.Really
-import qualified Data.Vault.Strict as Vault
+import           Data.Unique.Really
+import qualified Data.Vault.Strict  as Vault
 
-import Reactive.Banana.Internal0.Monads
-import Reactive.Banana.Internal0.Types
+import Reactive.Banana.Prim.Monads
+import Reactive.Banana.Prim.Types
 
 import System.IO.Unsafe
 
