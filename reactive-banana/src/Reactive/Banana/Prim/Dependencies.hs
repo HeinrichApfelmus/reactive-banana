@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Prim.DependencyGraph (
+module Reactive.Banana.Prim.Dependencies (
     -- | Utilities for operating with dependency graphs.
     Deps, children, parents,
     empty, dependOn,
@@ -9,9 +9,9 @@ module Reactive.Banana.Prim.DependencyGraph (
     module Reactive.Banana.Prim.TotalOrder,
     ) where
 
-import Data.Hashable
 import qualified Data.HashMap.Lazy as Map
-import qualified Data.HashSet as Set
+import qualified Data.HashSet      as Set
+import           Data.Hashable
 
 import qualified Reactive.Banana.Prim.TotalOrder
 import qualified Reactive.Banana.Prim.TotalOrder as TO

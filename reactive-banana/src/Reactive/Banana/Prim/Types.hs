@@ -4,138 +4,67 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module Reactive.Banana.Prim.Types where
 
-import Control.Applicative
-import Control.Monad
-import Control.Monad.Fix
-import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.RWS.Lazy
 import Data.Functor.Identity
-
-import Reactive.Banana.Frameworks.AddHandler
+import Data.Monoid
 
 import           Data.Hashable
 import           Data.Unique.Really
-import qualified Data.Vault.Lazy    as Vault.Lazy
-import qualified Data.Vault.Strict  as Vault
+import qualified Data.Vault.Strict  as Strict
 
-import qualified Reactive.Banana.Prim.DependencyGraph as Deps
-
-import System.IO.Unsafe
-
-import Debug.Trace
+import qualified Reactive.Banana.Prim.Dependencies as Deps
 
 type Deps = Deps.Deps
 
-debug s m = trace s m
-
 {-----------------------------------------------------------------------------
-    Graph data type
+    Graph
 ------------------------------------------------------------------------------}
--- A 'Graph' represents the connections between pulses and events.
+-- | A 'Graph' represents the connections between pulses and events.
 data Graph = Graph
-    { grOutputs :: [Output]             -- output actions
-        
-    , grCache   :: Vault.Lazy.Vault     -- cache for initialization
-    
-    , grDeps    :: Deps SomeNode        -- dependency information
+    { grDeps    :: Deps SomeNode   -- dependency information
+    , grOutputs :: [Output]        -- output actions
     }
 
-type Values = Vault.Vault
-type Key    = Vault.Key
-type Inputs = (Values, [SomeNode])
-type Output     = Pulse (IO ())
-type Reactimate = IO ()
+-- TODO: Optimize output query.
+-- Instead of polling each output whether it has fired,
+-- obtain this information from the graph traversal instead.
+-- However, in this case, order of declaration, not the order of firing.
+type Output = Pulse (IO ())
+
+-- | A 'Network' represents the state of a pulse/latch network,
+-- which consists of a 'Graph' and the values of all accumulated latches
+-- in the network.
+data Network = Network
+    { nGraph       :: Graph
+    , nLatchValues :: Strict.Vault
+    }
+
+type Inputs        = (Strict.Vault, [SomeNode])
+type EvalNetwork a = Network -> IO (a, Network)
+type Step          = EvalNetwork (IO ())
+
+-- | Lenses for the 'Graph' and the 'Network' type
+updateGraph       f = \s -> s { nGraph       = f (nGraph s) }
+updateLatchValues f = \s -> s { nLatchValues = f (nLatchValues s) }
+updateDeps        f = \s -> s { grDeps       = f (grDeps s) }
+updateOutputs     f = \s -> s { grOutputs    = f (grOutputs s) }
 
 emptyGraph :: Graph
 emptyGraph = Graph
-    { grCache   = Vault.Lazy.empty
-    , grDeps    = Deps.empty
+    { grDeps    = Deps.empty
     , grOutputs = []
     }
 
--- | A 'GraphState' represents the state of a pulse/latch network,
--- which consists of a 'Graph' and the values of all latches in the graph.
-data GraphState = GraphState
-    { gsGraph       :: Graph
-    , gsLatchValues :: Values
-    }
-
-emptyState :: GraphState
-emptyState = GraphState emptyGraph Vault.empty
-
-type EvalGraph a = GraphState -> IO (a, GraphState)
-
-{-----------------------------------------------------------------------------
-    Pulse and Latch types
-------------------------------------------------------------------------------}
-{-
-    evaluateL/P
-        calculates the next value and makes sure that it's cached
-    getValueL/P
-        retrieves the current value
-    uidL/P
-        used for dependency tracking and evaluation order
--}
-
-data Pulse a = Pulse
-    { evaluateP :: EvalP ()
-    , getValueP :: Values -> Maybe a
-    , uidP      :: Unique
-    }
-
-data Latch a = Latch
-    { evaluateL :: EvalL ()
-    , getValueL :: Values -> a
-    , uidL      :: Unique
-    }
-
-
--- | Event that always fires whenever the network processes events.
-alwaysP :: Pulse ()
-alwaysP = debug "alwaysP" $ unsafePerformIO $ do
-    uid <- newUnique
-    return $ Pulse
-        { evaluateP = return ()
-        , getValueP = return $ Just ()
-        , uidP      = uid
-        }
-
-
--- | Existential quantification over Pulse and Latch
--- for dependency tracking.
-data SomeNode = forall a. P (Pulse a) | forall a. L (Latch a)
-
-instance Eq SomeNode where
-    (L x) == (L y)  =  uidL x == uidL y
-    (P x) == (P y)  =  uidP x == uidP y
-    _     == _      =  False
-
-instance Hashable SomeNode where
-    hashWithSalt s (P p) = hashWithSalt s $ uidP p
-    hashWithSalt s (L l) = hashWithSalt s $ uidL l
-
-
-{-----------------------------------------------------------------------------
-    Monads
-------------------------------------------------------------------------------}
-
--- | The 'EvalP' monad is used to evaluate pulses.
-type EvalP = RWST Values () Values BuildIO
-    -- read : future latch values
-    -- state: current pulse values
-
--- | The 'EvalL' monad is used to evaluate latches.
-type EvalL = RWS Values () Values
-    -- read  : current pulse values
-    -- state : current latch values
+emptyNetwork :: Network
+emptyNetwork = Network emptyGraph Strict.empty
 
 
 -- The 'Build' monad is used to change the graph, for example to
 -- * add nodes
 -- * change dependencies
 -- * add inputs or outputs
-type BuildT  = RWST () BuildConf GraphState
+type BuildT  = RWST () BuildConf Network
 type Build   = BuildT Identity 
 type BuildIO = BuildT IO
 
@@ -152,6 +81,51 @@ MonadFix  instance while the latter can do arbitrary IO.
 
 -}
 
+{-----------------------------------------------------------------------------
+    Pulse and Latch
+------------------------------------------------------------------------------}
+{-
+    evaluateL/P
+        calculates the next value and makes sure that it's cached
+    getValueL/P
+        retrieves the current value
+    uidL/P
+        used for dependency tracking and evaluation order
+-}
+
+data Pulse a = Pulse
+    { evaluateP :: EvalP ()
+    , getValueP :: Strict.Vault -> Maybe a
+    , uidP      :: Unique
+    }
+
+data Latch a = Latch
+    { getValueL   :: Strict.Vault -> a
+    }
+
+data LatchWrite = LatchWrite
+    { evaluateL :: EvalP EvalL
+    , uidL      :: Unique
+    }
+
+type EvalP = RWST Strict.Vault EvalL Strict.Vault BuildIO
+    -- state: current pulse values
+    -- read : future latch values
+    -- write: update of latch values
+
+type EvalL = Endo Strict.Vault
 
 
+-- | Existential quantification for dependency tracking
+data SomeNode
+    = forall a. P (Pulse a)
+    | L LatchWrite
+
+instance Eq SomeNode where
+    (P x) == (P y)  =  uidP x == uidP y
+    (L x) == (L y)  =  uidL x == uidL y
+
+instance Hashable SomeNode where
+    hashWithSalt s (P p) = hashWithSalt s $ uidP p
+    hashWithSalt s (L p) = hashWithSalt s $ uidL p
 

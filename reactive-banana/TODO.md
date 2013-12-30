@@ -1,3 +1,20 @@
+Implementation Notes
+--------------------
+
+Observation: Recursion for latches
+    We can build a pulse that depends on a latch that we haven't built yet,
+    i.e.  applyP  is lazy in its first argument.
+    However, building a latch requires the pulse to have been built already.
+
+Observation:  switchL and latch evaluation
+    There are two types of latches:
+        1. latches that are updated by a pulse
+        2. <$> and <*>
+    The evaluation of the latter cases always happens lazily during pulse
+    evaluation (the results are cached).
+    There are no dependencies between latches that are updated by pulses.
+    
+
 Present
 -------
 
