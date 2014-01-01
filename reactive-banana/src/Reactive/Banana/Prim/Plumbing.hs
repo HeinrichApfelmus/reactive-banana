@@ -1,9 +1,11 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 module Reactive.Banana.Prim.Plumbing where
 
 import           Control.Monad
+import           Control.Monad.Fix
 import           Control.Monad.Trans
 import           Control.Monad.Trans.RWS
 import           Data.Functor
@@ -11,8 +13,10 @@ import           Data.Functor.Identity
 import           Data.Monoid
 import           Data.Unique.Really
 import qualified Data.Vault.Strict       as Strict
+import qualified Data.Vault.Lazy         as Lazy
 import           System.IO.Unsafe                  (unsafePerformIO)
 
+import           Reactive.Banana.Prim.Cached                (HasCache(..))
 import qualified Reactive.Banana.Prim.Dependencies as Deps
 import           Reactive.Banana.Prim.Types
 
@@ -82,16 +86,9 @@ liftBuild m = RWST $ \r s -> return . runIdentity $ runRWST m r s
 readLatchB :: Latch a -> Build a
 readLatchB latch = getValueL latch . nLatchValues <$> get
 
-{-
--- Cache for memoizing valus.
--- The cache has to be lazy in both spine and values,
--- so that it can be used for recursion.
-instance (MonadFix m, Functor m) => HasVault (BuildT m) where
-    retrieve key = Vault.Lazy.lookup key . grCache . gsGraph <$> get
-    write key a  = modifyGraph $ \g ->
-        g { grCache = Vault.Lazy.insert key a (grCache g) }
-
--}
+instance (MonadFix m, Functor m) => HasCache (BuildT m) where
+    retrieve key = Lazy.lookup key . grCache . nGraph <$> get
+    write key a  = modify $ updateGraph $ updateCache $ Lazy.insert key a
 
 dependOn :: Pulse child -> Pulse parent -> Build ()
 dependOn x y = dependOnNode (P x) (P y)

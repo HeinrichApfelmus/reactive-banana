@@ -12,7 +12,9 @@ import Data.Monoid
 import           Data.Hashable
 import           Data.Unique.Really
 import qualified Data.Vault.Strict  as Strict
+import qualified Data.Vault.Lazy    as Lazy
 
+import           Reactive.Banana.Prim.Cached
 import qualified Reactive.Banana.Prim.Dependencies as Deps
 
 type Deps = Deps.Deps
@@ -24,6 +26,7 @@ type Deps = Deps.Deps
 data Graph = Graph
     { grDeps    :: Deps SomeNode   -- dependency information
     , grOutputs :: [Output]        -- output actions
+    , grCache   :: Lazy.Vault      -- cache for the monad
     }
 
 -- TODO: Optimize output query.
@@ -49,13 +52,16 @@ updateGraph       f = \s -> s { nGraph       = f (nGraph s) }
 updateLatchValues f = \s -> s { nLatchValues = f (nLatchValues s) }
 updateDeps        f = \s -> s { grDeps       = f (grDeps s) }
 updateOutputs     f = \s -> s { grOutputs    = f (grOutputs s) }
+updateCache       f = \s -> s { grCache      = f (grCache s) }
 
 emptyGraph :: Graph
 emptyGraph = Graph
     { grDeps    = Deps.empty
     , grOutputs = []
+    , grCache   = Lazy.empty
     }
 
+-- | The 'Network' that contains no pulses or latches.
 emptyNetwork :: Network
 emptyNetwork = Network emptyGraph Strict.empty
 
