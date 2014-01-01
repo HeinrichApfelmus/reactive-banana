@@ -7,7 +7,7 @@ module Reactive.Banana.Prim (
     -- More practical FRP combinators can be built on top of these.
     
     -- * Evaluation
-    Step, Network,
+    Step, Network, emptyNetwork,
     
     -- * Build network
     Build, BuildIO, liftBuild, compile, interpret,

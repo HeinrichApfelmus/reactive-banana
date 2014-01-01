@@ -11,14 +11,17 @@ import Reactive.Banana.Prim.Types
 {-----------------------------------------------------------------------------
    Compilation
 ------------------------------------------------------------------------------}
--- | Compile build instructions to a Network
-compile :: BuildIO a -> IO (a, Network)
-compile setup = runBuildIO emptyNetwork setup
+-- | Change a 'Network' of pulses and latches by 
+-- executing a 'BuildIO' action.
+compile :: BuildIO a -> Network -> IO (a, Network)
+compile = flip runBuildIO
 
 {-----------------------------------------------------------------------------
     Simple interpretation
 ------------------------------------------------------------------------------}
--- | 
+-- | Simple interpreter for pulse/latch networks.
+--
+-- Mainly useful for testing.
 interpret :: (Pulse a -> BuildIO (Pulse b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
     o <- newIORef Nothing    
@@ -29,7 +32,7 @@ interpret f xs = do
             return sin
     
     -- compile initial network
-    (sin, state) <- compile network
+    (sin, state) <- compile network emptyNetwork
 
     let go Nothing  s1 = return (Nothing,s1)
         go (Just a) s1 = do
