@@ -10,7 +10,7 @@ module Reactive.Banana.Prim (
     Step, Network, emptyNetwork,
     
     -- * Build network
-    Build, BuildIO, liftBuild, compile, interpret,
+    Build, liftIOLater, BuildIO, liftBuild, compile, interpret,
     module Control.Monad.IO.Class,
     
     -- * IO
@@ -22,7 +22,7 @@ module Reactive.Banana.Prim (
     
     -- * Latch
     Latch,
-    pureL, mapL, applyL, accumL, applyP,
+    pureL, mapL, applyL, accumL, applyP, tagFuture,
   ) where
 
 
@@ -30,7 +30,7 @@ import Control.Monad.IO.Class
 import Reactive.Banana.Prim.Combinators
 import Reactive.Banana.Prim.Compile
 import Reactive.Banana.Prim.IO
-import Reactive.Banana.Prim.Plumbing (neverP, liftBuild)
+import Reactive.Banana.Prim.Plumbing (neverP, liftBuild, liftIOLater)
 import Reactive.Banana.Prim.Types
 
 newPulse :: Build (Pulse a, a -> Step)
