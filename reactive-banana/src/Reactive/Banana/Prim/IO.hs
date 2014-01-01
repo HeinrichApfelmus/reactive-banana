@@ -21,9 +21,8 @@ debug s = id
 --
 -- Together with 'addHandler', this function can be used to operate with
 -- pulses as with standard callback-based events.
-newInputPulse :: Build (Pulse a, a -> Step)
-newInputPulse = debug "newInputPulse" $ unsafePerformIO $ do
-    key <- Strict.newKey
+newInput :: Strict.Key a -> Build (Pulse a, a -> Step)
+newInput key = debug "newInput" $ unsafePerformIO $ do
     uid <- newUnique
     let pulse = Pulse
             { evaluateP = return ()

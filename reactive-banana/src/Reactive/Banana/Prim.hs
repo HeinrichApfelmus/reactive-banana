@@ -14,7 +14,7 @@ module Reactive.Banana.Prim (
     module Control.Monad.IO.Class,
     
     -- * IO
-    newPulse, addHandler, readLatch,
+    newInput, addHandler, readLatch,
     
     -- * Pulse
     Pulse,
@@ -32,7 +32,3 @@ import Reactive.Banana.Prim.Compile
 import Reactive.Banana.Prim.IO
 import Reactive.Banana.Prim.Plumbing (neverP, liftBuild, liftIOLater)
 import Reactive.Banana.Prim.Types
-
-newPulse :: Build (Pulse a, a -> Step)
-newPulse = newInputPulse
-

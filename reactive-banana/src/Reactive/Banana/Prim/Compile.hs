@@ -3,10 +3,11 @@
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Prim.Compile where
 
-import Data.IORef
-import Reactive.Banana.Prim.IO
-import Reactive.Banana.Prim.Plumbing
-import Reactive.Banana.Prim.Types
+import           Data.IORef
+import qualified Data.Vault.Strict             as Strict
+import           Reactive.Banana.Prim.IO
+import           Reactive.Banana.Prim.Plumbing
+import           Reactive.Banana.Prim.Types
 
 {-----------------------------------------------------------------------------
    Compilation
@@ -24,9 +25,10 @@ compile = flip runBuildIO
 -- Mainly useful for testing.
 interpret :: (Pulse a -> BuildIO (Pulse b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
-    o <- newIORef Nothing    
+    key <- Strict.newKey
+    o   <- newIORef Nothing
     let network = do
-            (pin, sin) <- liftBuild $ newInputPulse
+            (pin, sin) <- liftBuild $ newInput key
             pout       <- f pin
             liftBuild $ addHandler pout (writeIORef o . Just)
             return sin
