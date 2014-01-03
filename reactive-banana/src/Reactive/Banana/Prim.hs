@@ -23,6 +23,9 @@ module Reactive.Banana.Prim (
     -- * Latch
     Latch,
     pureL, mapL, applyL, accumL, applyP, tagFuture,
+    
+    -- * Dynamic event switching
+    switchL, executeP, switchP
   ) where
 
 
