@@ -35,7 +35,14 @@ newInput key = debug "newInput" $ unsafePerformIO $ do
 -- | Register a handler to be executed whenever a pulse occurs.
 addHandler :: Pulse a -> (a -> IO ()) -> Build ()
 addHandler p1 f = do
-    p2 <- mapP f p1
+    p2 <- mapP (const . f) p1
+    addOutput p2
+
+-- | Register a handler that reads an updated latch value
+-- whenever a pulse occurs.
+addHandlerLatch :: Pulse () -> Latch a -> (a -> IO ()) -> Build ()
+addHandlerLatch p1 l f = do
+    p2 <- mapP (const $ f . getValueL l) p1
     addOutput p2
 
 -- | Read the value of a 'Latch' at a particular moment in time.

@@ -11,7 +11,7 @@ import Control.Monad.IO.Class
 import Reactive.Banana.Prim.Plumbing
     ( neverP, newPulse, newLatch, cachedLatch
     , dependOn
-    , readPulseP, readLatchP, readLatchFutureP, liftBuildP, liftBuildIOP
+    , readPulseP, readLatchP, liftBuildP, liftBuildIOP
     )
 import Reactive.Banana.Prim.Types (Latch(..), Pulse, Build, BuildIO)
 
@@ -58,14 +58,6 @@ unionWithP f px py = debug "unionWith" $ do
 applyP :: Latch (a -> b) -> Pulse a -> Build (Pulse b)
 applyP f x = debug "applyP" $ do
     p <- newPulse $ {-# SCC applyP #-} fmap <$> readLatchP f <*> readPulseP x
-    p `dependOn` x
-    return p
-
--- Tag a pulse with future values of a latch.
--- Caveat emptor. These values are not defined until after the  EvalL  phase.
-tagFuture :: Latch a -> Pulse b -> Build (Pulse a)
-tagFuture f x = debug "tagFuture" $ do
-    p <- newPulse $ fmap . const <$> readLatchFutureP f <*> readPulseP x
     p `dependOn` x
     return p
 

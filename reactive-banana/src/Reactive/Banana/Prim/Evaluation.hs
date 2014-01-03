@@ -21,19 +21,18 @@ step :: Inputs -> Step
 step (pulse1, roots) state1 = mdo
     let graph1 = nGraph state1
         latch1 = nLatchValues state1
-    
-    ((pulse2, latchUpdates), state2)
+
+    ((pulse2, latchUpdates, output), state2)
             <- runBuildIO state1
-            $  runEvalP latch2 pulse1
+            $  runEvalP pulse1
             $  evaluatePulses graph1 roots
     
     let graph2 = nGraph state2
         latch2 = appEndo latchUpdates $ nLatchValues state2
-        output = readOutputs graph2 pulse2
         state3 = Network graph2 latch2
 
     Strict.evaluate latch2  -- make sure that the latch values are in WHNF
-    return (output, state3)
+    return (output latch2, state3)
 
 -- | Update all pulses in the graph, starting from a given set of nodes
 evaluatePulses :: Graph -> [SomeNode] -> EvalP ()
@@ -41,11 +40,12 @@ evaluatePulses graph _ = mapM_ evaluatePulse $ buildEvaluationOrder graph
     where
     evaluatePulse (P p) = evaluateP p
     evaluatePulse (L l) = evaluateL l >>= rememberLatchUpdate
+    evaluatePulse (O o) = evaluateO o >>= rememberOutput
 
--- | Read Output values.
-readOutputs graph pulses =
-    sequence_ [action | out         <- grOutputs graph
-                      , Just action <- [getValueP out pulses]]
+-- TODO: Optimize output query.
+-- Instead of polling each output whether it has fired,
+-- obtain this information from the graph traversal instead.
+-- However, in this case, order of declaration, not the order of firing.
 
 -- | List of all nodes in topological order.
 buildEvaluationOrder :: Graph -> [SomeNode]

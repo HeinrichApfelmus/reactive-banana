@@ -68,6 +68,20 @@ cachedLatch eval = Latch
     { getValueL = eval  -- FIXME: Actually cache the computation!
     }
 
+-- | Add a new output that depends on a 'Pulse'.
+--
+-- TODO: Return function to unregister the output again.
+addOutput :: Pulse EvalO -> Build ()
+addOutput p = unsafePerformIO $ do
+    uid <- newUnique
+    let
+        read = maybe (const $ return ()) id
+        o = Output
+            { evaluateO = read <$> readPulseP p
+            , uidO      = uid
+            }
+    return (O o `dependOnNode` P p)
+    
 
 {-----------------------------------------------------------------------------
     Build monad - add and delete nodes from the graph
@@ -96,37 +110,31 @@ dependOn x y = dependOnNode (P x) (P y)
 dependOnNode :: SomeNode -> SomeNode -> Build ()
 dependOnNode x y = modify $ updateGraph $ updateDeps $ Deps.dependOn x y
 
--- TODO: Return function to unregister the output again.
-addOutput :: Output -> Build ()
-addOutput x = modify $ updateGraph $ updateOutputs $ (++ [x])
-
 liftIOLater :: IO () -> Build ()
 liftIOLater x = tell [x]
 
 {-----------------------------------------------------------------------------
     EvalP - evaluate pulses
 ------------------------------------------------------------------------------}
-runEvalP
-    :: Strict.Vault -> Strict.Vault -> EvalP a
-    -> BuildIO (Strict.Vault, EvalL)
-runEvalP latch pulse m = do
-    (_,s,w) <- runRWST m latch pulse
-    return (s,w)
+runEvalP :: Strict.Vault -> EvalP a -> BuildIO (Strict.Vault, EvalL, EvalO)
+runEvalP pulse m = do
+    (_,s,(wl,wo)) <- runRWST m () pulse
+    return (s,wl, sequence_ . (sequence wo))
 
 readLatchP :: Latch a -> EvalP a
 readLatchP latch = lift $ getValueL latch . nLatchValues <$> get
 
-readLatchFutureP :: Latch a -> EvalP a
-readLatchFutureP latch = getValueL latch <$> ask
-
 writePulseP :: Strict.Key a -> a -> EvalP ()
 writePulseP key a = modify $ Strict.insert key a
 
-readPulseP  :: Pulse a -> EvalP (Maybe a)
+readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP pulse = getValueP pulse <$> get
 
 rememberLatchUpdate :: EvalL -> EvalP ()
-rememberLatchUpdate = tell
+rememberLatchUpdate x = tell (x,mempty)
+
+rememberOutput :: EvalO -> EvalP ()
+rememberOutput x = tell (mempty,[x])
 
 liftBuildIOP :: BuildIO a -> EvalP a
 liftBuildIOP = lift

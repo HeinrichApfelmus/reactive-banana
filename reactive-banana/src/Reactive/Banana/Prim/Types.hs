@@ -25,15 +25,8 @@ type Deps = Deps.Deps
 -- | A 'Graph' represents the connections between pulses and events.
 data Graph = Graph
     { grDeps    :: Deps SomeNode   -- dependency information
-    , grOutputs :: [Output]        -- output actions
     , grCache   :: Lazy.Vault      -- cache for the monad
     }
-
--- TODO: Optimize output query.
--- Instead of polling each output whether it has fired,
--- obtain this information from the graph traversal instead.
--- However, in this case, order of declaration, not the order of firing.
-type Output = Pulse (IO ())
 
 -- | A 'Network' represents the state of a pulse/latch network,
 -- which consists of a 'Graph' and the values of all accumulated latches
@@ -51,13 +44,11 @@ type Step          = EvalNetwork (IO ())
 updateGraph       f = \s -> s { nGraph       = f (nGraph s) }
 updateLatchValues f = \s -> s { nLatchValues = f (nLatchValues s) }
 updateDeps        f = \s -> s { grDeps       = f (grDeps s) }
-updateOutputs     f = \s -> s { grOutputs    = f (grOutputs s) }
 updateCache       f = \s -> s { grCache      = f (grCache s) }
 
 emptyGraph :: Graph
 emptyGraph = Graph
     { grDeps    = Deps.empty
-    , grOutputs = []
     , grCache   = Lazy.empty
     }
 
@@ -114,24 +105,31 @@ data LatchWrite = LatchWrite
     , uidL      :: Unique
     }
 
-type EvalP = RWST Strict.Vault EvalL Strict.Vault BuildIO
+data Output = Output
+    { evaluateO :: EvalP EvalO
+    , uidO      :: Unique
+    }
+
+type EvalP = RWST () (EvalL, [EvalO]) Strict.Vault BuildIO
     -- state: current pulse values
-    -- read : future latch values
-    -- write: update of latch values
+    -- write: (update of latch values, output actions)
 
 type EvalL = Endo Strict.Vault
-
+type EvalO = Strict.Vault -> IO ()
 
 -- | Existential quantification for dependency tracking
 data SomeNode
     = forall a. P (Pulse a)
     | L LatchWrite
+    | O Output
 
 instance Eq SomeNode where
     (P x) == (P y)  =  uidP x == uidP y
     (L x) == (L y)  =  uidL x == uidL y
+    (O x) == (O y)  =  uidO x == uidO y
 
 instance Hashable SomeNode where
     hashWithSalt s (P p) = hashWithSalt s $ uidP p
     hashWithSalt s (L p) = hashWithSalt s $ uidL p
+    hashWithSalt s (O p) = hashWithSalt s $ uidO p
 

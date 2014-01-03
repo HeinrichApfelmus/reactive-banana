@@ -14,7 +14,7 @@ module Reactive.Banana.Prim (
     module Control.Monad.IO.Class,
     
     -- * IO
-    newInput, addHandler, readLatch,
+    newInput, addHandler, addHandlerLatch, readLatch,
     
     -- * Pulse
     Pulse,
@@ -22,7 +22,7 @@ module Reactive.Banana.Prim (
     
     -- * Latch
     Latch,
-    pureL, mapL, applyL, accumL, applyP, tagFuture,
+    pureL, mapL, applyL, accumL, applyP,
     
     -- * Dynamic event switching
     switchL, executeP, switchP
