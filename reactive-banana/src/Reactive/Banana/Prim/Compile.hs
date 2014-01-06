@@ -18,11 +18,14 @@ compile :: BuildIO a -> Network -> IO (a, Network)
 compile = flip runBuildIO
 
 {-----------------------------------------------------------------------------
-    Simple interpretation
+    Testing
 ------------------------------------------------------------------------------}
 -- | Simple interpreter for pulse/latch networks.
 --
--- Mainly useful for testing.
+-- Mainly useful for testing functionality
+--
+-- Note: The result is not computed lazily, for similar reasons
+-- that the 'sequence' function does not compute its result lazily.
 interpret :: (Pulse a -> BuildIO (Pulse b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
     key <- Strict.newKey
@@ -46,7 +49,21 @@ interpret f xs = do
     
     mapAccumM go state xs         -- run several steps
 
+-- | Execute an FRP network with a sequence of inputs, but discard results.
+-- 
+-- Mainly useful for testing whether there are space leaks. 
+runSpaceProfile :: (Pulse a -> BuildIO void) -> [a] -> IO ()
+runSpaceProfile f xs = do
+    key <- Strict.newKey
+    let g = do
+        (p1, fire) <- liftBuild $ newInput key
+        f p1
+        return fire
+    (fire,network) <- compile g emptyNetwork
+    
+    mapAccumM_ fire network xs
 
+-- | 'mapAccum' for a monad.
 mapAccumM :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m [b]
 mapAccumM _ _  []     = return []
 mapAccumM f s0 (x:xs) = do
@@ -54,4 +71,10 @@ mapAccumM f s0 (x:xs) = do
     bs     <- mapAccumM f s1 xs
     return (b:bs)
 
+-- | Strict 'mapAccum' for a monad. Discards results.
+mapAccumM_ :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m ()
+mapAccumM_ _ _  []     = return ()
+mapAccumM_ f s0 (x:xs) = do
+    (_,s1) <- f x s0
+    mapAccumM_ f s1 xs
 

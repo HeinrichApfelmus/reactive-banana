@@ -27,7 +27,7 @@ import           Reactive.Banana.Prim.Types
 newPulse :: EvalP (Maybe a) -> Build (Pulse a)
 newPulse eval = unsafePerformIO $ do
     key <- Strict.newKey
-    uid <- {-# SCC "newPulse/newUnique" #-} newUnique
+    uid <- newUnique
     return $ do
         let write = maybe (return ()) (writePulseP key)
         return $ Pulse
@@ -55,7 +55,7 @@ newLatch a = unsafePerformIO $ do
         let
             write        = maybe mempty (Endo . Strict.insert key)
             latchWrite p = LatchWrite
-                { evaluateL = write <$> readPulseP p
+                { evaluateL = {-# SCC evaluateL #-} write <$> readPulseP p
                 , uidL      = uid
                 }
             updateOn p   = L (latchWrite p) `dependOnNode` P p

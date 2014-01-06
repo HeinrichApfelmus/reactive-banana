@@ -4,13 +4,17 @@
 {-# LANGUAGE RecursiveDo #-}
 module Reactive.Banana.Prim.Test where
 
+import Control.Applicative
 import Reactive.Banana.Prim
+import Data.Vault.Strict as Strict
+
+main = test_space1
 
 {-----------------------------------------------------------------------------
-    Some tests of the pulse/latch primitives
+    Functionality tests
 ------------------------------------------------------------------------------}
-test :: Pulse Int -> BuildIO (Pulse Int)
-test p1 = liftBuild $ do
+test_accumL1 :: Pulse Int -> BuildIO (Pulse Int)
+test_accumL1 p1 = liftBuild $ do
     p2     <- mapP (+) p1
     (l1,_) <- accumL 0 p2
     let l2 =  mapL const l1
@@ -24,3 +28,11 @@ test_recursion1 p1 = liftBuild $ mdo
     ~(l1,_) <- accumL (0::Int) p3
     let l2  =  mapL const l1
     return p2
+
+{-----------------------------------------------------------------------------
+    Space leak tests
+------------------------------------------------------------------------------}
+test_space1 = runSpaceProfile test_accumL1    $ [1..2*10^4]
+test_space2 = runSpaceProfile test_recursion1 $ () <$ [1..2*10^4]
+
+

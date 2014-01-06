@@ -66,10 +66,10 @@ pureL a = Latch { getValueL = return a }
 
 -- specialization of   mapL f = applyL (pureL f)
 mapL :: (a -> b) -> Latch a -> Latch b
-mapL f lx = cachedLatch $ f <$> getValueL lx
+mapL f lx = cachedLatch $ {-# SCC mapL #-} f <$> getValueL lx
 
 applyL :: Latch (a -> b) -> Latch a -> Latch b
-applyL lf lx = cachedLatch $ getValueL lf <*> getValueL lx
+applyL lf lx = cachedLatch $ {-# SCC applyL #-} getValueL lf <*> getValueL lx
 
 accumL :: a -> Pulse (a -> a) -> Build (Latch a, Pulse a)
 accumL a p1 = do

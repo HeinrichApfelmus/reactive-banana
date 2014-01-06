@@ -18,11 +18,11 @@ import           Reactive.Banana.Prim.Types
 -- | Evaluate all the pulses in the graph,
 -- Rebuild the graph as necessary and update the latch values.
 step :: Inputs -> Step
-step (pulse1, roots) state1 = mdo
+step (pulse1, roots) state1 = {-# SCC step #-} do
     let graph1 = nGraph state1
         latch1 = nLatchValues state1
 
-    ((pulse2, latchUpdates, output), state2)
+    ((_, latchUpdates, output), state2)
             <- runBuildIO state1
             $  runEvalP pulse1
             $  evaluatePulses graph1 roots
@@ -31,7 +31,8 @@ step (pulse1, roots) state1 = mdo
         latch2 = appEndo latchUpdates $ nLatchValues state2
         state3 = Network graph2 latch2
 
-    Strict.evaluate latch2  -- make sure that the latch values are in WHNF
+    -- make sure that the latch values are in WHNF
+    Strict.evaluate latch2 
     return (output latch2, state3)
 
 -- | Update all pulses in the graph, starting from a given set of nodes

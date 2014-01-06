@@ -9,9 +9,12 @@ module Reactive.Banana.Prim (
     -- * Evaluation
     Step, Network, emptyNetwork,
     
-    -- * Build network
-    Build, liftIOLater, BuildIO, liftBuild, compile, interpret,
+    -- * Build FRP networks
+    Build, liftIOLater, BuildIO, liftBuild, compile,
     module Control.Monad.IO.Class,
+    
+    -- * Testing
+    interpret, mapAccumM, mapAccumM_, runSpaceProfile,
     
     -- * IO
     newInput, addHandler, addHandlerLatch, readLatch,
