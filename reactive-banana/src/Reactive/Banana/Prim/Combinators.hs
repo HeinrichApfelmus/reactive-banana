@@ -10,7 +10,7 @@ import Control.Monad.IO.Class
 
 import Reactive.Banana.Prim.Plumbing
     ( neverP, newPulse, newLatch, cachedLatch
-    , dependOn
+    , dependOn, changeParent
     , readPulseP, readLatchP, liftBuildP, liftBuildIOP
     )
 import Reactive.Banana.Prim.Types (Latch(..), Pulse, Build, BuildIO)
@@ -112,7 +112,7 @@ switchP pp = mdo
             mnew <- readPulseP pp
             case mnew of
                 Nothing  -> return ()
-                Just new -> liftBuildP $ p `dependOn` new -- depend on new pulse
+                Just new -> liftBuildP $ p `changeParent` new -- depend on new pulse
             -- fetch value from *old* pulse
             readPulseP =<< readLatchP lp
     p <- newPulse eval

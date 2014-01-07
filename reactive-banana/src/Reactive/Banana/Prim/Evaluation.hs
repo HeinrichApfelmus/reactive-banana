@@ -37,29 +37,13 @@ step (pulse1, roots) state1 = {-# SCC step #-} do
 
 -- | Update all pulses in the graph, starting from a given set of nodes
 evaluatePulses :: Graph -> [SomeNode] -> EvalP ()
-evaluatePulses graph _ = mapM_ evaluatePulse $ buildEvaluationOrder graph
+evaluatePulses graph = Deps.traverseDependencies evaluatePulse (grDeps graph)
     where
     evaluatePulse (P p) = evaluateP p
-    evaluatePulse (L l) = evaluateL l >>= rememberLatchUpdate
-    evaluatePulse (O o) = evaluateO o >>= rememberOutput
+    evaluatePulse (L l) = evaluateL l >>= rememberLatchUpdate >> return Deps.Done
+    evaluatePulse (O o) = evaluateO o >>= rememberOutput      >> return Deps.Done
 
 -- TODO: Optimize output query.
 -- Instead of polling each output whether it has fired,
 -- obtain this information from the graph traversal instead.
 -- However, in this case, order of declaration, not the order of firing.
-
--- | List of all nodes in topological order.
-buildEvaluationOrder :: Graph -> [SomeNode]
-buildEvaluationOrder = Deps.topologicalSort . grDeps
-
-
-
-{-
-traverseDependencies :: Monoid m => (a -> m) -> Deps a -> [a] -> m
-
-
-traverseOrder :: (Monad m, Hashable a, Eq a)
-    => (a -> m [a])
-    -> Deps.TotalOrder a -> [a] -> m ()
-traverseOrder = Deps.
--}

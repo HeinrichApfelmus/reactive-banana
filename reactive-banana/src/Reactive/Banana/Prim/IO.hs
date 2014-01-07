@@ -3,12 +3,14 @@
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Prim.IO where
 
+import           Data.Functor
 import           Data.Unique.Really
 import qualified Data.Vault.Strict  as Strict
 import           System.IO.Unsafe             (unsafePerformIO)
 
-import Reactive.Banana.Prim.Combinators (mapP)
-import Reactive.Banana.Prim.Evaluation  (step)
+import Reactive.Banana.Prim.Combinators  (mapP)
+import Reactive.Banana.Prim.Dependencies (maybeContinue)
+import Reactive.Banana.Prim.Evaluation   (step)
 import Reactive.Banana.Prim.Plumbing
 import Reactive.Banana.Prim.Types
 
@@ -25,7 +27,7 @@ newInput :: Strict.Key a -> Build (Pulse a, a -> Step)
 newInput key = debug "newInput" $ unsafePerformIO $ do
     uid <- newUnique
     let pulse = Pulse
-            { evaluateP = return ()
+            { evaluateP = maybeContinue <$> readPulseP pulse
             , getValueP = Strict.lookup key
             , uidP      = uid
             }

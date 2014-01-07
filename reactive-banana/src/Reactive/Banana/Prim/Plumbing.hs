@@ -29,7 +29,7 @@ newPulse eval = unsafePerformIO $ do
     key <- Strict.newKey
     uid <- newUnique
     return $ do
-        let write = maybe (return ()) (writePulseP key)
+        let write = maybe (return Deps.Done) ((Deps.Children <$) . writePulseP key)
         return $ Pulse
             { evaluateP = {-# SCC evaluateP #-} write =<< eval
             , getValueP = Strict.lookup key
@@ -41,7 +41,7 @@ neverP :: Build (Pulse a)
 neverP = unsafePerformIO $ do
     uid <- newUnique
     return $ return $ Pulse
-        { evaluateP = return ()
+        { evaluateP = return Deps.Done
         , getValueP = const Nothing
         , uidP      = uid
         }
@@ -58,7 +58,7 @@ newLatch a = unsafePerformIO $ do
                 { evaluateL = {-# SCC evaluateL #-} write <$> readPulseP p
                 , uidL      = uid
                 }
-            updateOn p   = L (latchWrite p) `dependOnNode` P p
+            updateOn p   = P p `addChild` L (latchWrite p)
         return
             (updateOn, Latch { getValueL = maybe a id . Strict.lookup key })
 
@@ -80,7 +80,7 @@ addOutput p = unsafePerformIO $ do
             { evaluateO = read <$> readPulseP p
             , uidO      = uid
             }
-    return (O o `dependOnNode` P p)
+    return (P p `addChild` O o)
     
 
 {-----------------------------------------------------------------------------
@@ -105,10 +105,15 @@ instance (MonadFix m, Functor m) => HasCache (BuildT m) where
     write key a  = modify $ updateGraph $ updateCache $ Lazy.insert key a
 
 dependOn :: Pulse child -> Pulse parent -> Build ()
-dependOn x y = dependOnNode (P x) (P y)
+dependOn child parent = (P parent) `addChild` (P child)
 
-dependOnNode :: SomeNode -> SomeNode -> Build ()
-dependOnNode x y = modify $ updateGraph $ updateDeps $ Deps.dependOn x y
+changeParent :: Pulse child -> Pulse parent -> Build ()
+changeParent child parent =
+    modify . updateGraph . updateDeps $ Deps.changeParent (P child) (P parent)
+
+addChild :: SomeNode -> SomeNode -> Build ()
+addChild parent child =
+    modify . updateGraph . updateDeps $ Deps.addChild parent child
 
 liftIOLater :: IO () -> Build ()
 liftIOLater x = tell [x]

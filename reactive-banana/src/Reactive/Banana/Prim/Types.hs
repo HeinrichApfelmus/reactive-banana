@@ -91,7 +91,7 @@ MonadFix  instance while the latter can do arbitrary IO.
 -}
 
 data Pulse a = Pulse
-    { evaluateP :: EvalP ()
+    { evaluateP :: EvalP Deps.Continue
     , getValueP :: Strict.Vault -> Maybe a
     , uidP      :: Unique
     }
