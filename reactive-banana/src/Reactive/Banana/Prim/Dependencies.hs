@@ -11,6 +11,7 @@ module Reactive.Banana.Prim.Dependencies (
     Continue(..), maybeContinue, traverseDependencies,
     ) where
 
+import Control.Monad.Trans.Writer
 import qualified Data.HashMap.Strict as Map
 import qualified Data.HashSet        as Set
 import           Data.Hashable
@@ -124,7 +125,7 @@ test1 = id
         f   g
          \ /
           h
-      
+
 -}
 test2 = id
     . addChild 'g' 'h' . addChild 'e' 'g'
@@ -135,3 +136,8 @@ test2 = id
     $ empty
 
 test3 = changeParent 'A' 'f' $ test2
+
+listChildren :: (Eq a, Hashable a) => Deps a -> a -> [a]
+listChildren deps x = snd $ runWriter $ traverseDependencies f deps [x]
+    where f x = tell [x] >> return Children
+    

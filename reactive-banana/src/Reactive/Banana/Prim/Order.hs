@@ -111,18 +111,22 @@ withOrder order f = f empty
     where empty = Q { order = order, queue = IntMap.empty }
 
 -- | Concrete queue implementation.
-data MyQueue a = Q
+data Q a = Q
     { order :: Order  a
-    , queue :: IntMap [a]
-    }
+    , queue :: IntMap (Set a)   -- inveriant: all sets have size >= 1
+    } deriving (Eq, Show)
 
-instance Queue MyQueue where
-    insert a q@(Q{..}) =
-        q { queue = IntMap.insertWith (++) (level a order) [a] queue }
-    minView  q@(Q{..}) = myQueue <$> case IntMap.minViewWithKey queue of
-        Nothing                      -> Nothing
-        Just ((_    ,[x]   ), queue) -> Just (x, queue)
-        Just ((level,(x:xs)), queue) -> Just (x, IntMap.insert level xs queue)
+instance Queue Q where
+    insert a q@(Q{..}) = q { queue = IntMap.alter (add a) (level a order) queue }
+        where
+        add x Nothing   = Just $ Set.singleton a
+        add x (Just xs) = Just $ Set.insert x xs
+
+    minView  q@(Q{..}) = mkQ <$> case IntMap.minViewWithKey queue of
+        Nothing                   -> Nothing
+        Just ((level, xs), queue) -> case Set.toList xs of
+            [x]    -> Just (x,queue)
+            (x:_)  -> Just (x,IntMap.insert level (Set.delete x xs) queue)
       where
-      myQueue (a,q) = (a, Q order q)
+      mkQ (a,q) = (a, Q order q)
 
