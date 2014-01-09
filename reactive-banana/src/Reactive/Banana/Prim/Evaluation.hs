@@ -9,7 +9,6 @@ import           Data.Monoid
 
 import qualified Reactive.Banana.Prim.Dependencies as Deps
 import           Reactive.Banana.Prim.Plumbing
-import qualified Reactive.Banana.Prim.TotalOrder   as Deps
 import           Reactive.Banana.Prim.Types
 
 {-----------------------------------------------------------------------------

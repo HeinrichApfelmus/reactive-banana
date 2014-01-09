@@ -127,6 +127,7 @@ instance Eq SomeNode where
     (P x) == (P y)  =  uidP x == uidP y
     (L x) == (L y)  =  uidL x == uidL y
     (O x) == (O y)  =  uidO x == uidO y
+    _     == _      =  False
 
 instance Hashable SomeNode where
     hashWithSalt s (P p) = hashWithSalt s $ uidP p
