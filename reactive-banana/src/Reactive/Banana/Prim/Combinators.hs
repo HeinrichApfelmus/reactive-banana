@@ -108,16 +108,20 @@ switchP pp = mdo
     never <- neverP
     lp    <- stepperL never pp
     let
-        eval = do
+        -- switch to a new parent
+        switch = do
             mnew <- readPulseP pp
             case mnew of
                 Nothing  -> return ()
-                Just new -> liftBuildP $ p `changeParent` new -- depend on new pulse
-            -- fetch value from *old* pulse
-            readPulseP =<< readLatchP lp
-    p <- newPulse eval
-    p `dependOn` pp
-    return p
+                Just new -> liftBuildP $ p2 `changeParent` new
+            return Nothing
+        -- fetch value from old parent
+        eval = readPulseP =<< readLatchP lp
+    
+    p1 <- newPulse switch :: Build (Pulse ())
+    p1 `dependOn` pp
+    p2 <- newPulse eval
+    return p2
 
 {-----------------------------------------------------------------------------
     Notes
