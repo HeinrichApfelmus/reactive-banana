@@ -96,8 +96,7 @@ dfs x succs = go [x] Set.empty
 -- | Public API for a queue.
 class Queue q where
     insert  :: (Hashable a, Eq a) => a -> q a -> q a
-    minView :: q a -> Maybe (a, q a)
-    size    :: q a -> Int
+    minView :: (Hashable a, Eq a) => q a -> Maybe (a, q a)
 
 -- | Insert a collection of elements into a 'Queue'.
 insertList :: (Queue q, Hashable a, Eq a) => [a] -> q a -> q a
@@ -118,7 +117,6 @@ data MyQueue a = Q
     }
 
 instance Queue MyQueue where
-    size = IntMap.size . queue
     insert a q@(Q{..}) =
         q { queue = IntMap.insertWith (++) (level a order) [a] queue }
     minView  q@(Q{..}) = myQueue <$> case IntMap.minViewWithKey queue of
