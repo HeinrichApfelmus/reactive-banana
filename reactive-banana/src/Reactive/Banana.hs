@@ -12,5 +12,5 @@ module Reactive.Banana (
 
 import Reactive.Banana.Combinators
 import Reactive.Banana.Frameworks
-import Reactive.Banana.Internal.Types2
+import Reactive.Banana.Types
 import Reactive.Banana.Switch

@@ -6,7 +6,7 @@ module Reactive.Banana.Prim.Plumbing where
 
 import           Control.Monad
 import           Control.Monad.Fix
-import           Control.Monad.Trans
+import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.RWS
 import           Data.Functor
 import           Data.Functor.Identity

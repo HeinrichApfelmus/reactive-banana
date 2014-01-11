@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Internal.Types2 (
+module Reactive.Banana.Types (
     -- | Primitive types.
     Event (..), Behavior (..), Moment (..)
     ) where
@@ -11,8 +11,8 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Fix
 
-import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
-import Reactive.Banana.Internal.Phantom
+import qualified Reactive.Banana.Internal.Combinators as Prim
+import           Reactive.Banana.Internal.Phantom
 
 {-| @Event t a@ represents a stream of events as they occur in time.
 Semantically, you can think of @Event t a@ as an infinite list of values

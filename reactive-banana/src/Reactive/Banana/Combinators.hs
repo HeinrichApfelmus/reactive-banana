@@ -35,14 +35,11 @@ module Reactive.Banana.Combinators (
 
 import Control.Applicative
 import Control.Monad
+import Data.Maybe          (isJust, catMaybes)
+import Data.Monoid         (Monoid(..))
 
-import Data.Maybe (isJust, catMaybes)
-import Data.Monoid (Monoid(..))
-
-
-import qualified Reactive.Banana.Internal1.EventBehavior1 as Prim
-import Reactive.Banana.Types
-
+import qualified Reactive.Banana.Internal.Combinators as Prim
+import           Reactive.Banana.Types
 
 {-----------------------------------------------------------------------------
     Introduction

@@ -2,7 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo #-}
-module Reactive.Banana.Internal1.Combinators (
+module Reactive.Banana.Internal.Combinators (
     -- * Interpreter
     interpret,
     
@@ -26,12 +26,8 @@ import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class (lift)
 
-import qualified Reactive.Banana.Internal0.Combinators as Prim
-import qualified Reactive.Banana.Internal0.IO          as Prim
-import qualified Reactive.Banana.Internal0.Monads      as Prim
-import qualified Reactive.Banana.Internal0.Types       as Prim
-
-import Reactive.Banana.Internal1.Cached
+import qualified Reactive.Banana.Prim as Prim
+import Reactive.Banana.Prim.Cached
 
 type Build = Prim.Build
 type Latch = Prim.Latch
@@ -56,27 +52,27 @@ interpret f = Prim.interpret (\pulse -> runCachedM =<< f (fromPure pulse))
 {-----------------------------------------------------------------------------
     Combinators - basic
 ------------------------------------------------------------------------------}
-never       = mkCached $ Prim.neverP
+never       = don'tCache  $ Prim.neverP
 unionWith f = liftCached2 $ Prim.unionWithP f
 filterJust  = liftCached1 $ Prim.filterJustP
-accumE x    = liftCached1 $ Prim.accumP x
+accumE x    = liftCached1 $ fmap snd . Prim.accumL x
 mapE f      = liftCached1 $ Prim.mapP f
 applyE      = liftCached2 $ \(lf,_) px -> Prim.applyP lf px
 
-changesB    = liftCached1 $ \(lx,px) -> Prim.tagFuture lx px
+changesB = error "Reactive.Banana.Internal.Combinators: changesB not implemented."
 
--- Note: to enable more recursion,
--- first create the latch and then create the event that is accumulated
-stepperB a  = \c1 -> mkCached $ mdo
-    l  <- Prim.stepperL a p1
-    p1 <- runCached c1
-    p2 <- Prim.mapP (const ()) p1
+-- FIXME: To allow more recursion, create the latch first and
+-- build the pulse later.
+stepperB a  = \c1 -> cache $ do
+    p1    <- Prim.mapP const =<< runCached c1
+    p2    <- Prim.mapP (const ()) p1
+    (l,_) <- Prim.accumL a p1
     return (l,p2)
 
 pureB a = stepperB a never
 applyB = liftCached2 $ \(l1,p1) (l2,p2) -> do
     p3 <- Prim.unionWithP const p1 p2
-    l3 <- Prim.applyL l1 l2
+    let l3 = Prim.applyL l1 l2
     return (l3,p3)
 mapB f = applyB (pureB f)
 
@@ -86,7 +82,7 @@ mapB f = applyB (pureB f)
 initialB :: Behavior a -> Moment a
 initialB b = Prim.liftBuild $ do
     ~(l,_) <- runCached b
-    Prim.readLatchB l
+    Prim.readLatch l
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = do

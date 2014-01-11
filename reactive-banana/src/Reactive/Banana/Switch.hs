@@ -22,9 +22,9 @@ module Reactive.Banana.Switch (
 import Control.Applicative
 import Control.Monad
 
-import Reactive.Banana.Combinators
-import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
-import Reactive.Banana.Internal.Types2
+import           Reactive.Banana.Combinators
+import qualified Reactive.Banana.Internal.Combinators as Prim
+import           Reactive.Banana.Types
 
 {-----------------------------------------------------------------------------
     Constant

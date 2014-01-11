@@ -36,12 +36,12 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.IORef
 
-import Reactive.Banana.Combinators
-import Reactive.Banana.Frameworks.AddHandler
+import           Reactive.Banana.Combinators
+import           Reactive.Banana.Frameworks.AddHandler
+import qualified Reactive.Banana.Internal.Combinators  as Prim
+import           Reactive.Banana.Internal.Phantom
+import           Reactive.Banana.Types
 
-import qualified Reactive.Banana.Internal.EventBehavior1 as Prim
-import Reactive.Banana.Internal.Types2
-import Reactive.Banana.Internal.Phantom
 
 {-----------------------------------------------------------------------------
     Documentation
