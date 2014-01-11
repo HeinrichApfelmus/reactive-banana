@@ -16,7 +16,7 @@ module Reactive.Banana.Frameworks (
     compile, Frameworks,
     AddHandler, fromAddHandler, fromChanges, fromPoll,
     reactimate, initial, changes,
-    FrameworksMoment(..), execute, liftIOLater, liftIONow,
+    FrameworksMoment(..), execute, liftIOLater,
     -- $liftIO
     module Control.Monad.IO.Class,
     
@@ -233,11 +233,6 @@ execute = M
 -- > liftIO :: Frameworks t => IO a -> Moment t a
 --
 -- Lift an 'IO' action into the 'Moment' monad.
-
-{-# DEPRECATED liftIONow  "Use  liftIO  instead." #-}
--- | Deprecated. Use 'liftIO' instead.
-liftIONow :: Frameworks t => IO a -> Moment t a
-liftIONow = liftIO
 
 -- | Lift an 'IO' action into the 'Moment' monad,
 -- but defer its execution until compilation time.

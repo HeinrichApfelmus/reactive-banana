@@ -89,7 +89,7 @@ setupNetwork :: forall t. Frameworks t =>
     (EventSource (), EventSource ()) -> Moment t ()
 setupNetwork (escoin,esplay) = do
     -- initial random number generator
-    initialStdGen <- liftIONow $ newStdGen
+    initialStdGen <- liftIO $ newStdGen
 
     -- Obtain events corresponding to the  coin  and  play  commands
     ecoin <- fromAddHandler (addHandler escoin)
