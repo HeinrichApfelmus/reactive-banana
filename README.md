@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/HeinrichApfelmus/reactive-banana.png)](https://travis-ci.org/HeinrichApfelmus/reactive-banana)
+
 ## What is reactive-banana?
 
 <div style="float:left;"><img src="https://github.com/HeinrichApfelmus/reactive-banana/raw/develop/banana.png" /></div>
@@ -35,37 +37,24 @@ To build the wx examples, type
     cabal configure -fbuildExamples && cabal build
     cd ..
 
-### GUI examples using Ji
-
-Prerequisites: Chris Done's [ji][] library.
-
-    git clone git://github.com/chrisdone/ji.git
-    cabal install
-
-To build the ji examples, type
-
-    cd reactive-banana-ji
-    cabal configure -fbuildExamples && cabal build
-    cd ..
-
 ## How is the source code structured?
 
 The project contains several directories:
 
-* `reactive-banana` - the core library
-* `reactive-banana-wx` - bindings to the [wxHaskell][] GUI library, includes many examples
-* `reactive-banana-ji` - experimental bindings to Chris Done's [ji][] library for the web browser
+* `reactive-banana` — the core library
+* `reactive-banana-wx` — bindings to the [wxHaskell][] GUI library, includes many examples
+* `reactive-banana-threepenny` — Deprecated bindings to the [threepenny-gui][] GUI library. Threepenny uses its own flavor of FRP, but shares some implementation details.
 
   [wxhaskell]: http://haskell.org/haskellwiki/WxHaskell
-  [ji]: https://github.com/chrisdone/ji
+  [threepenny-gui]: http://www.haskell.org/haskellwiki/Threepenny-gui
 
 The reactive-banana library actually contains *two* FRP implementations:
 
 1. [Reactive.Banana.Model][model] - A model implementation for testing and understanding the semantics. You are encouraged to look at the source code.
-2. [Reactive.Banana.Internal][push] - The efficient push-driven implementation used for production code. Contains hard to understand trade secrets. ;-)
+2. [Reactive.Banana.Prim][push] - The efficient push-driven implementation used for production code. Contains hard to understand trade secrets. ;-)
 
-  [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Model.hs
-  [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Internal/
+  [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/develop/reactive-banana/src/Reactive/Banana/Model.hs
+  [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/develop/reactive-banana/src/Reactive/Banana/Prim.hs
 
 ## Contribute
 

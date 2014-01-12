@@ -79,6 +79,15 @@ Library
     other-modules:
                         Reactive.Banana.Internal.Combinators,
                         Reactive.Banana.Internal.Phantom,
+                        Reactive.Banana.Prim.Combinators,
+                        Reactive.Banana.Prim.Compile,
+                        Reactive.Banana.Prim.Dependencies,
+                        Reactive.Banana.Prim.Evaluation,
+                        Reactive.Banana.Prim.IO,
+                        Reactive.Banana.Prim.Order,
+                        Reactive.Banana.Prim.Plumbing,
+                        Reactive.Banana.Prim.Test,
+                        Reactive.Banana.Prim.Types,
                         Reactive.Banana.Types
 
 
@@ -89,8 +98,8 @@ Test-Suite tests
     main-is:            Reactive/Banana/Test.hs
     build-depends:      base >= 4.2 && < 5,
                         HUnit >= 1.2 && < 2,
-                        test-framework == 0.6.*,
-                        test-framework-hunit == 0.2.*,
+                        test-framework == 0.8.*,
+                        test-framework-hunit == 0.3.*,
                         reactive-banana, vault, containers, transformers,
                         unordered-containers, hashable
 

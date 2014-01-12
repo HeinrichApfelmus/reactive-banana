@@ -1,3 +1,17 @@
+FIXME
+-----
+
+* Latch evaluation needs to be cached. How do we invalidate the cache when a latch value has changed?
+
+* Reinstate `changes` function. Update and test `reactive-banana-wx`.
+
+* Clean up `AddHandler` code. In particular, remove duplicate export. Move to `Control.AddHandler`?
+
+* Update `threepenny-gui`.
+
+* Registered handlers need to be executed in declaration order, not in evaluation order.
+
+
 Implementation Notes
 --------------------
 
@@ -12,8 +26,7 @@ Observation:  switchL and latch evaluation
         2. <$> and <*>
     The evaluation of the latter cases always happens lazily during pulse
     evaluation (the results are cached).
-    There are no dependencies between latches that are updated by pulses.
-    
+    There are no dependencies between latches that are updated by pulses.    
 
 Present
 -------
@@ -74,33 +87,3 @@ Future
 Pure implementation
 ===================
 The push-driven implementation can be made pure by putting the `Vault` data type into the `ST` monad instead of the `IO` monad. This might be useful for MIDI, i.e. using one and the same code for both real-time MIDI generation and writing it to files.
-
-"Splitting the moment"
-====================
-Think about simultaneous event some more. In particular, investigate "splitting the moment". This might be relevant for modularity, but makes the semantics more complicated. We need infinitesimal delays to allow revents to be defined recursively.
-
-The event `before e` is guaranteed to execute before any event that occurs simultaneoulsy with the event `e`.
-
-Rules for simultaneous occurance
-
-    e ~ e
-    fmap f e ~ fmap g e
-    e ~ e' => before e ~ before e'
-
-    Transitivity!  e1 ~ e2 && e2 ~ e3  ==> e1 ~ e3
-
-Possibility 1:
-
-    (e1',e2') = order e1 e2
-
-Possibility 2:
-
-    e1' = before e1
-    e2' = after e2
-
-Possibility 3:
-    (e1,e2) = orderedDuplicate e
-    -- This probably violates transitivity of  ~ ?
-    -- e1 ~ e and e2 ~ e  but  e1 /~ e2
-    -- Needs another interpretation for  ~
-

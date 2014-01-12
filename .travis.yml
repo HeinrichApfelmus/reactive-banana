@@ -1,0 +1,15 @@
+language: haskell
+notifications:
+  email: false
+before_install:
+  - cd reactive-banana/
+install:
+  - cabal install --only-dependencies --enable-tests --force-reinstalls
+before_script:
+  - cabal configure
+  - cabal sdist
+  - cd ../..
+  - tar -xf reactive-banana/reactive-banana/dist/reactive-banana*.tar.gz
+  - cd reactive-banana*
+script:
+  - cabal configure --enable-tests && cabal build && cabal test
