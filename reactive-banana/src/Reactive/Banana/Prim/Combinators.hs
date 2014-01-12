@@ -94,13 +94,13 @@ switchL l pl = mdo
     x <- stepperL l pl
     return $ Latch { getValueL = getValueL =<< getValueL x }
 
-executeP :: Pulse (BuildIO a) -> Build (Pulse a)
-executeP p1 = debug "executeP" $ do
+executeP :: Pulse (b -> BuildIO a) -> b -> Build (Pulse a)
+executeP p1 b = debug "executeP" $ do
         p2 <- newPulse $ {-# SCC executeP #-} eval =<< readPulseP p1
         p2 `dependOn` p1
         return p2
     where
-    eval (Just x) = Just <$> liftBuildIOP x
+    eval (Just x) = Just <$> liftBuildIOP (x b)
     eval Nothing  = return Nothing
 
 switchP :: Pulse (Pulse a) -> Build (Pulse a)
