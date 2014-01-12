@@ -10,6 +10,6 @@ before_script:
   - cabal sdist
   - cd ../..
   - tar -xf reactive-banana/reactive-banana/dist/reactive-banana*.tar.gz
-  - cd reactive-banana*
+  - cd reactive-banana-*
 script:
   - cabal configure --enable-tests && cabal build && cabal test
