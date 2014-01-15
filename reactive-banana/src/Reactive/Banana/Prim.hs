@@ -21,7 +21,7 @@ module Reactive.Banana.Prim (
     
     -- * Pulse
     Pulse,
-    neverP, mapP, unsafeMapIOP, filterJustP, unionWithP,
+    neverP, mapP, tagFuture, unsafeMapIOP, filterJustP, unionWithP,
     
     -- * Latch
     Latch,

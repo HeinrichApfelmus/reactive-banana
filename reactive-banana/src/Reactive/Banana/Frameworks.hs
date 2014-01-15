@@ -195,9 +195,11 @@ fromChanges initial changes = stepper initial <$> fromAddHandler changes
 -- > changes (stepper x e) = return (calm e)
 --
 -- WARNING: The values of the event will not become available
--- until event processing is complete. Use them within 'reactimate'.
--- If you try to access them before that, the program
--- will be thrown into an infinite loop.
+-- until event processing is complete.
+-- It is ok to use this as a direct source to 'reactimate',
+-- but most other uses will likely result in a runtime error.
+-- For example, 'filterJust' will throw a runtime error
+-- once applied to the result of 'changes'.
 changes :: Frameworks t => Behavior t a -> Moment t (Event t a)
 changes = return . singletonsE . Prim.changesB . unB
 

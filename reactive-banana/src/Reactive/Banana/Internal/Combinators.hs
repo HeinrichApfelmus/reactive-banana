@@ -129,7 +129,7 @@ accumE x    = liftCached1 $ liftBuild . fmap snd . Prim.accumL x
 mapE f      = liftCached1 $ liftBuild . Prim.mapP f
 applyE      = liftCached2 $ \(lf,_) px -> liftBuild $ Prim.applyP lf px
 
-changesB = error "Reactive.Banana.Internal.Combinators: changesB not implemented."
+changesB    = liftCached1 $ \(lx,px) -> liftBuild $ Prim.tagFuture lx px
 
 -- FIXME: To allow more recursion, create the latch first and
 -- build the pulse later.

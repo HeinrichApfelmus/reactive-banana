@@ -110,7 +110,8 @@ data Output = Output
     , uidO      :: Unique
     }
 
-type EvalP = RWST () (EvalL, [EvalO]) Strict.Vault BuildIO
+type EvalP = RWST Strict.Vault (EvalL, [EvalO]) Strict.Vault BuildIO
+    -- read : future latch values
     -- state: current pulse values
     -- write: (update of latch values, output actions)
 

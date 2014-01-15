@@ -7,8 +7,6 @@ FIXME
 
 * Clean up `AddHandler` code. In particular, remove duplicate export. Move to `Control.AddHandler`?
 
-* Update `threepenny-gui`.
-
 * Registered handlers need to be executed in declaration order, not in evaluation order.
 
 

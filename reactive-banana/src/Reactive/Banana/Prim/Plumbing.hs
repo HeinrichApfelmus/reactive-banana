@@ -121,13 +121,17 @@ liftIOLater x = tell [x]
 {-----------------------------------------------------------------------------
     EvalP - evaluate pulses
 ------------------------------------------------------------------------------}
-runEvalP :: Strict.Vault -> EvalP a -> BuildIO (Strict.Vault, EvalL, EvalO)
-runEvalP pulse m = do
-    (_,s,(wl,wo)) <- runRWST m () pulse
+runEvalP :: Strict.Vault -> Strict.Vault -> EvalP a
+    -> BuildIO (Strict.Vault, EvalL, EvalO)
+runEvalP pulse latch m = do
+    (_,s,(wl,wo)) <- runRWST m latch pulse
     return (s,wl, sequence_ . (sequence wo))
 
 readLatchP :: Latch a -> EvalP a
 readLatchP latch = lift $ getValueL latch . nLatchValues <$> get
+
+readLatchFutureP :: Latch a -> EvalP a
+readLatchFutureP latch = RWST $ \r s -> return (getValueL latch r,s,mempty)
 
 writePulseP :: Strict.Key a -> a -> EvalP ()
 writePulseP key a = modify $ Strict.insert key a

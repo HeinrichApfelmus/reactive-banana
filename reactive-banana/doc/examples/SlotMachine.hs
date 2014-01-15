@@ -151,6 +151,7 @@ setupNetwork (escoin,esplay) = do
             | otherwise                    = Nothing
 
 
+    -- ecredits <- changes bcredits
     reactimate $ putStrLn . showCredit <$> ecredits
     reactimate $ putStrLn . showRoll   <$> eroll
     reactimate $ putStrLn . showWin    <$> ewin
