@@ -47,8 +47,11 @@ main = start $ do
                 moves = foldl1 union $ zipWith (\e s -> move s <$ e) events
                         [(x,y) | y <- [1..3], x <- [1..3]]
             
+                eState :: Event t Game
+                eState = accumE newGame moves
+            
                 state :: Behavior t Game
-                state = accumB newGame moves
+                state = stepper newGame eState
             
                 currentPlayer :: Behavior t String
                 currentPlayer = (show . player) <$> state
@@ -66,7 +69,6 @@ main = start $ do
             sink label [text :== ("Move: " ++) <$> currentPlayer]
             
             -- end game event handler
-            eState <- changes state
             reactimate $ end window <$> filterJust (isGameEnd . board <$> eState)
     
     network <- compile networkDescription    
