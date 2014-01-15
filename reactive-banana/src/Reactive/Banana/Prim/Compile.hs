@@ -4,7 +4,7 @@
 module Reactive.Banana.Prim.Compile where
 
 import           Data.IORef
-import qualified Data.Vault.Strict             as Strict
+import qualified Data.Vault.Lazy               as Lazy
 import           Reactive.Banana.Prim.IO
 import           Reactive.Banana.Prim.Plumbing
 import           Reactive.Banana.Prim.Types
@@ -28,7 +28,7 @@ compile = flip runBuildIO
 -- that the 'sequence' function does not compute its result lazily.
 interpret :: (Pulse a -> BuildIO (Pulse b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
-    key <- Strict.newKey
+    key <- Lazy.newKey
     o   <- newIORef Nothing
     let network = do
             (pin, sin) <- liftBuild $ newInput key
@@ -54,7 +54,7 @@ interpret f xs = do
 -- Mainly useful for testing whether there are space leaks. 
 runSpaceProfile :: (Pulse a -> BuildIO void) -> [a] -> IO ()
 runSpaceProfile f xs = do
-    key <- Strict.newKey
+    key <- Lazy.newKey
     let g = do
         (p1, fire) <- liftBuild $ newInput key
         f p1

@@ -6,7 +6,6 @@ module Reactive.Banana.Prim.Test where
 
 import Control.Applicative
 import Reactive.Banana.Prim
-import Data.Vault.Strict as Strict
 
 main = test_space1
 

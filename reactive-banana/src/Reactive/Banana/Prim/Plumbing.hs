@@ -26,13 +26,13 @@ import           Reactive.Banana.Prim.Types
 -- | Make 'Pulse' from evaluation function
 newPulse :: EvalP (Maybe a) -> Build (Pulse a)
 newPulse eval = unsafePerformIO $ do
-    key <- Strict.newKey
+    key <- Lazy.newKey
     uid <- newUnique
     return $ do
         let write = maybe (return Deps.Done) ((Deps.Children <$) . writePulseP key)
         return $ Pulse
             { evaluateP = {-# SCC evaluateP #-} write =<< eval
-            , getValueP = Strict.lookup key
+            , getValueP = Lazy.lookup key
             , uidP      = uid
             }
 
@@ -121,8 +121,8 @@ liftIOLater x = tell [x]
 {-----------------------------------------------------------------------------
     EvalP - evaluate pulses
 ------------------------------------------------------------------------------}
-runEvalP :: Strict.Vault -> Strict.Vault -> EvalP a
-    -> BuildIO (Strict.Vault, EvalL, EvalO)
+runEvalP :: Lazy.Vault -> Strict.Vault -> EvalP a
+    -> BuildIO (Lazy.Vault, EvalL, EvalO)
 runEvalP pulse latch m = do
     (_,s,(wl,wo)) <- runRWST m latch pulse
     return (s,wl, sequence_ . (sequence wo))
@@ -133,8 +133,8 @@ readLatchP latch = lift $ getValueL latch . nLatchValues <$> get
 readLatchFutureP :: Latch a -> EvalP a
 readLatchFutureP latch = RWST $ \r s -> return (getValueL latch r,s,mempty)
 
-writePulseP :: Strict.Key a -> a -> EvalP ()
-writePulseP key a = modify $ Strict.insert key a
+writePulseP :: Lazy.Key a -> a -> EvalP ()
+writePulseP key a = modify $ Lazy.insert key a
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP pulse = getValueP pulse <$> get

@@ -6,6 +6,7 @@ module Reactive.Banana.Prim.IO where
 import           Data.Functor
 import           Data.Unique.Really
 import qualified Data.Vault.Strict  as Strict
+import qualified Data.Vault.Lazy    as Lazy
 import           System.IO.Unsafe             (unsafePerformIO)
 
 import Reactive.Banana.Prim.Combinators  (mapP)
@@ -23,15 +24,15 @@ debug s = id
 --
 -- Together with 'addHandler', this function can be used to operate with
 -- pulses as with standard callback-based events.
-newInput :: Strict.Key a -> Build (Pulse a, a -> Step)
+newInput :: Lazy.Key a -> Build (Pulse a, a -> Step)
 newInput key = debug "newInput" $ unsafePerformIO $ do
     uid <- newUnique
     let pulse = Pulse
             { evaluateP = maybeContinue <$> readPulseP pulse
-            , getValueP = Strict.lookup key
+            , getValueP = Lazy.lookup key
             , uidP      = uid
             }
-    let inputs a = (Strict.insert key a Strict.empty, [P pulse])
+    let inputs a = (Lazy.insert key a Lazy.empty, [P pulse])
     return $ return (pulse, step . inputs)
 
 -- | Register a handler to be executed whenever a pulse occurs.

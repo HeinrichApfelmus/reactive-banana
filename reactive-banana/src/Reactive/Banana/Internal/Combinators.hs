@@ -13,7 +13,7 @@ import           Control.Monad.Trans.Reader
 import           Data.Functor
 import           Data.Functor.Identity
 import           Data.IORef
-import qualified Data.Vault.Strict                     as Strict
+import qualified Data.Vault.Lazy                       as Lazy
 import           Reactive.Banana.Frameworks.AddHandler
 import qualified Reactive.Banana.Prim                  as Prim
 import qualified Reactive.Banana.Prim.Cached           as Prim
@@ -91,7 +91,7 @@ compile setup = do
 
 fromAddHandler :: AddHandler a -> Moment (Event a)
 fromAddHandler addHandler = do
-    key       <- liftIO $ Strict.newKey
+    key       <- liftIO $ Lazy.newKey
     (p, fire) <- liftBuild $ Prim.newInput key
     network   <- ask
     liftIO $ addHandler $ runStep network . fire

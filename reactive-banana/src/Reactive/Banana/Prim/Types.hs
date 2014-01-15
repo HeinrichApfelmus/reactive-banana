@@ -36,7 +36,7 @@ data Network = Network
     , nLatchValues :: Strict.Vault
     }
 
-type Inputs        = (Strict.Vault, [SomeNode])
+type Inputs        = (Lazy.Vault, [SomeNode])
 type EvalNetwork a = Network -> IO (a, Network)
 type Step          = EvalNetwork (IO ())
 
@@ -92,7 +92,7 @@ MonadFix  instance while the latter can do arbitrary IO.
 
 data Pulse a = Pulse
     { evaluateP :: EvalP Deps.Continue
-    , getValueP :: Strict.Vault -> Maybe a
+    , getValueP :: Lazy.Vault -> Maybe a
     , uidP      :: Unique
     }
 
@@ -110,10 +110,10 @@ data Output = Output
     , uidO      :: Unique
     }
 
-type EvalP = RWST Strict.Vault (EvalL, [EvalO]) Strict.Vault BuildIO
+type EvalP = RWST Strict.Vault (EvalL, [EvalO]) Lazy.Vault BuildIO
     -- read : future latch values
-    -- state: current pulse values
     -- write: (update of latch values, output actions)
+    -- state: current pulse values
 
 type EvalL = Endo Strict.Vault
 type EvalO = Strict.Vault -> IO ()
