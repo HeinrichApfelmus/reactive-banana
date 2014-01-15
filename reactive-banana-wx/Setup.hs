@@ -2,13 +2,25 @@
 -- Modeled after the excellent documentation on 
 -- https://github.com/gimbo/cabal-macosx/tree/master/examples
 
-import Distribution.MacOSX
+import Distribution.MacOSX as Mac
 import Distribution.Simple
+import Distribution.Simple.LocalBuildInfo
 
 main :: IO ()
-main = defaultMainWithHooks $ simpleUserHooks {
-         postBuild = appBundleBuildHook guiApps -- no-op if not MacOS X
-       }
+main = defaultMainWithHooks $ simpleUserHooks
+    { postBuild = myPostBuild -- no-op if not MacOS X
+    }
+
+myPostBuild a b c d = Mac.appBundleBuildHook (filterApps a guiApps) a b c d
+
+filterApps :: [String] -> [MacApp] -> [MacApp]
+filterApps args apps = if null names then apps else names
+    where
+    names = [ app
+        | app@(MacApp name1 _ _ _ _ _) <- apps
+        , name2 <- args
+        , name1 == name2
+        ]
 
 guiApps :: [MacApp]
 guiApps =
