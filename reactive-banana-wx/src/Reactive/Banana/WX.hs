@@ -18,14 +18,13 @@ module Reactive.Banana.WX (
 
     -- * Utilities
     event1ToAddHandler, event0ToEvent1,
-    mapIO, filterAddHandler,
     ) where
 
 import Reactive.Banana
 import Reactive.Banana.Frameworks
 
-import qualified Graphics.UI.WX as WX
-import Graphics.UI.WX  hiding (Event, Attr)
+import qualified Graphics.UI.WX     as WX
+import           Graphics.UI.WX               hiding (Event, Attr)
 import qualified Graphics.UI.WXCore as WXCore
 -- import Graphics.UI.WX (on, Prop(..))
 
@@ -81,7 +80,7 @@ eventText :: Frameworks t =>
 eventText w = do
     addHandler <- liftIO $ event1ToAddHandler w (event0ToEvent1 onText)
     fromAddHandler
-        $ filterAddHandler (const $ WXCore.textCtrlIsModified w)
+        $ filterIO (const $ WXCore.textCtrlIsModified w)
         $ mapIO (const $ get w text) addHandler
 
 onText :: WX.Event (WXCore.Control a) (IO ())

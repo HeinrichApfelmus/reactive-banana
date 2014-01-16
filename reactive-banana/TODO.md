@@ -3,8 +3,6 @@ FIXME
 
 * Latch evaluation needs to be cached. Use timestamps to detect invalid caches.
 
-* Clean up `AddHandler` code. In particular, remove duplicate export. Make it a functor and move it to `Control.AddHandler`?
-
 * Registered handlers need to be executed in declaration order, not in evaluation order.
 
 

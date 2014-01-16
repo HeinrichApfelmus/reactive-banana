@@ -66,11 +66,11 @@ Library
 --      CPP-options:    -DUseExtensions
         
     exposed-modules:
+                        Control.Event.Handler,
                         Reactive.Banana,
                         Reactive.Banana.Combinators,
                         Reactive.Banana.Experimental.Calm,
                         Reactive.Banana.Frameworks,
-                        Reactive.Banana.Frameworks.AddHandler,
                         Reactive.Banana.Model,
                         Reactive.Banana.Prim,
                         Reactive.Banana.Prim.Cached,

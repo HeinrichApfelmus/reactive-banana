@@ -5,19 +5,19 @@
 module Reactive.Banana.Internal.Combinators where
 
 import           Control.Concurrent.MVar
+import           Control.Event.Handler
 import           Control.Monad
 import           Control.Monad.Fix
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Class                       (lift)
+import           Control.Monad.Trans.Class           (lift)
 import           Control.Monad.Trans.Reader
 import           Data.Functor
 import           Data.Functor.Identity
 import           Data.IORef
-import qualified Data.Vault.Lazy                       as Lazy
-import           Reactive.Banana.Frameworks.AddHandler
-import qualified Reactive.Banana.Prim                  as Prim
-import qualified Reactive.Banana.Prim.Cached           as Prim
-import           Reactive.Banana.Prim.Cached           hiding (runCached)
+import qualified Data.Vault.Lazy             as Lazy
+import qualified Reactive.Banana.Prim        as Prim
+import qualified Reactive.Banana.Prim.Cached as Prim
+import           Reactive.Banana.Prim.Cached         hiding (runCached)
 
 type Build   = Prim.Build
 type Latch   = Prim.Latch
@@ -94,7 +94,7 @@ fromAddHandler addHandler = do
     key       <- liftIO $ Lazy.newKey
     (p, fire) <- liftBuild $ Prim.newInput key
     network   <- ask
-    liftIO $ addHandler $ runStep network . fire
+    liftIO $ register addHandler $ runStep network . fire
     return $ Prim.fromPure p
 
 addReactimate :: Event (IO ()) -> Moment ()

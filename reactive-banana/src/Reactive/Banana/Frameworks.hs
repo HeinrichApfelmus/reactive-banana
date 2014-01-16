@@ -14,7 +14,8 @@ module Reactive.Banana.Frameworks (
     -- * Building event networks with input/output
     -- $build
     compile, Frameworks,
-    AddHandler, fromAddHandler, fromChanges, fromPoll,
+    module Control.Event.Handler,
+    fromAddHandler, fromChanges, fromPoll,
     reactimate, initial, changes, imposeChanges,
     FrameworksMoment(..), execute, liftIOLater,
     -- $liftIO
@@ -25,20 +26,18 @@ module Reactive.Banana.Frameworks (
     
     -- * Utilities
     -- $utilities
-    newAddHandler, newEvent,
-    module Reactive.Banana.Frameworks.AddHandler,
+    newEvent,
     
     -- * Internal
     interpretFrameworks,
     ) where
 
-import Control.Monad
-import Control.Monad.IO.Class
-import Data.IORef
-
+import           Control.Event.Handler
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Data.IORef
 import           Reactive.Banana.Combinators
-import           Reactive.Banana.Frameworks.AddHandler
-import qualified Reactive.Banana.Internal.Combinators  as Prim
+import qualified Reactive.Banana.Internal.Combinators as Prim
 import           Reactive.Banana.Internal.Phantom
 import           Reactive.Banana.Types
 
@@ -314,7 +313,7 @@ interpretFrameworks f xs = do
 interpretAsHandler
     :: (forall t. Event t a -> Event t b)
     -> AddHandler a -> AddHandler b
-interpretAsHandler f addHandlerA = \handlerB -> do
+interpretAsHandler f addHandlerA = AddHandler $ \handlerB -> do
     network <- compile $ do
         e <- fromAddHandler addHandlerA
         reactimate $ handlerB <$> f e
@@ -341,7 +340,7 @@ interpretAsHandler f addHandlerA = \handlerB -> do
 -- 
 -- This function is mainly useful for passing callback functions
 -- inside a 'reactimate'.
-newEvent :: Frameworks t => Moment t (Event t a, a -> IO ())
+newEvent :: Frameworks t => Moment t (Event t a, Handler a)
 newEvent = do
     (addHandler, fire) <- liftIO $ newAddHandler
     e <- fromAddHandler addHandler

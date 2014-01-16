@@ -7,6 +7,7 @@ Changelog
 * A new module `Reactive.Banana.Prim` exports primitive combinators that can be used to implement your own, custom FRP library.
 * The `accumE` and `accumB` combinators evaluate their state to WHNF to avoid a space leak. (Fixes issue #52).
 * Remove the deprecated `liftIONow` function.
+* The module `Control.Event.Handler` now exports the `AddHandler` type, which is now a `newtype`. The module `Reactive.Banana.Frameworks.AddHandler` has been removed.
 
 **version 0.7.1.0**
 
