@@ -142,10 +142,10 @@ reactiveTextEntry w btext = do
     eUser <- eventText w        -- user changes
 
     -- filter text setting that are simultaneous with user events
-    itext <- initial btext
     etext <- changes btext
-    let etext2 = fst $ split $ unionWith (curry snd) (Left <$> etext) (Right <$> eUser)
-        btext2 = stepper itext etext2
+    let
+        etext2 = fst $ split $ unionWith (curry snd) (Left () <$ etext) (Right () <$ eUser)
+        btext2 = imposeChanges btext etext2
 
     sink w [ text :== btext2 ]  -- display value
     return $ tidings btext eUser

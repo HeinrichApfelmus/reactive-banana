@@ -116,6 +116,9 @@ liftIONow = liftIO
 liftIOLater :: IO () -> Moment ()
 liftIOLater = lift . Prim.liftBuild . Prim.liftIOLater
 
+imposeChanges :: Behavior a -> Event () -> Behavior a
+imposeChanges = liftCached2 $ \(l1,_) p2 -> return (l1,p2)
+
 {-----------------------------------------------------------------------------
     Combinators - basic
 ------------------------------------------------------------------------------}

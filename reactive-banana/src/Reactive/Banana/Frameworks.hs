@@ -15,7 +15,7 @@ module Reactive.Banana.Frameworks (
     -- $build
     compile, Frameworks,
     AddHandler, fromAddHandler, fromChanges, fromPoll,
-    reactimate, initial, changes,
+    reactimate, initial, changes, imposeChanges,
     FrameworksMoment(..), execute, liftIOLater,
     -- $liftIO
     module Control.Monad.IO.Class,
@@ -181,6 +181,11 @@ fromChanges :: Frameworks t => a -> AddHandler a -> Moment t (Behavior t a)
 fromChanges initial changes = stepper initial <$> fromAddHandler changes
 
 -- | Output,
+-- observe the initial value contained in a 'Behavior'.
+initial :: Behavior t a -> Moment t a
+initial = M . Prim.initialB . unB
+
+-- | Output,
 -- observe when a 'Behavior' changes.
 -- 
 -- Strictly speaking, a 'Behavior' denotes a value that
@@ -203,11 +208,15 @@ fromChanges initial changes = stepper initial <$> fromAddHandler changes
 changes :: Frameworks t => Behavior t a -> Moment t (Event t a)
 changes = return . singletonsE . Prim.changesB . unB
 
--- | Output,
--- observe the initial value contained in a 'Behavior'.
-initial :: Behavior t a -> Moment t a
-initial = M . Prim.initialB . unB
-
+-- | Impose a different sampling event on a 'Behavior'.
+--
+-- The 'Behavior' will vary continuously as before, but the event returned
+-- by the 'changes' function will now happen simultaneously with the
+-- imposed event.
+--
+-- Note: This function is useful only in very specific circumstances.
+imposeChanges :: Frameworks t => Behavior t a -> Event t () -> Behavior t a
+imposeChanges b e = B $ Prim.imposeChanges (unB b) (Prim.mapE (const ()) (unE e))
 
 -- | Dummy type needed to simulate impredicative polymorphism.
 newtype FrameworksMoment a
