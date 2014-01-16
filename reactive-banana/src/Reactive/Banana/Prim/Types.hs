@@ -4,15 +4,15 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module Reactive.Banana.Prim.Types where
 
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.RWS.Lazy
-import Data.Functor.Identity
-import Data.Monoid
-
+import           Control.Monad.Trans.Class
+import           Control.Monad.Trans.RWS.Lazy
+import           Data.Functor.Identity
 import           Data.Hashable
+import           Data.Monoid
 import           Data.Unique.Really
-import qualified Data.Vault.Strict  as Strict
-import qualified Data.Vault.Lazy    as Lazy
+import qualified Data.Vault.Lazy              as Lazy
+import qualified Data.Vault.Strict            as Strict
+import           System.IO.Unsafe                       (unsafePerformIO)
 
 import           Reactive.Banana.Prim.Cached
 import qualified Reactive.Banana.Prim.Dependencies as Deps
@@ -26,6 +26,7 @@ type Deps = Deps.Deps
 data Graph = Graph
     { grDeps    :: Deps SomeNode   -- dependency information
     , grCache   :: Lazy.Vault      -- cache for the monad
+    , grAlwaysP :: Pulse ()        -- special pulse that always fires
     }
 
 -- | A 'Network' represents the state of a pulse/latch network,
@@ -47,10 +48,17 @@ updateDeps        f = \s -> s { grDeps       = f (grDeps s) }
 updateCache       f = \s -> s { grCache      = f (grCache s) }
 
 emptyGraph :: Graph
-emptyGraph = Graph
-    { grDeps    = Deps.empty
-    , grCache   = Lazy.empty
-    }
+emptyGraph = unsafePerformIO $ do
+    uid <- newUnique
+    return $ Graph
+        { grDeps    = Deps.empty
+        , grCache   = Lazy.empty
+        , grAlwaysP = Pulse
+            { evaluateP = return Deps.Children
+            , getValueP = const $ Just ()
+            , uidP      = uid
+            }
+        }
 
 -- | The 'Network' that contains no pulses or latches.
 emptyNetwork :: Network

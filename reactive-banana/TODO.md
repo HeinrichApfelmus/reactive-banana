@@ -3,8 +3,6 @@ FIXME
 
 * Latch evaluation needs to be cached. Use timestamps to detect invalid caches.
 
-* Implement 'fromPoll'.
-
 * Fix <<loop>> in the 'CRUD' example.
 
 * Clean up `AddHandler` code. In particular, remove duplicate export. Make it a functor and move it to `Control.AddHandler`?

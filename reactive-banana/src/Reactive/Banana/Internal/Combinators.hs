@@ -103,15 +103,12 @@ addReactimate e = do
     liftBuild $ Prim.addHandler p id
 
 fromPoll :: IO a -> Moment (Behavior a)
-fromPoll poll = undefined
-{- do
+fromPoll poll = do
     a <- liftIO poll
-    e <- Prim.liftBuild $ do
-        pm <- Prim.mapP (const $ liftIO poll) Prim.alwaysP
-        p  <- Prim.executeP pm
-        return $ fromPure p
+    e <- liftBuild $ do
+        p <- Prim.unsafeMapIOP (const poll) =<< Prim.alwaysP
+        return $ Prim.fromPure p
     return $ stepperB a e
--}
 
 liftIONow :: IO a -> Moment a
 liftIONow = liftIO

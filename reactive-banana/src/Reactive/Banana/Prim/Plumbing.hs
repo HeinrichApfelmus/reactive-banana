@@ -81,7 +81,6 @@ addOutput p = unsafePerformIO $ do
             , uidO      = uid
             }
     return (P p `addChild` O o)
-    
 
 {-----------------------------------------------------------------------------
     Build monad - add and delete nodes from the graph
@@ -99,6 +98,9 @@ liftBuild m = RWST $ \r s -> return . runIdentity $ runRWST m r s
 
 readLatchB :: Latch a -> Build a
 readLatchB latch = getValueL latch . nLatchValues <$> get
+
+alwaysP :: Build (Pulse ())
+alwaysP = grAlwaysP . nGraph <$> get
 
 instance (MonadFix m, Functor m) => HasCache (BuildT m) where
     retrieve key = Lazy.lookup key . grCache . nGraph <$> get

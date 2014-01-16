@@ -26,8 +26,8 @@ mapP f p1 = debug "mapP" $ do
     p2 `dependOn` p1
     return p2
 
--- Tag a pulse with future values of a latch.
--- Caveat emptor. These values are not defined until after the  EvalL  phase.
+-- | Tag a pulse with future values of a latch.
+-- Caveat emptor. These values are not defined until after the 'EvalL' phase.
 tagFuture :: Latch a -> Pulse b -> Build (Pulse a)
 tagFuture x p1 = debug "tagFuture" $ do
     p2 <- newPulse $ fmap . const <$> readLatchFutureP x <*> readPulseP p1

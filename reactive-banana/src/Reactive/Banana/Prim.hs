@@ -21,7 +21,7 @@ module Reactive.Banana.Prim (
     
     -- * Pulse
     Pulse,
-    neverP, mapP, tagFuture, unsafeMapIOP, filterJustP, unionWithP,
+    neverP, alwaysP, mapP, tagFuture, unsafeMapIOP, filterJustP, unionWithP,
     
     -- * Latch
     Latch,
@@ -36,5 +36,5 @@ import Control.Monad.IO.Class
 import Reactive.Banana.Prim.Combinators
 import Reactive.Banana.Prim.Compile
 import Reactive.Banana.Prim.IO
-import Reactive.Banana.Prim.Plumbing (neverP, liftBuild, liftIOLater)
+import Reactive.Banana.Prim.Plumbing (neverP, alwaysP, liftBuild, liftIOLater)
 import Reactive.Banana.Prim.Types

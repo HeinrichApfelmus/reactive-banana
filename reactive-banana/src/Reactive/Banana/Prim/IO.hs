@@ -32,8 +32,10 @@ newInput key = debug "newInput" $ unsafePerformIO $ do
             , getValueP = Lazy.lookup key
             , uidP      = uid
             }
-    let inputs a = (Lazy.insert key a Lazy.empty, [P pulse])
-    return $ return (pulse, step . inputs)
+    return $ do
+        always <- alwaysP
+        let inputs a = (Lazy.insert key a Lazy.empty, [P pulse, P always])
+        return (pulse, step . inputs)
 
 -- | Register a handler to be executed whenever a pulse occurs.
 addHandler :: Pulse a -> (a -> IO ()) -> Build ()
