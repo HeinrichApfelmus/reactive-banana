@@ -7,14 +7,14 @@ Description:
     FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. It promises to avoid the spaghetti code that is all too common in traditional approaches to GUI programming.
     .
     See the project homepage <http://haskell.org/haskellwiki/Reactive-banana>
-    for a more detailed introduction and features.
+    for more detailed documentation and examples.
     .
     Stability forecast:
     No semantic bugs expected.
     Significant API changes are likely in future versions,
     though the main interface is beginning to stabilize.
-    The @Reactive.Banana.Switch@ module is quite experimental.
-    There is currently /no/ garbage collection for dynamically created events.
+    There is currently /no/ garbage collection for events that are
+    created dynamically with @Reactive.Banana.Switch@.
 
 Homepage:            http://haskell.org/haskellwiki/Reactive-banana
 License:             BSD3

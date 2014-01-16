@@ -1,10 +1,10 @@
-[![Build Status](https://travis-ci.org/HeinrichApfelmus/reactive-banana.png)](https://travis-ci.org/HeinrichApfelmus/reactive-banana)
+[![Build Status](https://travis-ci.org/HeinrichApfelmus/reactive-banana.png)](https://travis-ci.org/HeinrichApfelmus/reactive-banana) 
 
 ## What is reactive-banana?
 
 <div style="float:left;"><img src="https://github.com/HeinrichApfelmus/reactive-banana/raw/develop/banana.png" /></div>
 
-Reactive-banana is a practical library for [Functional Reactive Programming (FRP)][frp], written in Haskell.
+Reactive-banana is a library for [Functional Reactive Programming (FRP)][frp], written in Haskell.
 
 Support the project with a small donation: [![Flattr this](http://api.flattr.com/button/flattr-badge-large.png)](http://flattr.com/thing/384682/reactive-banana)
 
@@ -13,11 +13,9 @@ See the **[project homepage][homepage]** for **documentation**, **examples** and
   [homepage]: http://haskell.org/haskellwiki/Reactive-banana
   [frp]: http://haskell.org/haskellwiki/Functional_Reactive_Programming
 
-I'm writing documentation on a call-by-need basis. So, feel free to write me an email if you want something explained that you don't understand, and I'll explain it to you!
+## Compilation from the repository
 
-## Compilation
-
-To build and install the core library, simply type
+To build and install the core library from the source repository, simply type
 
     cd reactive-banana && cabal install && cd ..
 

@@ -22,8 +22,28 @@ Observation:  switchL and latch evaluation
     evaluation (the results are cached).
     There are no dependencies between latches that are updated by pulses.    
 
-Present
--------
+Optimisation Possibilities
+--------------------------
+
+* Don't push events when the pipeline further down cannot observe them
+
+    I.e. when they are not connected to an output,
+    a switch or a latch. However, this is probably tricky to detect.
+
+* Remove events that are children of `neverP`.
+
+    Note that `switchP` can change the child-parent relationship,
+    so this optimization is only safe when the `neverP` will
+    never be replaced by a different parent.
+
+* Garbage collect events that are no longer alive
+
+    Note that we might still be able to switch in events,
+    so this really has to be integrated with host language garbage collection.
+
+
+Design Questions
+----------------
 
 ## Incremental computation
 
@@ -33,11 +53,6 @@ Consider overloading the `accumB` function to different types.
 This goes hand-in-hand with thoughts about incremental computations.
 
 Investigate whether there is a general framework behind discrete values, i.e. where the events are efficient diffs.
-
-## Dynamic Event Switching
-http://apfelmus.nfshost.com/blog/2011/05/15-frp-dynamic-event-switching.html
-
-Found a way to keep the previous interface constant.
 
 ## Timing and timers
 
@@ -56,28 +71,19 @@ Found a way to keep the previous interface constant.
 Special support for time because
 
 * Making sure that scheduling gives *logical* times when observed with  time  that are consistent with real-time.
-** Use concurrency -> seems necessary
-** Make sure that external events don't happen before scheduled events,
-    that would be an observable inconsistency.
-    Solution:
-        - Execute any scheduled events whenever the  time  behavior is frozen.
-        - External events never happen simultaneously with anything else
-        - Freeze the  time  behavior to its logical value whenever a scheduled
-          event happens.
+
+    * Use concurrency -> seems necessary
+    * Make sure that external events don't happen before scheduled events,
+        that would be an observable inconsistency.
+        Solution:
+    
+        * Execute any scheduled events whenever the  time  behavior is frozen.
+        * External events never happen simultaneously with anything else
+        * Freeze the  time  behavior to its logical value whenever a scheduled
+      event happens.
+
 * Debugging/Testing without having to wait the actual times.
 
+## Pure implementation
 
-## Efficiency
-* Optimize pure behaviors?
-
-    (pure f <$>)   -> fmap f
-    apply (pure f) -> fmap f
-
-* Make sure space behavior is like demand-driven implementation (for better or worse).
-Actually, we need to speficy the model more carefully. The operations that shuffle events around are strict while the events themselves are lazy.
-
-Future
-------
-Pure implementation
-===================
 The push-driven implementation can be made pure by putting the `Vault` data type into the `ST` monad instead of the `IO` monad. This might be useful for MIDI, i.e. using one and the same code for both real-time MIDI generation and writing it to files.
