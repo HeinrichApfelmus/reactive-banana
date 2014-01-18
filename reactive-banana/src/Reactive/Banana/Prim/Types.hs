@@ -109,7 +109,7 @@ data Pulse a = Pulse
     }
 
 data Latch a = Latch
-    { getValueL :: Future a
+    { getValueL :: Future (Dated.Box a)
     }
 
 data LatchWrite = LatchWrite

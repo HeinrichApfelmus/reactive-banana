@@ -53,7 +53,7 @@ newLatch a = unsafePerformIO $ do
     uid <- newUnique
     return $ do
         let
-            write time   = maybe mempty (Endo . Dated.update key time)
+            write time   = maybe mempty (Endo . Dated.update' key time)
             latchWrite p = LatchWrite
                 { evaluateL = {-# SCC evaluateL #-} do
                     time <- lift $ nTime <$> get
@@ -62,10 +62,10 @@ newLatch a = unsafePerformIO $ do
                 }
             updateOn p   = P p `addChild` L (latchWrite p)
         return
-            (updateOn, Latch { getValueL = maybe a id <$> Dated.lookup key })
+            (updateOn, Latch { getValueL = Dated.findWithDefault a key })
 
 -- | Make a new 'Latch' that caches a previous computation
-cachedLatch :: Dated.Dated a -> Latch a
+cachedLatch :: Dated.Dated (Dated.Box a) -> Latch a
 cachedLatch eval = unsafePerformIO $ do
     key <- Dated.newKey
     return $ Latch { getValueL = Dated.cache key eval }
@@ -101,7 +101,7 @@ liftBuild m = RWST $ \r s -> return . runIdentity $ runRWST m r s
 readLatchB :: Latch a -> Build a
 readLatchB latch = state $ \network ->
     let (a,v) = Dated.runDated (getValueL latch) (nLatchValues network)
-    in  (a, network { nLatchValues = v } )
+    in  (Dated.unBox a, network { nLatchValues = v } )
 
 alwaysP :: Build (Pulse ())
 alwaysP = grAlwaysP . nGraph <$> get
@@ -136,7 +136,8 @@ readLatchP :: Latch a -> EvalP a
 readLatchP = lift . liftBuild . readLatchB
 
 readLatchFutureP :: Latch a -> EvalP (Future a)
-readLatchFutureP latch = RWST $ \_ s -> return (getValueL latch,s,mempty)
+readLatchFutureP latch = RWST $ \_ s ->
+    return (Dated.unBox <$> getValueL latch,s,mempty)
 
 writePulseP :: Lazy.Key a -> a -> EvalP ()
 writePulseP key a = modify $ Lazy.insert key a
