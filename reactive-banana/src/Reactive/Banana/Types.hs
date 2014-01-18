@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Types (
     -- | Primitive types.
-    Event (..), Behavior (..), Moment (..)
+    Event (..), Behavior (..), Moment (..), Future(..)
     ) where
 
 import Control.Applicative
@@ -28,6 +28,23 @@ newtype Event t a = E { unE :: Prim.Event [a] }
 -}
 newtype Behavior t a = B { unB :: Prim.Behavior a }
 
+-- | The 'Future' monad is just a helper type for the 'changes' function.
+-- 
+-- A value of type @Future a@ is only available in the context
+-- of a 'reactimate' but not during event processing.
+newtype Future a = F { unF :: Prim.Future a }
+
+-- boilerplate class instances
+instance Functor Future where fmap f = F . fmap f . unF
+
+instance Monad Future where
+    return  = F . return
+    m >>= g = F $ unF m >>= unF . g
+
+instance Applicative Future where
+    pure    = F . pure
+    f <*> a = F $ unF f <*> unF a
+
 {-| The 'Moment' monad denotes a value at a particular /moment in time/.
 
 This monad is not very interesting, it is mainly used for book-keeping.
@@ -46,8 +63,9 @@ which is indicated by the type parameter @t@.
 -}
 newtype Moment t a = M { unM :: Prim.Moment a }
 
-
 -- boilerplate class instances
+instance Functor (Moment t) where fmap f = M . fmap f . unM
+
 instance Monad (Moment t) where
     return  = M . return
     m >>= g = M $ unM m >>= unM . g
@@ -56,8 +74,7 @@ instance Applicative (Moment t) where
     pure    = M . pure
     f <*> a = M $ unM f <*> unM a
 
-instance MonadFix (Moment t) where   mfix f  = M $ mfix (unM . f)
-instance Functor  (Moment t) where   fmap f  = M . fmap f . unM
+instance MonadFix (Moment t) where mfix f = M $ mfix (unM . f)
 
 instance Frameworks t => MonadIO (Moment t) where
     liftIO = M . Prim.liftIONow

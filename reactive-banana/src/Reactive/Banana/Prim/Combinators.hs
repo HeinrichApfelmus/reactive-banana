@@ -13,7 +13,7 @@ import Reactive.Banana.Prim.Plumbing
     , dependOn, changeParent
     , readPulseP, readLatchP, readLatchFutureP, liftBuildP, liftBuildIOP
     )
-import Reactive.Banana.Prim.Types (Latch(..), Pulse, Build, BuildIO)
+import Reactive.Banana.Prim.Types (Latch(..), Future, Pulse, Build, BuildIO)
 
 debug s = id
 
@@ -26,9 +26,11 @@ mapP f p1 = debug "mapP" $ do
     p2 `dependOn` p1
     return p2
 
--- | Tag a pulse with future values of a latch.
--- Caveat emptor. These values are not defined until after the 'EvalL' phase.
-tagFuture :: Latch a -> Pulse b -> Build (Pulse a)
+-- | Tag a 'Pulse' with future values of a 'Latch'.
+--
+-- This is in contrast to 'applyP' which applies the current value
+-- of a 'Latch' to a pulse.
+tagFuture :: Latch a -> Pulse b -> Build (Pulse (Future a))
 tagFuture x p1 = debug "tagFuture" $ do
     p2 <- newPulse $ fmap . const <$> readLatchFutureP x <*> readPulseP p1
     p2 `dependOn` p1

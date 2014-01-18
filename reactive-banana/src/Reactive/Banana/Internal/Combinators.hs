@@ -22,6 +22,7 @@ import           Reactive.Banana.Prim.Cached         hiding (runCached)
 type Build   = Prim.Build
 type Latch   = Prim.Latch
 type Pulse   = Prim.Pulse
+type Future  = Prim.Future
 
 {-----------------------------------------------------------------------------
     Types
@@ -97,7 +98,7 @@ fromAddHandler addHandler = do
     liftIO $ register addHandler $ runStep network . fire
     return $ Prim.fromPure p
 
-addReactimate :: Event (IO ()) -> Moment ()
+addReactimate :: Event (Future (IO ())) -> Moment ()
 addReactimate e = do
     p <- runCached e
     liftBuild $ Prim.addHandler p id

@@ -3,8 +3,10 @@
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Prim.Compile where
 
+import           Data.Functor
 import           Data.IORef
-import qualified Data.Vault.Lazy               as Lazy
+import qualified Data.Vault.Lazy                  as Lazy
+import           Reactive.Banana.Prim.Combinators
 import           Reactive.Banana.Prim.IO
 import           Reactive.Banana.Prim.Plumbing
 import           Reactive.Banana.Prim.Types
@@ -32,7 +34,8 @@ interpret f xs = do
     o   <- newIORef Nothing
     let network = do
             (pin, sin) <- liftBuild $ newInput key
-            pout       <- f pin
+            pmid       <- f pin
+            pout       <- liftBuild $ mapP return pmid
             liftBuild $ addHandler pout (writeIORef o . Just)
             return sin
     

@@ -68,7 +68,7 @@ sink widget props = mapM_ sink1 props
         x <- initial b
         liftIOLater $ set widget [attr := x]
         e <- changes b
-        reactimate $ (\x -> set widget [attr := x]) <$> e
+        reactimate' $ (fmap $ \x -> set widget [attr := x]) <$> e
 
 {-----------------------------------------------------------------------------
     Specific widgets

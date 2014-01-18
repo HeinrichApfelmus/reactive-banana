@@ -23,7 +23,7 @@ step (pulse1, roots) state1 = {-# SCC step #-} mdo
 
     ((_, latchUpdates, output), state2)
             <- runBuildIO state1
-            $  runEvalP pulse1 latch2
+            $  runEvalP pulse1
             $  evaluatePulses graph1 roots
     
     let graph2 = nGraph state2

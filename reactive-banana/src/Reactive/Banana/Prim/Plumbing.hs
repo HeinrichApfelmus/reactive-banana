@@ -123,17 +123,16 @@ liftIOLater x = tell [x]
 {-----------------------------------------------------------------------------
     EvalP - evaluate pulses
 ------------------------------------------------------------------------------}
-runEvalP :: Lazy.Vault -> Strict.Vault -> EvalP a
-    -> BuildIO (Lazy.Vault, EvalL, EvalO)
-runEvalP pulse latch m = do
-    (_,s,(wl,wo)) <- runRWST m latch pulse
+runEvalP :: Lazy.Vault -> EvalP a -> BuildIO (Lazy.Vault, EvalL, EvalO)
+runEvalP pulse m = do
+    (_,s,(wl,wo)) <- runRWST m () pulse
     return (s,wl, sequence_ . (sequence wo))
 
 readLatchP :: Latch a -> EvalP a
 readLatchP latch = lift $ getValueL latch . nLatchValues <$> get
 
-readLatchFutureP :: Latch a -> EvalP a
-readLatchFutureP latch = RWST $ \r s -> return (getValueL latch r,s,mempty)
+readLatchFutureP :: Latch a -> EvalP (Future a)
+readLatchFutureP latch = RWST $ \_ s -> return (getValueL latch,s,mempty)
 
 writePulseP :: Lazy.Key a -> a -> EvalP ()
 writePulseP key a = modify $ Lazy.insert key a

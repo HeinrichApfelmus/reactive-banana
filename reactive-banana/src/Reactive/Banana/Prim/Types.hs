@@ -105,7 +105,7 @@ data Pulse a = Pulse
     }
 
 data Latch a = Latch
-    { getValueL   :: Strict.Vault -> a
+    { getValueL :: GetL a
     }
 
 data LatchWrite = LatchWrite
@@ -118,13 +118,15 @@ data Output = Output
     , uidO      :: Unique
     }
 
-type EvalP = RWST Strict.Vault (EvalL, [EvalO]) Lazy.Vault BuildIO
-    -- read : future latch values
+type EvalP = RWST () (EvalL, [EvalO]) Lazy.Vault BuildIO
+    -- read : -
     -- write: (update of latch values, output actions)
     -- state: current pulse values
 
-type EvalL = Endo Strict.Vault
-type EvalO = Strict.Vault -> IO ()
+type GetL   = (->) Strict.Vault
+type Future = GetL
+type EvalL  = Endo Strict.Vault
+type EvalO  = Future (IO ())
 
 -- | Existential quantification for dependency tracking
 data SomeNode

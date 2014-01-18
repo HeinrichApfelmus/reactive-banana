@@ -16,7 +16,7 @@ module Reactive.Banana.Frameworks (
     compile, Frameworks,
     module Control.Event.Handler,
     fromAddHandler, fromChanges, fromPoll,
-    reactimate, initial, changes, imposeChanges,
+    reactimate, reactimate', initial, changes, imposeChanges,
     FrameworksMoment(..), execute, liftIOLater,
     -- $liftIO
     module Control.Monad.IO.Class,
@@ -146,7 +146,16 @@ Your event-based framework will have to handle this situation.
 
 -}
 reactimate :: Frameworks t => Event t (IO ()) -> Moment t ()
-reactimate = M . Prim.addReactimate . Prim.mapE sequence_ . unE
+reactimate = M . Prim.addReactimate . Prim.mapE (return . sequence_) . unE
+
+-- | Output.
+-- Execute the 'IO' action whenever the event occurs.
+--
+-- This version of 'reactimate' can deal with values obtained
+-- from the 'changes' function.
+reactimate' :: Frameworks t => Event t (Future (IO ())) -> Moment t ()
+reactimate' = M . Prim.addReactimate . Prim.mapE (unF . fmap sequence_ . sequence) . unE
+
 
 -- | Input,
 -- obtain an 'Event' from an 'AddHandler'.
@@ -198,14 +207,11 @@ initial = M . Prim.initialB . unB
 --
 -- > changes (stepper x e) = return (calm e)
 --
--- WARNING: The values of the event will not become available
+-- Note: The values of the event will not become available
 -- until event processing is complete.
--- It is ok to use this as a direct source to 'reactimate',
--- but most other uses will likely result in a runtime error.
--- For example, 'filterJust' will throw a runtime error
--- once applied to the result of 'changes'.
-changes :: Frameworks t => Behavior t a -> Moment t (Event t a)
-changes = return . singletonsE . Prim.changesB . unB
+-- It can be used only in the context of 'reactimate''.
+changes :: Frameworks t => Behavior t a -> Moment t (Event t (Future a))
+changes = return . fmap F . singletonsE . Prim.changesB . unB
 
 -- | Impose a different sampling event on a 'Behavior'.
 --

@@ -17,11 +17,11 @@ module Reactive.Banana.Prim (
     interpret, mapAccumM, mapAccumM_, runSpaceProfile,
     
     -- * IO
-    newInput, addHandler, addHandlerLatch, readLatch,
+    newInput, addHandler, readLatch,
     
     -- * Pulse
     Pulse,
-    neverP, alwaysP, mapP, tagFuture, unsafeMapIOP, filterJustP, unionWithP,
+    neverP, alwaysP, mapP, Future, tagFuture, unsafeMapIOP, filterJustP, unionWithP,
     
     -- * Latch
     Latch,
