@@ -12,11 +12,11 @@ import           Data.Functor
 import           Data.Functor.Identity
 import           Data.Monoid
 import           Data.Unique.Really
-import qualified Data.Vault.Strict       as Strict
 import qualified Data.Vault.Lazy         as Lazy
 import           System.IO.Unsafe                  (unsafePerformIO)
 
 import           Reactive.Banana.Prim.Cached                (HasCache(..))
+import qualified Reactive.Banana.Prim.Dated        as Dated
 import qualified Reactive.Banana.Prim.Dependencies as Deps
 import           Reactive.Banana.Prim.Types
 
@@ -49,24 +49,26 @@ neverP = unsafePerformIO $ do
 -- | Make new 'Latch' that can be updated.
 newLatch :: a -> Build (Pulse a -> Build (), Latch a)
 newLatch a = unsafePerformIO $ do
-    key <- Strict.newKey
+    key <- Dated.newKey
     uid <- newUnique
     return $ do
         let
-            write        = maybe mempty (Endo . Strict.insert key)
+            write time   = maybe mempty (Endo . Dated.update key time)
             latchWrite p = LatchWrite
-                { evaluateL = {-# SCC evaluateL #-} write <$> readPulseP p
+                { evaluateL = {-# SCC evaluateL #-} do
+                    time <- lift $ nTime <$> get
+                    write (Dated.next time) <$> readPulseP p
                 , uidL      = uid
                 }
             updateOn p   = P p `addChild` L (latchWrite p)
         return
-            (updateOn, Latch { getValueL = maybe a id . Strict.lookup key })
+            (updateOn, Latch { getValueL = maybe a id <$> Dated.lookup key })
 
 -- | Make a new 'Latch' that caches a previous computation
-cachedLatch :: (Strict.Vault -> a) -> Latch a
-cachedLatch eval = Latch
-    { getValueL = eval  -- FIXME: Actually cache the computation!
-    }
+cachedLatch :: Dated.Dated a -> Latch a
+cachedLatch eval = unsafePerformIO $ do
+    key <- Dated.newKey
+    return $ Latch { getValueL = Dated.cache key eval }
 
 -- | Add a new output that depends on a 'Pulse'.
 --
@@ -75,7 +77,7 @@ addOutput :: Pulse EvalO -> Build ()
 addOutput p = unsafePerformIO $ do
     uid <- newUnique
     let
-        read = maybe (const $ return ()) id
+        read = maybe nop id
         o = Output
             { evaluateO = read <$> readPulseP p
             , uidO      = uid
@@ -97,7 +99,9 @@ liftBuild :: Monad m => Build a -> BuildT m a
 liftBuild m = RWST $ \r s -> return . runIdentity $ runRWST m r s
 
 readLatchB :: Latch a -> Build a
-readLatchB latch = getValueL latch . nLatchValues <$> get
+readLatchB latch = state $ \network ->
+    let (a,v) = Dated.runDated (getValueL latch) (nLatchValues network)
+    in  (a, network { nLatchValues = v } )
 
 alwaysP :: Build (Pulse ())
 alwaysP = grAlwaysP . nGraph <$> get
@@ -126,10 +130,10 @@ liftIOLater x = tell [x]
 runEvalP :: Lazy.Vault -> EvalP a -> BuildIO (Lazy.Vault, EvalL, EvalO)
 runEvalP pulse m = do
     (_,s,(wl,wo)) <- runRWST m () pulse
-    return (s,wl, sequence_ . (sequence wo))
+    return (s,wl, sequence_ <$> sequence wo)
 
 readLatchP :: Latch a -> EvalP a
-readLatchP latch = lift $ getValueL latch . nLatchValues <$> get
+readLatchP = lift . liftBuild . readLatchB
 
 readLatchFutureP :: Latch a -> EvalP (Future a)
 readLatchFutureP latch = RWST $ \_ s -> return (getValueL latch,s,mempty)

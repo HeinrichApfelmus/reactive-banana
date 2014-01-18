@@ -11,10 +11,10 @@ import           Data.Hashable
 import           Data.Monoid
 import           Data.Unique.Really
 import qualified Data.Vault.Lazy              as Lazy
-import qualified Data.Vault.Strict            as Strict
 import           System.IO.Unsafe                       (unsafePerformIO)
 
 import           Reactive.Banana.Prim.Cached
+import qualified Reactive.Banana.Prim.Dated        as Dated
 import qualified Reactive.Banana.Prim.Dependencies as Deps
 
 type Deps = Deps.Deps
@@ -34,7 +34,8 @@ data Graph = Graph
 -- in the network.
 data Network = Network
     { nGraph       :: Graph
-    , nLatchValues :: Strict.Vault
+    , nLatchValues :: Dated.Vault
+    , nTime        :: Dated.Time
     }
 
 type Inputs        = (Lazy.Vault, [SomeNode])
@@ -62,8 +63,11 @@ emptyGraph = unsafePerformIO $ do
 
 -- | The 'Network' that contains no pulses or latches.
 emptyNetwork :: Network
-emptyNetwork = Network emptyGraph Strict.empty
-
+emptyNetwork = Network
+    { nGraph       = emptyGraph
+    , nLatchValues = Dated.empty
+    , nTime        = Dated.beginning
+    }
 
 -- The 'Build' monad is used to change the graph, for example to
 -- * add nodes
@@ -105,7 +109,7 @@ data Pulse a = Pulse
     }
 
 data Latch a = Latch
-    { getValueL :: GetL a
+    { getValueL :: Future a
     }
 
 data LatchWrite = LatchWrite
@@ -123,10 +127,12 @@ type EvalP = RWST () (EvalL, [EvalO]) Lazy.Vault BuildIO
     -- write: (update of latch values, output actions)
     -- state: current pulse values
 
-type GetL   = (->) Strict.Vault
-type Future = GetL
-type EvalL  = Endo Strict.Vault
+type Future = Dated.Dated
+type EvalL  = Endo Dated.Vault
 type EvalO  = Future (IO ())
+
+nop :: EvalO
+nop = return $ return ()
 
 -- | Existential quantification for dependency tracking
 data SomeNode
