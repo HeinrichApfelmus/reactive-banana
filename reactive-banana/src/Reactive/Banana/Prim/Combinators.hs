@@ -16,6 +16,8 @@ import Reactive.Banana.Prim.Plumbing
     )
 import Reactive.Banana.Prim.Types (Latch(..), Future, Pulse, Build, BuildIO)
 
+import Debug.Trace
+-- debug s = trace s
 debug s = id
 
 {-----------------------------------------------------------------------------

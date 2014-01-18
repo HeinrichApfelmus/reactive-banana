@@ -128,9 +128,9 @@ unionWith f = liftCached2 $ (liftBuild .) . Prim.unionWithP f
 filterJust  = liftCached1 $ liftBuild . Prim.filterJustP
 accumE x    = liftCached1 $ liftBuild . fmap snd . Prim.accumL x
 mapE f      = liftCached1 $ liftBuild . Prim.mapP f
-applyE      = liftCached2 $ \(lf,_) px -> liftBuild $ Prim.applyP lf px
+applyE      = liftCached2 $ \(~(lf,_)) px -> liftBuild $ Prim.applyP lf px
 
-changesB    = liftCached1 $ \(lx,px) -> liftBuild $ Prim.tagFuture lx px
+changesB    = liftCached1 $ \(~(lx,px)) -> liftBuild $ Prim.tagFuture lx px
 
 -- FIXME: To allow more recursion, create the latch first and
 -- build the pulse later.
@@ -143,7 +143,7 @@ stepperB a  = \c1 -> cache $ do
         return (l,p2)
 
 pureB a = stepperB a never
-applyB  = liftCached2 $ \(l1,p1) (l2,p2) -> liftBuild $ do
+applyB  = liftCached2 $ \(~(l1,p1)) (~(l2,p2)) -> liftBuild $ do
     p3 <- Prim.unionWithP const p1 p2
     let l3 = Prim.applyL l1 l2
     return (l3,p3)

@@ -5,6 +5,7 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types, NoMonomorphismRestriction, RecursiveDo #-}
 
+import Control.Arrow
 import Control.Monad (when, join)
 
 import Test.Framework (defaultMain, testGroup, Test)
@@ -29,13 +30,15 @@ main = defaultMain
         , testModelMatch "accumE1" accumE1
         ]
     , testGroup "Complex"
-        [ testModelMatch "counter"    counter
-        , testModelMatch "double"     double
-        , testModelMatch "sharing"    sharing
-        , testModelMatch "recursive1" recursive1
-        , testModelMatch "recursive2" recursive2
-        , testModelMatch "recursive3" recursive3
-        , testModelMatch "accumBvsE"  accumBvsE
+        [ testModelMatch "counter"     counter
+        , testModelMatch "double"      double
+        , testModelMatch "sharing"     sharing
+        , testModelMatch "recursive1"  recursive1
+        , testModelMatch "recursive2"  recursive2
+        , testModelMatch "recursive3"  recursive3
+        , testModelMatch "recursive4a" recursive4a
+        , testModelMatch "recursive4b" recursive4b
+        , testModelMatch "accumBvsE"   accumBvsE
         ]
     , testGroup "Dynamic Event Switching"
         [ testModelMatch  "observeE_id"         observeE_id
@@ -115,12 +118,6 @@ recursive2 e1 = e2
     e2 = applyE b e1
     b  = (+) <$> stepperB 0 e3
     e3 = applyE (id <$> b) e1   -- actually equal to e2
--- Why the test fails:
--- The current value of  stepperB 0  is available when  e3  is built,
--- but the current value of  b  is not available until both arguments of <$>
--- have been built! This bites us when building  id <$> b .
--- Still, the value of  b  should not be required while building  e3 ,
--- as the latter one is an *event*.
 
 type Dummy = Int
 
@@ -130,6 +127,35 @@ recursive3 edec = applyE (const <$> bcounter) ecandecrease
     where
     bcounter     = accumB 4 $ (subtract 1) <$ ecandecrease
     ecandecrease = whenE ((>0) <$> bcounter) edec
+
+-- Recursive 4 is an example reported by Merijn Verstraaten
+--   https://github.com/HeinrichApfelmus/reactive-banana/issues/56
+-- Minimization:
+recursive4a :: Event Int -> Event (Bool, Int)
+recursive4a eInput = resultB <@ eInput
+    where
+    resultE     = resultB <@ eInput
+    resultB     = (,) <$> focus <*> pureB 0
+    focus       = stepperB False $ fst <$> resultE
+-- Full example:
+recursive4b :: Event Int -> Event (Bool, Int)
+recursive4b eInput = result <@ eInput
+    where
+    focus     = stepperB False $ fst <$> result <@ eInput
+    interface = (,) <$> focus <*> cntrVal
+    (cntrVal, focusChange) = counter eInput focus
+    result    = stepperB id ((***id) <$> focusChange) <*> interface
+    
+    filterApply :: Behavior (a -> Bool) -> Event a -> Event a
+    filterApply b e = filterJust $ sat <$> b <@> e
+        where sat p x = if p x then Just x else Nothing
+    
+    counter :: Event Int -> Behavior Bool -> (Behavior Int, Event (Bool -> Bool))
+    counter input active = (result, not <$ eq)
+        where
+        result = accumB 0 $ (+) <$> neq
+        eq     = filterApply ((==) <$> result) input
+        neq    = filterApply ((/=) <$> result) input
 
 -- test accumE vs accumB
 accumBvsE :: Event Dummy -> Event [Int]

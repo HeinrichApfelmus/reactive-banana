@@ -98,4 +98,7 @@ switchB (B x y) (E xe ye) = B
 ------------------------------------------------------------------------------}
 accumB acc = stepperB acc . accumE acc
 whenE b = filterJust . applyE ((\b e -> if b then Just e else Nothing) <$> b)
-b <@ e = applyE (const <$> b) e
+
+infixl 4 <@>, <@
+b <@ e  = applyE (const <$> b) e
+b <@> e = applyE b e
