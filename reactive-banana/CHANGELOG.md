@@ -5,8 +5,9 @@ Changelog
 
 * The push-driven implementation now has the performance characteristics of an actual push-driven implementation.
 * A new module `Reactive.Banana.Prim` exports primitive combinators that can be used to implement your own, custom FRP library.
-* The `accumE` and `accumB` combinators evaluate their state to WHNF to avoid a space leak. (Fixes issue #52).
-* Remove the deprecated `liftIONow` function.
+* The `accumE` and `accumB` combinators evaluate their state to WHNF to avoid a space leak. (Fixes issue #52). On the other hand, `Behavior` values are evaluated on demanded, i.e. only when required by the apply combinator `<@>` or similar.
+* The deprecated `liftIONow` function has been removed.
+* The type of the `changes` function now indicates that the new Behavior value is only available in the context of `reactimate`. A variant `reactimate'` makes this explicit.
 * The module `Control.Event.Handler` now exports the `AddHandler` type, which is now a `newtype`. The module `Reactive.Banana.Frameworks.AddHandler` has been removed.
 
 **version 0.7.1.0**
