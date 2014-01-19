@@ -24,10 +24,12 @@ type Deps = Deps.Deps
 ------------------------------------------------------------------------------}
 -- | A 'Graph' represents the connections between pulses and events.
 data Graph = Graph
-    { grDeps    :: Deps SomeNode   -- dependency information
-    , grCache   :: Lazy.Vault      -- cache for the monad
-    , grAlwaysP :: Pulse ()        -- special pulse that always fires
+    { grDeps        :: Deps SomeNode   -- dependency information
+    , grCache       :: Lazy.Vault      -- cache for the monad
+    , grAlwaysP     :: Pulse ()        -- special pulse that always fires
+    , grOutputCount :: !Position       -- ensure declaration order
     }
+type Position = Integer
 
 -- | A 'Network' represents the state of a pulse/latch network,
 -- which consists of a 'Graph' and the values of all accumulated latches
@@ -47,18 +49,20 @@ updateGraph       f = \s -> s { nGraph       = f (nGraph s) }
 updateLatchValues f = \s -> s { nLatchValues = f (nLatchValues s) }
 updateDeps        f = \s -> s { grDeps       = f (grDeps s) }
 updateCache       f = \s -> s { grCache      = f (grCache s) }
+updateOutputCount f = \s -> s { grOutputCount = f (grOutputCount s) }
 
 emptyGraph :: Graph
 emptyGraph = unsafePerformIO $ do
     uid <- newUnique
     return $ Graph
-        { grDeps    = Deps.empty
-        , grCache   = Lazy.empty
-        , grAlwaysP = Pulse
+        { grDeps        = Deps.empty
+        , grCache       = Lazy.empty
+        , grAlwaysP     = Pulse
             { evaluateP = return Deps.Children
             , getValueP = const $ Just ()
             , uidP      = uid
             }
+        , grOutputCount = 0
         }
 
 -- | The 'Network' that contains no pulses or latches.
@@ -120,9 +124,10 @@ data LatchWrite = LatchWrite
 data Output = Output
     { evaluateO :: EvalP EvalO
     , uidO      :: Unique
+    , positionO :: Position
     }
 
-type EvalP = RWST () (EvalL, [EvalO]) Lazy.Vault BuildIO
+type EvalP = RWST () (EvalL, [(Position, EvalO)]) Lazy.Vault BuildIO
     -- read : -
     -- write: (update of latch values, output actions)
     -- state: current pulse values

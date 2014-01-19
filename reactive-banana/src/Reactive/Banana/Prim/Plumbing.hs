@@ -8,11 +8,13 @@ import           Control.Monad
 import           Control.Monad.Fix
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.RWS
+import           Data.Function
 import           Data.Functor
 import           Data.Functor.Identity
+import           Data.List
 import           Data.Monoid
 import           Data.Unique.Really
-import qualified Data.Vault.Lazy         as Lazy
+import qualified Data.Vault.Lazy           as Lazy
 import           System.IO.Unsafe                  (unsafePerformIO)
 
 import           Reactive.Banana.Prim.Cached                (HasCache(..))
@@ -76,13 +78,15 @@ cachedLatch eval = unsafePerformIO $ do
 addOutput :: Pulse EvalO -> Build ()
 addOutput p = unsafePerformIO $ do
     uid <- newUnique
-    let
-        read = maybe nop id
-        o = Output
-            { evaluateO = read <$> readPulseP p
-            , uidO      = uid
-            }
-    return (P p `addChild` O o)
+    return $ do
+        pos <- grOutputCount . nGraph <$> get
+        let o = Output
+                { evaluateO = maybe nop id <$> readPulseP p
+                , uidO      = uid
+                , positionO = pos
+                }
+        modify $ updateGraph $ updateOutputCount $ (+1)
+        P p `addChild` O o
 
 {-----------------------------------------------------------------------------
     Build monad - add and delete nodes from the graph
@@ -129,8 +133,10 @@ liftIOLater x = tell [x]
 ------------------------------------------------------------------------------}
 runEvalP :: Lazy.Vault -> EvalP a -> BuildIO (Lazy.Vault, EvalL, EvalO)
 runEvalP pulse m = do
-    (_,s,(wl,wo)) <- runRWST m () pulse
-    return (s,wl, sequence_ <$> sequence wo)
+        (_,s,(wl,wo)) <- runRWST m () pulse
+        return (s,wl, sequence_ <$> sequence (sortOutputs wo))
+    where
+    sortOutputs = map snd . sortBy (compare `on` fst)
 
 readLatchP :: Latch a -> EvalP a
 readLatchP = lift . liftBuild . readLatchB
@@ -148,8 +154,8 @@ readPulseP pulse = getValueP pulse <$> get
 rememberLatchUpdate :: EvalL -> EvalP ()
 rememberLatchUpdate x = tell (x,mempty)
 
-rememberOutput :: EvalO -> EvalP ()
-rememberOutput x = tell (mempty,[x])
+rememberOutput :: Position -> EvalO -> EvalP ()
+rememberOutput a b = tell (mempty,[(a,b)])
 
 liftBuildIOP :: BuildIO a -> EvalP a
 liftBuildIOP = lift

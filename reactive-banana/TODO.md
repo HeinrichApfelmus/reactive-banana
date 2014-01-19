@@ -1,8 +1,7 @@
 FIXME
 -----
 
-* Registered handlers need to be executed in declaration order, not in evaluation order.
-
+No items that need immediate fixing right now.
 
 Implementation Notes
 --------------------

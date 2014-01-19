@@ -28,7 +28,7 @@ step (pulse1, roots) state1 = {-# SCC step #-} mdo
             <- runBuildIO state1
             $  runEvalP pulse1
             $  evaluatePulses graph1 roots
-        
+    
     let
         -- updated graph dependencies
         graph2 = nGraph state2
@@ -50,8 +50,10 @@ evaluatePulses :: Graph -> [SomeNode] -> EvalP ()
 evaluatePulses graph = Deps.traverseDependencies evaluatePulse (grDeps graph)
     where
     evaluatePulse (P p) = evaluateP p
-    evaluatePulse (L l) = evaluateL l >>= rememberLatchUpdate >> return Deps.Done
-    evaluatePulse (O o) = evaluateO o >>= rememberOutput      >> return Deps.Done
+    evaluatePulse (L l) =
+        evaluateL l >>= rememberLatchUpdate >> return Deps.Done
+    evaluatePulse (O o) =
+        evaluateO o >>= rememberOutput (positionO o) >> return Deps.Done
 
 -- TODO: Optimize output query.
 -- Instead of polling each output whether it has fired,
