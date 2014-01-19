@@ -4,9 +4,7 @@
     Example: Currency Converter
 ------------------------------------------------------------------------------}
 {-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
-{-# LANGUAGE RecursiveDo #-}
 
-import Data.Bits
 import Data.Maybe
 import Text.Printf
 
@@ -17,6 +15,7 @@ import Reactive.Banana.WX
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
+main :: IO ()
 main = start $ do
     -- FIXME: Why does tab traversal not work?
     f        <- frame   [ text := "Currency Converter", tabTraversal := True ]

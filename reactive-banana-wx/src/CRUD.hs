@@ -13,13 +13,9 @@
 import Prelude hiding (lookup)
 import Data.List (isPrefixOf)
 import Data.Maybe
-import Data.Monoid
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 
-import qualified Graphics.UI.WX as WX
 import Graphics.UI.WX hiding (Event)
-import qualified Graphics.UI.WXCore as WXCore
 import Reactive.Banana
 import Reactive.Banana.WX
 
@@ -28,6 +24,7 @@ import Tidings
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
+main :: IO ()
 main = start $ do
     -- GUI layout
     f           <- frame    [ text := "CRUD Example (Simple)" ]
@@ -104,7 +101,7 @@ main = start $ do
             -- automatically enable / disable editing
             let
                 bDisplayItem :: Behavior t Bool
-                bDisplayItem = maybe False (const True) <$> bSelection
+                bDisplayItem = isJust <$> bSelection
             
             sink deleteBtn [ enabled :== bDisplayItem ]
             sink firstname [ enabled :== bDisplayItem ]
@@ -119,18 +116,30 @@ main = start $ do
 type DatabaseKey = Int
 data Database a  = Database { nextKey :: !Int, db :: Map.Map DatabaseKey a }
 
+emptydb :: Database a
 emptydb = Database 0 Map.empty
+
+keys :: Database a -> [DatabaseKey]
 keys    = Map.keys . db
 
+create :: a -> Database a -> Database a
 create x     (Database newkey db) = Database (newkey+1) $ Map.insert newkey x db
+
+update :: DatabaseKey -> a -> Database a -> Database a
 update key x (Database newkey db) = Database newkey     $ Map.insert key    x db
+
+delete :: DatabaseKey -> Database a -> Database a
 delete key   (Database newkey db) = Database newkey     $ Map.delete key db
+
+lookup :: DatabaseKey -> Database a -> Maybe a
 lookup key   (Database _      db) = Map.lookup key db
 
 {-----------------------------------------------------------------------------
     Data items that are stored in the data base
 ------------------------------------------------------------------------------}
 type DataItem = (String, String)
+
+showDataItem :: ([Char], [Char]) -> [Char]
 showDataItem (firstname, lastname) = lastname ++ ", " ++ firstname
 
 -- single text entry
@@ -156,8 +165,8 @@ reactiveDataItem :: Frameworks t
     -> Behavior t (Maybe DataItem)
     -> Moment t (Tidings t DataItem)
 reactiveDataItem (firstname,lastname) binput = do
-    t1 <- reactiveTextEntry firstname (fst . maybe ("","") id <$> binput)
-    t2 <- reactiveTextEntry lastname  (snd . maybe ("","") id <$> binput)
+    t1 <- reactiveTextEntry firstname (fst . fromMaybe ("","") <$> binput)
+    t2 <- reactiveTextEntry lastname  (snd . fromMaybe ("","") <$> binput)
     return $ (,) <$> t1 <*> t2
 
 
@@ -178,13 +187,12 @@ reactiveListDisplay :: forall t a b. (Ord a, Frameworks t)
         (Tidings t (Maybe a))   -- current selection as item (possibly empty)
 reactiveListDisplay w bitems bsel bdisplay = do
     -- animate output items
-    liftIO $ putStrLn "test"
     sink w [ items :== map <$> bdisplay <*> bitems ]
    
     -- animate output selection
     let bindices :: Behavior t (Map.Map a Int)
         bindices = (Map.fromList . flip zip [0..]) <$> bitems
-        bindex   = (\m a -> maybe (-1) id $ flip Map.lookup m =<< a) <$>
+        bindex   = (\m a -> fromMaybe (-1) $ flip Map.lookup m =<< a) <$>
                     bindices <*> bsel
     sink w [ selection :== bindex ]
 

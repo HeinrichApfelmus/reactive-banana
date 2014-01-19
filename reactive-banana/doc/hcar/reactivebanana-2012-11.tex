@@ -1,0 +1,48 @@
+% reactivebanana-Hr.tex
+\begin{hcarentry}[updated]{reactive-banana}
+\report{Heinrich Apfelmus}%11/12
+\status{active development}
+\makeheader
+
+%**<img width=200 src="./banana.jpg">
+%*ignore
+\begin{center}
+\includegraphics[width=0.2\textwidth]{html/banana.jpg}
+\end{center}
+%*endignore
+
+Reactive-banana is a practical library for functional reactive programming (FRP).
+
+FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. It promises to avoid the spaghetti code that is all too common in traditional approaches to GUI programming.
+
+The goal of the library is to provide a solid foundation.
+\begin{itemize}
+\item Writing \emph{graphical user interfaces} with FRP is made easy. The library can be hooked into any existing event-based framework like wxHaskell or Gtk2Hs. A plethora of example code helps with getting started. You can mix FRP and imperative style. If you don't know how to express functionality in terms of FRP, just temporarily switch back to the imperative style.
+\item Programmers interested in implementing FRP will have a \emph{reference} for a \emph{simple semantics} with a working implementation. The library stays close to the semantics pioneered by Conal Elliott.
+\item It features an \emph{efficient implementation}. No more spooky time leaks, predicting space \& time usage should be straightforward.
+\end{itemize}
+
+\emph{Status.} Version 0.7.0.0 of the reactive-banana library has been released on hackage.
+
+Compared to the previous report, the library now features efficient \emph{dynamic event switching}, also known as \emph{first class events}. This means that events and behaviors can now be created on the fly, they no longer have to be specified fully at compilation time. For instance, it is now possible to implement a GUI where text entry widgets can be added and removed on user command. The source code example \verb!BarTab.hs! demonstrates this.
+
+This is a significant milestone because in very early approaches to FRP, dynamic event switching has been the cause of major inefficiencies, namely the so-called time leaks. By using the type system, reactive-banana can rule out these gross inefficiencies.
+
+The API for dynamic event switching explores a different part of the design space than other packages for FRP, in particular the \verb!sodium! library. There is a trade-off: reactive-banana is simpler when you don't use dynamic event switching, sodium is simpler for heavy uses of dynamic event switching. Hopefully, time will tell which approach provides the more pleasant overall FRP experience.
+
+\emph{Current development.}
+Programming GUIs for the world wide web has become very important in recent years. Fortunately, efforts to compile Haskell to JavaScript are reaching the point of becoming usable now, and I intend to make FRP with reactive-banana available for the web as soon as possible, for instance by reducing dependencies on GHC extensions and libraries.
+
+Reactive-banana's implementation of dynamic event switching addresses the grossest of inefficiencies, but some more benign efficiency problems still remain, in particular concerning garbage collection of dynamic events. They will be addressed in a future version.
+
+\emph{Notable use cases.} In his reactive-balsa library, Henning Thielemann uses reactive-banana to control digital musical instruments with MIDI in real-time.
+
+\FurtherReading
+\begin{compactitem}
+\item Project homepage: \url{http://haskell.org/haskellwiki/Reactive-banana}
+\item Example code: \url{http://haskell.org/haskellwiki/Reactive-banana/Examples}
+\item BarTab example: \url{http://haskell.org/haskellwiki/Reactive-banana/Examples#bartab}
+\item reactive-balsa: \url{http://www.haskell.org/haskellwiki/Reactive-balsa}
+\item sodium: \url{http://hackage.haskell.org/package/sodium}
+\end{compactitem}
+\end{hcarentry}

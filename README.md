@@ -60,6 +60,7 @@ Send me your examples, bindings, problems, suggestions, etc!
 With contributions from
 
 * Abu Alam
+* Alexander Berntsen
 * Kevin Cantu
 * Gregory Crosswhite
 * Elliott Hird

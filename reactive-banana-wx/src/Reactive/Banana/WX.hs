@@ -62,7 +62,7 @@ infixr 0 :==
 -- | "Animate" a property with a behavior
 sink :: Frameworks t =>
     w -> [Prop' t w] -> Moment t ()
-sink widget props = mapM_ sink1 props
+sink widget = mapM_ sink1
     where
     sink1 (attr :== b) = do
         x <- initial b
@@ -106,13 +106,14 @@ eventSelection w = do
     fromAddHandler $ mapIO (const $ get w selection) addHandler
 
 -- Fix @select@ event not being fired when items are *un*selected.
+fixSelectionEvent :: (Selecting w, Reactive w, Selection w) => w -> IO ()
 fixSelectionEvent listbox =
     set listbox [ on unclick := handler ]
     where
     handler _ = do
         propagateEvent
         s <- get listbox selection
-        when (s == -1) $ (get listbox (on select)) >>= id
+        when (s == -1) $ get listbox (on select) >>= id
 
 
 {-----------------------------------------------------------------------------

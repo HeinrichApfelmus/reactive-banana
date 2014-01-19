@@ -2,5 +2,6 @@
 /Experiments/
 /haddocks.html
 dist/
+*.cabal-sandbox
 *.DS_Store
 *.tmproj

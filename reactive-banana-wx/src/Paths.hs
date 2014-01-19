@@ -23,4 +23,5 @@ getDataDir = return "../data/"
 
 #endif
 
+getDataFile :: FilePath -> FilePath
 getDataFile x = unsafePerformIO $ fmap (</> x) getDataDir

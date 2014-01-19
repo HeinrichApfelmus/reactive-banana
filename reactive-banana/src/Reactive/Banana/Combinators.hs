@@ -139,7 +139,10 @@ collect e = E $ Prim.mapE singleton (unE e)
 --
 -- > spill . collect = id
 spill :: Event t [a] -> Event t a
-spill e = E $ Prim.mapE concat (unE e)
+spill e = E $ Prim.filterJust $ Prim.mapE (nonempty . concat) (unE e)
+    where
+    nonempty [] = Nothing
+    nonempty xs = Just xs
 
 -- | Construct a time-varying function from an initial value and 
 -- a stream of new values. Think of it as
@@ -190,14 +193,6 @@ apply bf ex = E $ Prim.applyE (Prim.mapB map $ unB bf) (unE ex)
 {-$classes
 
 /Further combinators that Haddock can't document properly./
-
-> instance Monoid (Event t (a -> a))
-
-This monoid instance is /not/ the straightforward instance
-that you would obtain from 'never' and 'union'.
-Instead of just merging event streams, we use 'unionWith' to compose
-the functions. This is very useful in the context of 'accumE' and 'accumB'
-where simultaneous event occurrences are best avoided.
 
 > instance Applicative (Behavior t)
 

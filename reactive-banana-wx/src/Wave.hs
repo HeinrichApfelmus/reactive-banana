@@ -9,7 +9,6 @@
 
 import Control.Monad
 import qualified Data.List as List
-import Data.Maybe
 import Data.Ord
 
 import Graphics.UI.WX hiding (Event)
@@ -19,16 +18,22 @@ import Reactive.Banana.WX
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
+lightCount :: Int
 lightCount = 15  -- number of lights that comprise the wave
+
+waveLength :: Int
 waveLength = 4   -- number of lights that are lit at once
+
+dt :: Int
 dt         = 70  -- half the cycle duration
 
+main :: IO ()
 main = start $ do
     -- create window and widgets
     f        <- frame    [text := "Waves of Light"]
     left     <- button f [text := "Left"]
     right    <- button f [text := "Right"]
-    lights   <- sequence $ replicate lightCount $ staticText f [text := "•"]
+    lights   <- replicateM lightCount $ staticText f [text := "•"]
     
     set f [layout := margin 10 $
             column 10 [row 5 [widget left, widget right],
@@ -77,7 +82,10 @@ wave f = deltas $ merge ons offs
     ons  = [(k*2*dt, (f k, True)) | k <- [1..lightCount]]
     offs = [(dt+(waveLength+k)*2*dt, (f k, False)) | k <- [1..lightCount]]
 
+waveLeft :: [(Duration, Action)]
 waveLeft  = wave id
+
+waveRight :: [(Duration, Action)]
 waveRight = wave (\k -> lightCount - k + 1)
 
 
@@ -115,7 +123,7 @@ scheduleQueue t e = do
         -- The queue is never empty when the alarm rings.
         eout = fmap (snd . head) $ bQueue <@ eAlarm
     
-    reactimate $ eSetNewAlarmDuration
+    reactimate eSetNewAlarmDuration
     return eout
 
     

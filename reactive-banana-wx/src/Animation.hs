@@ -8,7 +8,6 @@
 import Graphics.UI.WX hiding (Event, Vector)
 import Reactive.Banana
 import Reactive.Banana.WX
-import System.Random
 
 import Paths (getDataFile)
 

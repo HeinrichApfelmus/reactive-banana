@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
 {-# LANGUAGE RecursiveDo #-}
 
--- import Control.Monad
+import Control.Monad (join)
 import qualified Data.List
 import Data.Maybe
 import qualified Data.Map as Map
@@ -69,11 +69,11 @@ main = start $ do
                 outDataItem = stepperD ("","") $
                     lookup <$> valueDB database <@> changes dSelectedItem
                     where
-                    lookup database m = maybe ("","") id $
+                    lookup database m = fromMaybe ("","") $
                         readDatabase database =<< m
 
             -- automatically enable / disable editing
-            let dDisplayItem = maybe False (const True) <$> dSelectedItem
+            let dDisplayItem = isJust <$> dSelectedItem
             sink delete  [ enabled :== dDisplayItem ]
             sink name    [ enabled :== dDisplayItem ]
             sink surname [ enabled :== dDisplayItem ]
@@ -119,7 +119,7 @@ accumDatabase e = DatabaseTime valueDB initialDB changesDB
     initialDB = emptyDatabase
     
     valid (Create Nothing _) = True
-    valid cud = maybe False (const True) $ getKey cud
+    valid cud = isJust $ getKey cud
     
     -- accumulation function
     acc (Create Nothing x)    (Database newkey db)  
@@ -190,7 +190,7 @@ reactimateListBox listBox database filter = do
               `union` (filterUpdate <$> valueDB database <@> changes filter)
     
     -- "animate" changes to the list box
-    reactimate $ eListBoxUpdates
+    reactimate eListBoxUpdates
     -- debug: reactimate $ fmap print $ bDisplayMap <@ eListBoxUpdates
         
     -- event: item selection, maps to database key
@@ -257,7 +257,7 @@ fixSelectionEvent listbox =
     handler _ = do
         propagateEvent
         s <- get listbox selection
-        when (s == -1) $ (get listbox (on select)) >>= id
+        when (s == -1) $ join $ get listbox (on select)
         
 
 

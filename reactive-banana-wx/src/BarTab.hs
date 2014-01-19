@@ -17,6 +17,7 @@ import Data.Traversable (sequenceA)
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
+main :: IO ()
 main = start $ do
     f      <- frame [text := "Bar Tab"]
     msg    <- staticText f [ text := "Sum:" ]
@@ -37,7 +38,7 @@ main = start $ do
                     bentry <- trimB =<< behaviorText wentry ""
                     return (wentry, bentry)
             
-            eNewEntry <- execute $ (FrameworksMoment newEntry <$ eAdd)
+            eNewEntry <- execute $ FrameworksMoment newEntry <$ eAdd
             
             let
                 eDoRemove = whenE (not . null <$> bEntries) eRemove
@@ -60,7 +61,7 @@ main = start $ do
                 
                 mkLayout entries = margin 10 $ column 10 $
                     [row 10 [widget add, widget remove]] ++ map widget entries
-                    ++ [row 10 $ [widget msg, minsize (sz 40 20) $ widget total]]
+                    ++ [row 10 [widget msg, minsize (sz 40 20) $ widget total]]
         
                 bTotal :: Behavior t Number
                 bTotal = switchB (pure Nothing) $
@@ -85,5 +86,8 @@ instance Num Number where
     signum = fmap signum
     fromInteger = pure . fromInteger
 
+readNumber :: Read a => String -> Maybe a
 readNumber s = listToMaybe [x | (x,"") <- reads s]    
+
+showNumber :: Maybe Double -> String
 showNumber   = maybe "--" show
