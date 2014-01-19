@@ -1,8 +1,6 @@
 FIXME
 -----
 
-* Latch evaluation needs to be cached. Use timestamps to detect invalid caches.
-
 * Registered handlers need to be executed in declaration order, not in evaluation order.
 
 
@@ -22,7 +20,7 @@ Observation:  switchL and latch evaluation
     evaluation (the results are cached).
     There are no dependencies between latches that are updated by pulses.    
 
-Optimisation Possibilities
+Optimization Possibilities
 --------------------------
 
 * Don't push events when the pipeline further down cannot observe them

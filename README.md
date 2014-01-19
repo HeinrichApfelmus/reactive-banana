@@ -41,7 +41,6 @@ The project contains several directories:
 
 * `reactive-banana` — the core library
 * `reactive-banana-wx` — bindings to the [wxHaskell][] GUI library, includes many examples
-* `reactive-banana-threepenny` — Deprecated bindings to the [threepenny-gui][] GUI library. Threepenny uses its own flavor of FRP, but shares some implementation details.
 
   [wxhaskell]: http://haskell.org/haskellwiki/WxHaskell
   [threepenny-gui]: http://www.haskell.org/haskellwiki/Threepenny-gui
