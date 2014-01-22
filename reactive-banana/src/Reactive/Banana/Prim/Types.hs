@@ -31,6 +31,8 @@ data Graph = Graph
     }
 type Position = Integer
 
+instance Show Graph where show = showDeps . grDeps
+
 -- | A 'Network' represents the state of a pulse/latch network,
 -- which consists of a 'Graph' and the values of all accumulated latches
 -- in the network.
@@ -39,6 +41,8 @@ data Network = Network
     , nLatchValues :: Dated.Vault
     , nTime        :: Dated.Time
     }
+
+instance Show Network where show = show . nGraph
 
 type Inputs        = (Lazy.Vault, [SomeNode])
 type EvalNetwork a = Network -> IO (a, Network)
@@ -61,6 +65,7 @@ emptyGraph = unsafePerformIO $ do
             { evaluateP = return Deps.Children
             , getValueP = const $ Just ()
             , uidP      = uid
+            , nameP     = "alwaysP"
             }
         , grOutputCount = 0
         }
@@ -104,12 +109,15 @@ MonadFix  instance while the latter can do arbitrary IO.
         retrieves the current value
     uidL/P
         used for dependency tracking and evaluation order
+    nameP
+        used for debugging
 -}
 
 data Pulse a = Pulse
     { evaluateP :: EvalP Deps.Continue
     , getValueP :: Lazy.Vault -> Maybe a
     , uidP      :: Unique
+    , nameP     :: String
     }
 
 data Latch a = Latch
@@ -145,14 +153,34 @@ data SomeNode
     | L LatchWrite
     | O Output
 
+instance Show SomeNode where show = show . hash
+
 instance Eq SomeNode where
     (P x) == (P y)  =  uidP x == uidP y
     (L x) == (L y)  =  uidL x == uidL y
     (O x) == (O y)  =  uidO x == uidO y
     _     == _      =  False
 
+uid :: SomeNode -> Unique
+uid (P x) = uidP x
+uid (L x) = uidL x
+uid (O x) = uidO x
+
 instance Hashable SomeNode where
-    hashWithSalt s (P p) = hashWithSalt s $ uidP p
-    hashWithSalt s (L p) = hashWithSalt s $ uidL p
-    hashWithSalt s (O p) = hashWithSalt s $ uidO p
+    hashWithSalt s = hashWithSalt s . uid
+
+{-----------------------------------------------------------------------------
+    Show functions for debugging
+------------------------------------------------------------------------------}
+showDeps :: Deps SomeNode -> String
+showDeps deps = unlines $
+        [ detail node ++ " -> " ++ unwords (map short children)
+        | (node,children) <- Deps.allChildren deps
+        ]
+    where
+    short = show . hash . uid
+    
+    detail (P x) = "P " ++ nameP x ++ " " ++ short (P x)
+    detail (L x) = "L " ++ short (L x)
+    detail (O x) = "O " ++ short (O x)
 

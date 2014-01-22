@@ -26,8 +26,8 @@ import           Reactive.Banana.Prim.Types
     Build primitive pulses and latches
 ------------------------------------------------------------------------------}
 -- | Make 'Pulse' from evaluation function
-newPulse :: EvalP (Maybe a) -> Build (Pulse a)
-newPulse eval = unsafePerformIO $ do
+newPulse :: String -> EvalP (Maybe a) -> Build (Pulse a)
+newPulse name eval = unsafePerformIO $ do
     key <- Lazy.newKey
     uid <- newUnique
     return $ do
@@ -36,6 +36,7 @@ newPulse eval = unsafePerformIO $ do
             { evaluateP = {-# SCC evaluateP #-} write =<< eval
             , getValueP = Lazy.lookup key
             , uidP      = uid
+            , nameP     = name
             }
 
 -- | 'Pulse' that never fires.
@@ -46,6 +47,7 @@ neverP = unsafePerformIO $ do
         { evaluateP = return Deps.Done
         , getValueP = const Nothing
         , uidP      = uid
+        , nameP     = "neverP"
         }
 
 -- | Make new 'Latch' that can be updated.

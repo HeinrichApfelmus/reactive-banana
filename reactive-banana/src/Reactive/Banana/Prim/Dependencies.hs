@@ -5,7 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Prim.Dependencies (
     -- | Utilities for operating with dependency graphs.
-    Deps, empty, children, parents,
+    Deps, empty, allChildren, children, parents,
     addChild, changeParent,
     
     Continue(..), maybeContinue, traverseDependencies,
@@ -31,6 +31,11 @@ data Deps a = Deps
     , dParents  :: Map a [a]
     , dOrder    :: Order a
     } deriving (Show)
+
+-- | Representation of the depencencies as an association list of nodes
+-- to children.
+allChildren :: Deps a -> [(a, [a])]
+allChildren = Map.toList . dChildren
 
 -- | Children of a node.
 children deps x = maybe [] id . Map.lookup x $ dChildren deps

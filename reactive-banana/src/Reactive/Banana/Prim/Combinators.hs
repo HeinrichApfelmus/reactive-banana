@@ -24,8 +24,8 @@ debug s = id
     Combinators - basic
 ------------------------------------------------------------------------------}
 mapP :: (a -> b) -> Pulse a -> Build (Pulse b)
-mapP f p1 = debug "mapP" $ do
-    p2 <- newPulse $ {-# SCC mapP #-} fmap f <$> readPulseP p1
+mapP f p1 = do
+    p2 <- newPulse "mapP" $ {-# SCC mapP #-} fmap f <$> readPulseP p1
     p2 `dependOn` p1
     return p2
 
@@ -34,20 +34,22 @@ mapP f p1 = debug "mapP" $ do
 -- This is in contrast to 'applyP' which applies the current value
 -- of a 'Latch' to a pulse.
 tagFuture :: Latch a -> Pulse b -> Build (Pulse (Future a))
-tagFuture x p1 = debug "tagFuture" $ do
-    p2 <- newPulse $ fmap . const <$> readLatchFutureP x <*> readPulseP p1
+tagFuture x p1 = do
+    p2 <- newPulse "tagFuture" $
+        fmap . const <$> readLatchFutureP x <*> readPulseP p1
     p2 `dependOn` p1
     return p2
 
 filterJustP :: Pulse (Maybe a) -> Build (Pulse a)
-filterJustP p1 = debug "filterJustP" $ do
-    p2 <- newPulse $ {-# SCC filterJustP #-} join <$> readPulseP p1
+filterJustP p1 = do
+    p2 <- newPulse "filterJustP" $ {-# SCC filterJustP #-} join <$> readPulseP p1
     p2 `dependOn` p1
     return p2
 
 unsafeMapIOP :: (a -> IO b) -> Pulse a -> Build (Pulse b)
-unsafeMapIOP f p1 = debug "unsafeMapIOP" $ do
-        p2 <- newPulse $ {-# SCC unsafeMapIOP #-} eval =<< readPulseP p1
+unsafeMapIOP f p1 = do
+        p2 <- newPulse "unsafeMapIOP" $
+            {-# SCC unsafeMapIOP #-} eval =<< readPulseP p1
         p2 `dependOn` p1
         return p2
     where
@@ -55,8 +57,8 @@ unsafeMapIOP f p1 = debug "unsafeMapIOP" $ do
     eval Nothing  = return Nothing
 
 unionWithP :: (a -> a -> a) -> Pulse a -> Pulse a -> Build (Pulse a)
-unionWithP f px py = debug "unionWith" $ do
-        p <- newPulse $
+unionWithP f px py = do
+        p <- newPulse "unionWithP" $
             {-# SCC unionWithP #-} eval <$> readPulseP px <*> readPulseP py
         p `dependOn` px
         p `dependOn` py
@@ -69,8 +71,9 @@ unionWithP f px py = debug "unionWith" $ do
 
 -- See note [LatchRecursion]
 applyP :: Latch (a -> b) -> Pulse a -> Build (Pulse b)
-applyP f x = debug "applyP" $ do
-    p <- newPulse $ {-# SCC applyP #-} fmap <$> readLatchP f <*> readPulseP x
+applyP f x = do
+    p <- newPulse "applyP" $
+        {-# SCC applyP #-} fmap <$> readLatchP f <*> readPulseP x
     p `dependOn` x
     return p
 
@@ -109,8 +112,8 @@ switchL l pl = mdo
     return $ Latch { getValueL = getValueL x >>= \(Box a) -> getValueL a }
 
 executeP :: Pulse (b -> BuildIO a) -> b -> Build (Pulse a)
-executeP p1 b = debug "executeP" $ do
-        p2 <- newPulse $ {-# SCC executeP #-} eval =<< readPulseP p1
+executeP p1 b = do
+        p2 <- newPulse "executeP" $ {-# SCC executeP #-} eval =<< readPulseP p1
         p2 `dependOn` p1
         return p2
     where
@@ -132,9 +135,9 @@ switchP pp = mdo
         -- fetch value from old parent
         eval = readPulseP =<< readLatchP lp
     
-    p1 <- newPulse switch :: Build (Pulse ())
+    p1 <- newPulse "switchP_in" switch :: Build (Pulse ())
     p1 `dependOn` pp
-    p2 <- newPulse eval
+    p2 <- newPulse "switchP_out" eval
     return p2
 
 {-----------------------------------------------------------------------------

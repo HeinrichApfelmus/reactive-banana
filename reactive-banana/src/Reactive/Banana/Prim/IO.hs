@@ -25,12 +25,13 @@ debug s = id
 -- Together with 'addHandler', this function can be used to operate with
 -- pulses as with standard callback-based events.
 newInput :: Lazy.Key a -> Build (Pulse a, a -> Step)
-newInput key = debug "newInput" $ unsafePerformIO $ do
+newInput key = unsafePerformIO $ do
     uid <- newUnique
     let pulse = Pulse
             { evaluateP = maybeContinue <$> readPulseP pulse
             , getValueP = Lazy.lookup key
             , uidP      = uid
+            , nameP     = "newInput"
             }
     return $ do
         always <- alwaysP

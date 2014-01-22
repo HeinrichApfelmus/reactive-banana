@@ -29,7 +29,7 @@ module Reactive.Banana.Frameworks (
     newEvent,
     
     -- * Internal
-    interpretFrameworks,
+    interpretFrameworks, printNetwork,
     ) where
 
 import           Control.Event.Handler
@@ -292,6 +292,9 @@ actuate = Prim.actuate . unEN
 -- the current event has been processed completely.
 pause :: EventNetwork -> IO ()
 pause   = Prim.pause . unEN
+
+printNetwork :: EventNetwork -> IO ()
+printNetwork en = putStrLn =<< Prim.showNetwork (unEN en)
 
 {-----------------------------------------------------------------------------
     Simple use
