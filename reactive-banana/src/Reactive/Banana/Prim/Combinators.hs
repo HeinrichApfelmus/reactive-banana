@@ -93,7 +93,6 @@ accumL a p1 = do
     (updateOn, x) <- newLatch a
     p2 <- applyP (mapL (\x f -> f x) x) p1
     updateOn p2
-    p2 `dependOn` p1
     return (x,p2)
 
 -- specialization of accumL
