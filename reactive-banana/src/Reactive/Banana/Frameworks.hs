@@ -29,7 +29,7 @@ module Reactive.Banana.Frameworks (
     newEvent,
     
     -- * Internal
-    interpretFrameworks, printNetwork,
+    interpretFrameworks, showNetwork,
     ) where
 
 import           Control.Event.Handler
@@ -293,8 +293,14 @@ actuate = Prim.actuate . unEN
 pause :: EventNetwork -> IO ()
 pause   = Prim.pause . unEN
 
-printNetwork :: EventNetwork -> IO ()
-printNetwork en = putStrLn =<< Prim.showNetwork (unEN en)
+-- | A multiline description of the current 'Latch'es and 'Pulse's in
+-- the 'EventNetwork'.
+--
+-- Incidentally, evaluation the returned string to normal
+-- form will also force the 'EventNetwork' to some kind of normal form.
+-- This may be useful for benchmarking purposes.
+showNetwork :: EventNetwork -> IO String
+showNetwork = Prim.showNetwork . unEN
 
 {-----------------------------------------------------------------------------
     Simple use
