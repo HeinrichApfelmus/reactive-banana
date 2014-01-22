@@ -72,7 +72,7 @@ newLatch a = unsafePerformIO $ do
 cachedLatch :: Dated.Dated (Dated.Box a) -> Latch a
 cachedLatch eval = unsafePerformIO $ do
     key <- Dated.newKey
-    return $ Latch { getValueL = Dated.cache key eval }
+    return $ Latch { getValueL = {-# SCC getValueL #-} Dated.cache key eval }
 
 -- | Add a new output that depends on a 'Pulse'.
 --
@@ -83,7 +83,7 @@ addOutput p = unsafePerformIO $ do
     return $ do
         pos <- grOutputCount . nGraph <$> get
         let o = Output
-                { evaluateO = maybe nop id <$> readPulseP p
+                { evaluateO = {-# SCC evaluateO #-} maybe nop id <$> readPulseP p
                 , uidO      = uid
                 , positionO = pos
                 }
@@ -141,23 +141,23 @@ runEvalP pulse m = do
     sortOutputs = map snd . sortBy (compare `on` fst)
 
 readLatchP :: Latch a -> EvalP a
-readLatchP = lift . liftBuild . readLatchB
+readLatchP = {-# SCC readLatchP #-} lift . liftBuild . readLatchB
 
 readLatchFutureP :: Latch a -> EvalP (Future a)
 readLatchFutureP latch = RWST $ \_ s ->
     return (Dated.unBox <$> getValueL latch,s,mempty)
 
 writePulseP :: Lazy.Key a -> a -> EvalP ()
-writePulseP key a = modify $ Lazy.insert key a
+writePulseP key a = {-# SCC writePulseP #-} modify $ Lazy.insert key a
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
-readPulseP pulse = getValueP pulse <$> get
+readPulseP pulse = {-# SCC readPulseP #-} getValueP pulse <$> get
 
 rememberLatchUpdate :: EvalL -> EvalP ()
-rememberLatchUpdate x = tell (x,mempty)
+rememberLatchUpdate x = {-# SCC rememberLatchUpdate #-} tell (x,mempty)
 
 rememberOutput :: Position -> EvalO -> EvalP ()
-rememberOutput a b = tell (mempty,[(a,b)])
+rememberOutput a b = {-# SCC rememberOutput #-} tell (mempty,[(a,b)])
 
 liftBuildIOP :: BuildIO a -> EvalP a
 liftBuildIOP = lift

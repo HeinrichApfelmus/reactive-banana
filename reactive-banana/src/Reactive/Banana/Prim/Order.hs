@@ -100,7 +100,7 @@ class Queue q where
 
 -- | Insert a collection of elements into a 'Queue'.
 insertList :: (Queue q, Hashable a, Eq a) => [a] -> q a -> q a
-insertList xs q = foldl (flip insert) q xs
+insertList xs q = {-# insertList #-} foldl (flip insert) q xs
 
 -- | Obtain a queue based on a particular 'Order'.
 --
@@ -117,16 +117,21 @@ data Q a = Q
     } deriving (Eq, Show)
 
 instance Queue Q where
-    insert a q@(Q{..}) = q { queue = IntMap.alter (add a) (level a order) queue }
-        where
-        add x Nothing   = Just $ Set.singleton a
-        add x (Just xs) = Just $ Set.insert x xs
+    insert  = insertQ
+    minView = minViewQ
 
-    minView  q@(Q{..}) = mkQ <$> case IntMap.minViewWithKey queue of
+insertQ a q@(Q{..}) =
+    {-# SCC insertQ #-} q { queue = IntMap.alter (add a) (level a order) queue }
+    where
+    add x Nothing   = Just $ Set.singleton a
+    add x (Just xs) = Just $ Set.insert x xs
+
+minViewQ q@(Q{..}) =
+    {-# SCC minViewQ #-} mkQ <$> case IntMap.minViewWithKey queue of
         Nothing                   -> Nothing
         Just ((level, xs), queue) -> case Set.toList xs of
             [x]    -> Just (x,queue)
             (x:_)  -> Just (x,IntMap.insert level (Set.delete x xs) queue)
-      where
-      mkQ (a,q) = (a, Q order q)
+  where
+  mkQ (a,q) = (a, Q order q)
 

@@ -38,7 +38,8 @@ allChildren :: Deps a -> [(a, [a])]
 allChildren = Map.toList . dChildren
 
 -- | Children of a node.
-children deps x = maybe [] id . Map.lookup x $ dChildren deps
+children deps x =
+    {-# SCC children #-} maybe [] id . Map.lookup x $ dChildren deps
 
 -- | Parents of a node.
 parents  deps x = maybe [] id . Map.lookup x $ dParents  deps
@@ -96,14 +97,14 @@ maybeContinue (Just _) = Children
 -- A child node is only traversed when all its parent nodes have been traversed.
 traverseDependencies :: forall a m. (Eq a, Hashable a, Monad m)
     => (a -> m Continue) -> Deps a -> [a] -> m ()
-traverseDependencies f deps roots =
+traverseDependencies f deps roots = {-# SCC traverseDependencies #-}
     withOrder (dOrder deps) $ go . insertList roots
     where
     go :: Queue q => q a -> m ()
     go q1 = case minView q1 of
         Nothing      -> return ()
         Just (a, q2) -> do
-            continue <- f a
+            continue <- {-# SCC traverseDependencies_f #-} f a
             case continue of
                 Done     -> go q2
                 Children -> go $ insertList (children deps a) q2
