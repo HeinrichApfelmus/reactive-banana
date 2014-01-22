@@ -7,6 +7,8 @@ module Reactive.Banana.Prim.Types where
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.RWS.Lazy
 import           Data.Functor.Identity
+import qualified Data.HashMap.Strict          as Map
+import qualified Data.HashSet                 as Set
 import           Data.Hashable
 import           Data.Monoid
 import           Data.Unique.Really
@@ -174,11 +176,18 @@ instance Hashable SomeNode where
 ------------------------------------------------------------------------------}
 showDeps :: Deps SomeNode -> String
 showDeps deps = unlines $
-        [ detail node ++ " -> " ++ unwords (map short children)
-        | (node,children) <- Deps.allChildren deps
+        [ detail node ++
+          if null children then "" else " -> " ++ unwords (map short children)
+        | node <- nodes
+        , let children = Deps.children deps node
         ]
     where
-    short = show . hash . uid
+    allChildren = Deps.allChildren deps
+    nodes       = Set.toList . Set.fromList $
+                  concat [x : xs | (x,xs) <- allChildren]
+    dictionary  = Map.fromList $ zip nodes [1..]
+    
+    short node = maybe "X" show $ Map.lookup node dictionary
     
     detail (P x) = "P " ++ nameP x ++ " " ++ short (P x)
     detail (L x) = "L " ++ short (L x)
