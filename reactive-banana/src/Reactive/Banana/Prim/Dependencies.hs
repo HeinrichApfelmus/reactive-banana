@@ -97,6 +97,8 @@ maybeContinue (Just _) = Children
 -- A child node is only traversed when all its parent nodes have been traversed.
 traverseDependencies :: forall a m. (Eq a, Hashable a, Monad m)
     => (a -> m Continue) -> Deps a -> [a] -> m ()
+traverseDependencies = undefined
+{-
 traverseDependencies f deps roots = {-# SCC traverseDependencies #-}
     withOrder (dOrder deps) $ go . insertList roots
     where
@@ -108,6 +110,7 @@ traverseDependencies f deps roots = {-# SCC traverseDependencies #-}
             case continue of
                 Done     -> go q2
                 Children -> go $ insertList (children deps a) q2
+-}
 
 {-----------------------------------------------------------------------------
     Small tests

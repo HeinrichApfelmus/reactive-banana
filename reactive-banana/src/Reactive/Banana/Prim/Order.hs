@@ -9,9 +9,8 @@ module Reactive.Banana.Prim.Order (
     -- * Order
     Order, flat,
     ensureAbove, recalculateParent,
+    Level, level,
     
-    -- * Queue
-    Q, withOrder, insertList, minView, insert,
     ) where
 
 import Data.Functor
@@ -36,7 +35,7 @@ type Order a = Map a Level
 --
 -- FIXME: The algorithms in this module currently do not try to
 -- shrink the number or width of levels.
-type Level   = Int
+type Level   = Integer
 
 -- | The flat order where every element is at 'ground' level.
 flat :: Order a
@@ -89,42 +88,3 @@ dfs x succs = go [x] Set.empty
         | otherwise           = x : go (ys ++ xs) (Set.insert x seen)
         where
         ys = succs x
-
-{-----------------------------------------------------------------------------
-    Queue
-------------------------------------------------------------------------------}
--- | Insert a collection of elements into a 'Queue'.
-insertList :: (Hashable a, Eq a) => [a] -> Q a -> Q a
-insertList xs q = {-# SCC insertList #-} foldl (flip insert) q xs
-
--- | Obtain a queue based on a particular 'Order'.
---
--- The type system ensures that the queue is only used temporarily.
--- The argument passed to the function is the empty queue.
-withOrder :: Order a -> (Q a -> b) -> b
-withOrder order f = f empty
-    where empty = Q { order = order, queue = IntMap.empty }
-
--- | Concrete queue implementation.
-data Q a = Q
-    { order :: Order  a
-    , queue :: IntMap (Set a)   -- inveriant: all sets have size >= 1
-    } deriving (Eq, Show)
-
-insert :: (Hashable a, Eq a) => a -> Q a -> Q a
-insert a q@(Q{..}) =
-    {-# SCC insertQ #-} q { queue = IntMap.alter (add a) (level a order) queue }
-    where
-    add x Nothing   = Just $ Set.singleton a
-    add x (Just xs) = Just $ Set.insert x xs
-
-minView :: (Hashable a, Eq a) => Q a -> Maybe (a, Q a)
-minView q@(Q{..}) =
-    {-# SCC minViewQ #-} mkQ <$> case IntMap.minViewWithKey queue of
-        Nothing                   -> Nothing
-        Just ((level, xs), queue) -> case Set.toList xs of
-            [x]    -> Just (x,queue)
-            (x:_)  -> Just (x,IntMap.insert level (Set.delete x xs) queue)
-  where
-  mkQ (a,q) = (a, Q order q)
-

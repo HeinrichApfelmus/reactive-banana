@@ -63,7 +63,8 @@ Library
                         BangPatterns
 
     build-depends:      unordered-containers >= 0.2.1.0 && < 0.3,
-                        hashable >= 1.1 && < 1.3
+                        hashable >= 1.1 && < 1.3,
+                        pqueue >= 1.0 && < 1.3
 
 --      CPP-options:    -DUseExtensions
         

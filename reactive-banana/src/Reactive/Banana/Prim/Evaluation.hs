@@ -6,6 +6,7 @@ module Reactive.Banana.Prim.Evaluation where
 
 import qualified Control.Exception as Strict (evaluate)
 import           Data.Monoid
+import qualified Data.PQueue.Prio.Min as Q
 
 import qualified Reactive.Banana.Prim.Dated        as Dated
 import qualified Reactive.Banana.Prim.Dependencies as Deps
@@ -48,14 +49,17 @@ step (pulse1, roots) state1 = {-# SCC step #-} mdo
 
 
 type Result = (EvalL, [(Position, EvalO)])
+type Q      = Q.MinPQueue Level
 
 -- | Update all pulses in the graph, starting from a given set of nodes
 evaluatePulses :: Graph -> [SomeNode] -> EvalP Result
 evaluatePulses Graph { grDeps = deps } roots =
-    withOrder (Deps.dOrder deps) $ go mempty [] . insertList roots
+        go mempty [] $ insertList roots Q.empty
     where
+    order = Deps.dOrder deps
+    
     go :: EvalL -> [(Position,EvalO)] -> Q SomeNode -> EvalP Result
-    go el eo q1 = {-# SCC go #-} case minView q1 of
+    go el eo q1 = {-# SCC go #-} case ({-# SCC minView #-} Q.minView q1) of
         Nothing      -> return (el, eo)
         Just (a, q2) -> case a of
             P p -> evaluateP p >>= \c -> case c of
@@ -63,4 +67,9 @@ evaluatePulses Graph { grDeps = deps } roots =
                 Deps.Done     -> go el eo q2
             L l -> evaluateL l >>= \x -> go (el `mappend` x) eo      q2
             O o -> evaluateO o >>= \x -> go el ((positionO o, x):eo) q2
+
+    insertList :: [SomeNode] -> Q SomeNode -> Q SomeNode
+    insertList xs q = {-# SCC insertList #-}
+        foldr (\node -> Q.insert (level node order) node) q xs
+
 
