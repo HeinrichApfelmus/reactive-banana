@@ -6,6 +6,7 @@ module Reactive.Banana.Prim.Types where
 
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.RWS.Lazy
+import           Control.Monad.Trans.State
 import           Data.Functor.Identity
 import qualified Data.HashMap.Strict          as Map
 import qualified Data.HashSet                 as Set
@@ -137,9 +138,7 @@ data Output = Output
     , positionO :: Position
     }
 
-type EvalP = RWST () (EvalL, [(Position, EvalO)]) Lazy.Vault BuildIO
-    -- read : -
-    -- write: (update of latch values, output actions)
+type EvalP = StateT Lazy.Vault BuildIO
     -- state: current pulse values
 
 type Future = Dated.Dated

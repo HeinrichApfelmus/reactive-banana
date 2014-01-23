@@ -46,23 +46,21 @@ step (pulse1, roots) state1 = {-# SCC step #-} mdo
             , nTime        = Dated.next time1
             })
 
+
+type Result = (EvalL, [(Position, EvalO)])
+
 -- | Update all pulses in the graph, starting from a given set of nodes
-evaluatePulses :: Graph -> [SomeNode] -> EvalP ()
+evaluatePulses :: Graph -> [SomeNode] -> EvalP Result
 evaluatePulses Graph { grDeps = deps } roots =
-    withOrder (Deps.dOrder deps) $ go . insertList roots
+    withOrder (Deps.dOrder deps) $ go mempty [] . insertList roots
     where
-    go :: Q SomeNode -> EvalP ()
-    go q1 = {-# SCC go #-} case minView q1 of
-        Nothing      -> return ()
-        Just (a, q2) -> do
-            continue <- {-# SCC traverseDependencies_f #-} evaluatePulse a
-            case continue of
-                Deps.Done     -> go q2
-                Deps.Children -> go $ insertList (Deps.children deps a) q2
-    
-    evaluatePulse (P p) = evaluateP p
-    evaluatePulse (L l) =
-        evaluateL l >>= rememberLatchUpdate >> return Deps.Done
-    evaluatePulse (O o) =
-        evaluateO o >>= rememberOutput (positionO o) >> return Deps.Done
+    go :: EvalL -> [(Position,EvalO)] -> Q SomeNode -> EvalP Result
+    go el eo q1 = {-# SCC go #-} case minView q1 of
+        Nothing      -> return (el, eo)
+        Just (a, q2) -> case a of
+            P p -> evaluateP p >>= \c -> case c of
+                Deps.Children -> go el eo $ insertList (Deps.children deps a) q2
+                Deps.Done     -> go el eo q2
+            L l -> evaluateL l >>= \x -> go (el `mappend` x) eo      q2
+            O o -> evaluateO o >>= \x -> go el ((positionO o, x):eo) q2
 

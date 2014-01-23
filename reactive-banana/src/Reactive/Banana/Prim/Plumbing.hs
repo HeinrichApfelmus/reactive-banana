@@ -8,6 +8,7 @@ import           Control.Monad
 import           Control.Monad.Fix
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.RWS
+import qualified Control.Monad.Trans.State as State
 import           Data.Function
 import           Data.Functor
 import           Data.Functor.Identity
@@ -133,9 +134,10 @@ liftIOLater x = tell [x]
 {-----------------------------------------------------------------------------
     EvalP - evaluate pulses
 ------------------------------------------------------------------------------}
-runEvalP :: Lazy.Vault -> EvalP a -> BuildIO (Lazy.Vault, EvalL, EvalO)
+runEvalP :: Lazy.Vault -> EvalP (EvalL, [(Position, EvalO)])
+    -> BuildIO (Lazy.Vault, EvalL, EvalO)
 runEvalP pulse m = do
-        (_,s,(wl,wo)) <- runRWST m () pulse
+        ((wl,wo),s) <- State.runStateT m pulse
         return (s,wl, sequence_ <$> sequence (sortOutputs wo))
     where
     sortOutputs = map snd . sortBy (compare `on` fst)
@@ -144,20 +146,13 @@ readLatchP :: Latch a -> EvalP a
 readLatchP = {-# SCC readLatchP #-} lift . liftBuild . readLatchB
 
 readLatchFutureP :: Latch a -> EvalP (Future a)
-readLatchFutureP latch = RWST $ \_ s ->
-    return (Dated.unBox <$> getValueL latch,s,mempty)
+readLatchFutureP latch = State.state $ \s -> (Dated.unBox <$> getValueL latch,s)
 
 writePulseP :: Lazy.Key a -> a -> EvalP ()
-writePulseP key a = {-# SCC writePulseP #-} modify $ Lazy.insert key a
+writePulseP key a = {-# SCC writePulseP #-} State.modify $ Lazy.insert key a
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
-readPulseP pulse = {-# SCC readPulseP #-} getValueP pulse <$> get
-
-rememberLatchUpdate :: EvalL -> EvalP ()
-rememberLatchUpdate x = tell (x,mempty)
-
-rememberOutput :: Position -> EvalO -> EvalP ()
-rememberOutput a b = tell (mempty,[(a,b)])
+readPulseP pulse = {-# SCC readPulseP #-} getValueP pulse <$> State.get
 
 liftBuildIOP :: BuildIO a -> EvalP a
 liftBuildIOP = lift
