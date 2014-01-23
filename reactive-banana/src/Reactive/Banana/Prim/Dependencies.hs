@@ -5,7 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Prim.Dependencies (
     -- | Utilities for operating with dependency graphs.
-    Deps, empty, allChildren, children, parents,
+    Deps, dOrder, empty, allChildren, children, parents,
     addChild, changeParent,
     
     Continue(..), maybeContinue, traverseDependencies,

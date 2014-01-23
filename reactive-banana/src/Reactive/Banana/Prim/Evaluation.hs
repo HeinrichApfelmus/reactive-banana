@@ -9,6 +9,7 @@ import           Data.Monoid
 
 import qualified Reactive.Banana.Prim.Dated        as Dated
 import qualified Reactive.Banana.Prim.Dependencies as Deps
+import           Reactive.Banana.Prim.Order
 import           Reactive.Banana.Prim.Plumbing
 import           Reactive.Banana.Prim.Types
 
@@ -47,15 +48,21 @@ step (pulse1, roots) state1 = {-# SCC step #-} mdo
 
 -- | Update all pulses in the graph, starting from a given set of nodes
 evaluatePulses :: Graph -> [SomeNode] -> EvalP ()
-evaluatePulses graph = Deps.traverseDependencies evaluatePulse (grDeps graph)
+evaluatePulses Graph { grDeps = deps } roots =
+    withOrder (Deps.dOrder deps) $ go . insertList roots
     where
+    go :: Q SomeNode -> EvalP ()
+    go q1 = {-# SCC go #-} case minView q1 of
+        Nothing      -> return ()
+        Just (a, q2) -> do
+            continue <- {-# SCC traverseDependencies_f #-} evaluatePulse a
+            case continue of
+                Deps.Done     -> go q2
+                Deps.Children -> go $ insertList (Deps.children deps a) q2
+    
     evaluatePulse (P p) = evaluateP p
     evaluatePulse (L l) =
         evaluateL l >>= rememberLatchUpdate >> return Deps.Done
     evaluatePulse (O o) =
         evaluateO o >>= rememberOutput (positionO o) >> return Deps.Done
 
--- TODO: Optimize output query.
--- Instead of polling each output whether it has fired,
--- obtain this information from the graph traversal instead.
--- However, in this case, order of declaration, not the order of firing.
