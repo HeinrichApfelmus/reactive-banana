@@ -11,7 +11,7 @@ module Reactive.Banana.Prim.Order (
     ensureAbove, recalculateParent,
     
     -- * Queue
-    Queue(..), withOrder, insertList,
+    Q, withOrder, insertList, minView, insert,
     ) where
 
 import Data.Functor
@@ -93,20 +93,15 @@ dfs x succs = go [x] Set.empty
 {-----------------------------------------------------------------------------
     Queue
 ------------------------------------------------------------------------------}
--- | Public API for a queue.
-class Queue q where
-    insert  :: (Hashable a, Eq a) => a -> q a -> q a
-    minView :: (Hashable a, Eq a) => q a -> Maybe (a, q a)
-
 -- | Insert a collection of elements into a 'Queue'.
-insertList :: (Queue q, Hashable a, Eq a) => [a] -> q a -> q a
+insertList :: (Hashable a, Eq a) => [a] -> Q a -> Q a
 insertList xs q = {-# SCC insertList #-} foldl (flip insert) q xs
 
 -- | Obtain a queue based on a particular 'Order'.
 --
 -- The type system ensures that the queue is only used temporarily.
 -- The argument passed to the function is the empty queue.
-withOrder :: Order a -> (forall q. Queue q => q a -> b) -> b
+withOrder :: Order a -> (Q a -> b) -> b
 withOrder order f = f empty
     where empty = Q { order = order, queue = IntMap.empty }
 
@@ -116,17 +111,15 @@ data Q a = Q
     , queue :: IntMap (Set a)   -- inveriant: all sets have size >= 1
     } deriving (Eq, Show)
 
-instance Queue Q where
-    insert  = insertQ
-    minView = minViewQ
-
-insertQ a q@(Q{..}) =
+insert :: (Hashable a, Eq a) => a -> Q a -> Q a
+insert a q@(Q{..}) =
     {-# SCC insertQ #-} q { queue = IntMap.alter (add a) (level a order) queue }
     where
     add x Nothing   = Just $ Set.singleton a
     add x (Just xs) = Just $ Set.insert x xs
 
-minViewQ q@(Q{..}) =
+minView :: (Hashable a, Eq a) => Q a -> Maybe (a, Q a)
+minView q@(Q{..}) =
     {-# SCC minViewQ #-} mkQ <$> case IntMap.minViewWithKey queue of
         Nothing                   -> Nothing
         Just ((level, xs), queue) -> case Set.toList xs of

@@ -100,7 +100,7 @@ traverseDependencies :: forall a m. (Eq a, Hashable a, Monad m)
 traverseDependencies f deps roots = {-# SCC traverseDependencies #-}
     withOrder (dOrder deps) $ go . insertList roots
     where
-    go :: Queue q => q a -> m ()
+    go :: Q a -> m ()
     go q1 = {-# SCC go #-} case minView q1 of
         Nothing      -> return ()
         Just (a, q2) -> do
