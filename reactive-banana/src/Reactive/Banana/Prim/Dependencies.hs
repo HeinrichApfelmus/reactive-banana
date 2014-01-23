@@ -101,7 +101,7 @@ traverseDependencies f deps roots = {-# SCC traverseDependencies #-}
     withOrder (dOrder deps) $ go . insertList roots
     where
     go :: Queue q => q a -> m ()
-    go q1 = case minView q1 of
+    go q1 = {-# SCC go #-} case minView q1 of
         Nothing      -> return ()
         Just (a, q2) -> do
             continue <- {-# SCC traverseDependencies_f #-} f a

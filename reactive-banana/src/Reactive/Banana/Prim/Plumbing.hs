@@ -94,7 +94,7 @@ addOutput p = unsafePerformIO $ do
     Build monad - add and delete nodes from the graph
 ------------------------------------------------------------------------------}
 runBuildIO :: Network -> BuildIO a -> IO (a, Network)
-runBuildIO s1 m = do
+runBuildIO s1 m = {-# SCC runBuildIO #-} do
     (a,s2,liftIOLaters) <- runRWST m () s1
     sequence_ liftIOLaters          -- execute late IOs
     return (a,s2)
@@ -154,10 +154,10 @@ readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP pulse = {-# SCC readPulseP #-} getValueP pulse <$> get
 
 rememberLatchUpdate :: EvalL -> EvalP ()
-rememberLatchUpdate x = {-# SCC rememberLatchUpdate #-} tell (x,mempty)
+rememberLatchUpdate x = tell (x,mempty)
 
 rememberOutput :: Position -> EvalO -> EvalP ()
-rememberOutput a b = {-# SCC rememberOutput #-} tell (mempty,[(a,b)])
+rememberOutput a b = tell (mempty,[(a,b)])
 
 liftBuildIOP :: BuildIO a -> EvalP a
 liftBuildIOP = lift

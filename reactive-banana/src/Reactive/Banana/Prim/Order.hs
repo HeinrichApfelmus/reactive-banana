@@ -100,7 +100,7 @@ class Queue q where
 
 -- | Insert a collection of elements into a 'Queue'.
 insertList :: (Queue q, Hashable a, Eq a) => [a] -> q a -> q a
-insertList xs q = {-# insertList #-} foldl (flip insert) q xs
+insertList xs q = {-# SCC insertList #-} foldl (flip insert) q xs
 
 -- | Obtain a queue based on a particular 'Order'.
 --

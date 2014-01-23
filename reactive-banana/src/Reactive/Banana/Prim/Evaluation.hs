@@ -38,7 +38,7 @@ step (pulse1, roots) state1 = {-# SCC step #-} mdo
         (actions, latch3) = Dated.runDated output latch2
 
     -- make sure that the latch values are in WHNF
-    Strict.evaluate latch3
+    Strict.evaluate $ {-# SCC evaluate #-} latch3
     return (actions, Network
             { nGraph       = graph2
             , nLatchValues = latch3
