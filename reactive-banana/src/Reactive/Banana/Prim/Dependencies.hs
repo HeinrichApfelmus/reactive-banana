@@ -11,10 +11,11 @@ module Reactive.Banana.Prim.Dependencies (
     Continue(..), maybeContinue, traverseDependencies,
     ) where
 
-import Control.Monad.Trans.Writer
-import qualified Data.HashMap.Strict as Map
-import qualified Data.HashSet        as Set
+import           Control.Monad.Trans.Writer
+import qualified Data.HashMap.Strict        as Map
+import qualified Data.HashSet               as Set
 import           Data.Hashable
+import qualified Data.PQueue.Prio.Min       as Q
 
 import           Reactive.Banana.Prim.Order hiding (empty)
 import qualified Reactive.Banana.Prim.Order as Order
@@ -97,20 +98,18 @@ maybeContinue (Just _) = Children
 -- A child node is only traversed when all its parent nodes have been traversed.
 traverseDependencies :: forall a m. (Eq a, Hashable a, Monad m)
     => (a -> m Continue) -> Deps a -> [a] -> m ()
-traverseDependencies = undefined
-{-
-traverseDependencies f deps roots = {-# SCC traverseDependencies #-}
-    withOrder (dOrder deps) $ go . insertList roots
+traverseDependencies f deps roots = go $ insertList roots Q.empty
     where
-    go :: Q a -> m ()
-    go q1 = {-# SCC go #-} case minView q1 of
+    order = dOrder deps
+    insertList xs q = foldr (\x -> Q.insert (level x order) x) q xs
+
+    go q1 = case Q.minView q1 of
         Nothing      -> return ()
         Just (a, q2) -> do
-            continue <- {-# SCC traverseDependencies_f #-} f a
+            continue <- f a
             case continue of
                 Done     -> go q2
                 Children -> go $ insertList (children deps a) q2
--}
 
 {-----------------------------------------------------------------------------
     Small tests
