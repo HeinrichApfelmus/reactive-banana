@@ -4,9 +4,12 @@
 {-# LANGUAGE RecursiveDo, BangPatterns #-}
 module Reactive.Banana.Prim.Evaluation where
 
-import qualified Control.Exception    as Strict (evaluate)
+import qualified Control.Exception as Strict (evaluate)
+import           Data.Function
+import           Data.Functor
+import           Data.List                   (foldl', sortBy)
 import           Data.Monoid
-import           Data.List (foldl')
+import qualified Data.Vault.Lazy   as Lazy
 
 import qualified Reactive.Banana.Prim.Dated        as Dated
 import qualified Reactive.Banana.Prim.Dependencies as Deps
@@ -23,13 +26,12 @@ step :: Inputs -> Step
 step (pulse1, roots) state1 = {-# SCC step #-} mdo
     let graph1 = nGraph state1
         latch1 = nLatchValues state1
-        time1  = nTime state1
+        time2  = Dated.next $ nTime state1
 
     -- evaluate pulses while recalculating some latch values
-    ((_, latchUpdates, output), state2)
+    ((latchUpdates, output), state2)
             <- runBuildIO state1
-            $  runEvalP pulse1
-            $  evaluatePulses graph1 roots
+            $  evaluatePulses graph1 roots pulse1 time2
     
     let
         -- updated graph dependencies
@@ -44,32 +46,43 @@ step (pulse1, roots) state1 = {-# SCC step #-} mdo
     return (actions, Network
             { nGraph       = graph2
             , nLatchValues = latch3
-            , nTime        = Dated.next time1
+            , nTime        = time2
             })
 
 
-type Result = (EvalL, [(Position, EvalO)])
+type Result = (EvalL, EvalO)
 type Q      = Deps.DepsQueue
 
 -- | Update all pulses in the graph, starting from a given set of nodes
-evaluatePulses :: Graph -> [SomeNode] -> EvalP Result
-evaluatePulses Graph { grDeps = deps } roots =
-        go mempty [] $ insertList roots Deps.emptyQ
+evaluatePulses :: Graph -> [SomeNode] -> Lazy.Vault -> Dated.Time -> BuildIO Result
+evaluatePulses Graph { grDeps = deps } roots pulses time =
+        go mempty [] pulses $ insertList roots Deps.emptyQ
     where
     order = Deps.dOrder deps
     
-    go :: EvalL -> [(Position,EvalO)] -> Q SomeNode -> EvalP Result
-    go el eo !q1 = {-# SCC go #-} case Deps.minView q1 of
-        Nothing      -> return (el, eo)
-        Just (a, q2) -> case a of
-            P p -> evaluateP p >>= \c -> case c of
-                Deps.Children -> go el eo $ insertList (Deps.children deps a) q2
-                Deps.Done     -> go el eo q2
-            L l -> evaluateL l >>= \x -> go (el `mappend` x) eo      q2
-            O o -> evaluateO o >>= \x -> go el ((positionO o, x):eo) q2
+    go :: EvalL -> [(Position,EvalO)] -> Lazy.Vault -> Q SomeNode
+       -> BuildIO Result
+    go el eo pulses !q1 = {-# SCC go #-} case Deps.minView q1 of
+        Nothing         -> return (el, sequenceOutputs eo)
+        Just (node, q2) -> case node of
+            P p ->
+                let go' a = go el eo (writeP p a pulses)
+                                     (insertList (Deps.children deps node) q2)
+                in case evaluateP p pulses of
+                    Done      -> go el eo pulses q2
+                    Pure a    -> go' a
+                    BuildIO m -> m >>= go'
+            L l -> let x = evaluateL l pulses time
+                in go (el `mappend` x) eo pulses q2
+            O o -> let x = evaluateO o pulses
+                in go el ((positionO o, x):eo) pulses q2
 
     insertList :: [SomeNode] -> Q SomeNode -> Q SomeNode
     insertList xs q = {-# SCC insertList #-}
         foldl' (\q node -> Deps.insert (level node order) node q) q xs
 
 
+sequenceOutputs :: [(Position, EvalO)] -> EvalO
+sequenceOutputs xs = sequence_ <$> sequence (sortOutputs xs)
+
+sortOutputs = map snd . sortBy (compare `on` fst)

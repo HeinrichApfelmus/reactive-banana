@@ -28,8 +28,9 @@ newInput :: Lazy.Key a -> Build (Pulse a, a -> Step)
 newInput key = unsafePerformIO $ do
     uid <- newUnique
     let pulse = Pulse
-            { evaluateP = maybeContinue <$> readPulseP pulse
+            { evaluateP = maybe Done Pure <$> Lazy.lookup key
             , getValueP = Lazy.lookup key
+            , writeP    = const id
             , uidP      = uid
             , nameP     = "newInput"
             }

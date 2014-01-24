@@ -28,14 +28,20 @@ import           Reactive.Banana.Prim.Types
 ------------------------------------------------------------------------------}
 -- | Make 'Pulse' from evaluation function
 newPulse :: String -> EvalP (Maybe a) -> Build (Pulse a)
-newPulse name eval = unsafePerformIO $ do
+newPulse name eval = newPulseResultP name (f <$> eval)
+    where
+    f Nothing  = Done
+    f (Just a) = Pure a
+
+newPulseResultP :: String -> EvalP (ResultP a) -> Build (Pulse a)
+newPulseResultP name eval = unsafePerformIO $ do
     key <- Lazy.newKey
     uid <- newUnique
     return $ do
-        let write = maybe (return Deps.Done) ((Deps.Children <$) . writePulseP key)
         return $ Pulse
-            { evaluateP = {-# SCC evaluateP #-} write =<< eval
+            { evaluateP = eval
             , getValueP = Lazy.lookup key
+            , writeP    = Lazy.insert key
             , uidP      = uid
             , nameP     = name
             }
@@ -45,8 +51,9 @@ neverP :: Build (Pulse a)
 neverP = unsafePerformIO $ do
     uid <- newUnique
     return $ return $ Pulse
-        { evaluateP = return Deps.Done
+        { evaluateP = return Done
         , getValueP = const Nothing
+        , writeP    = const id
         , uidP      = uid
         , nameP     = "neverP"
         }
@@ -58,11 +65,9 @@ newLatch a = unsafePerformIO $ do
     uid <- newUnique
     return $ do
         let
-            write time   = maybe mempty (Endo . Dated.update' key time)
+            write        = maybe (const mempty) (\a -> Endo . Dated.update' key a)
             latchWrite p = LatchWrite
-                { evaluateL = {-# SCC evaluateL #-} do
-                    time <- lift $ nTime <$> get
-                    write (Dated.next time) <$> readPulseP p
+                { evaluateL = {-# SCC evaluateL #-} write <$> readPulseP p
                 , uidL      = uid
                 }
             updateOn p   = P p `addChild` L (latchWrite p)
@@ -110,6 +115,9 @@ readLatchB latch = state $ \network ->
     let (a,v) = Dated.runDated (getValueL latch) (nLatchValues network)
     in  (Dated.unBox a, network { nLatchValues = v } )
 
+readLatchBIO :: Latch a -> BuildIO a
+readLatchBIO = liftBuild . readLatchB
+
 alwaysP :: Build (Pulse ())
 alwaysP = grAlwaysP . nGraph <$> get
 
@@ -134,30 +142,10 @@ liftIOLater x = tell [x]
 {-----------------------------------------------------------------------------
     EvalP - evaluate pulses
 ------------------------------------------------------------------------------}
-runEvalP :: Lazy.Vault -> EvalP (EvalL, [(Position, EvalO)])
-    -> BuildIO (Lazy.Vault, EvalL, EvalO)
-runEvalP pulse m = do
-        ((wl,wo),s) <- State.runStateT m pulse
-        return (s,wl, sequence_ <$> sequence (sortOutputs wo))
-    where
-    sortOutputs = map snd . sortBy (compare `on` fst)
-
-readLatchP :: Latch a -> EvalP a
-readLatchP = {-# SCC readLatchP #-} lift . liftBuild . readLatchB
-
 readLatchFutureP :: Latch a -> EvalP (Future a)
-readLatchFutureP latch = State.state $ \s -> (Dated.unBox <$> getValueL latch,s)
-
-writePulseP :: Lazy.Key a -> a -> EvalP ()
-writePulseP key a = {-# SCC writePulseP #-} State.modify $ Lazy.insert key a
+readLatchFutureP latch = return $ Dated.unBox <$> getValueL latch
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
-readPulseP pulse = {-# SCC readPulseP #-} getValueP pulse <$> State.get
-
-liftBuildIOP :: BuildIO a -> EvalP a
-liftBuildIOP = lift
-
-liftBuildP :: Build a -> EvalP a
-liftBuildP = liftBuildIOP . liftBuild
+readPulseP = getValueP
 
 

@@ -65,8 +65,9 @@ emptyGraph = unsafePerformIO $ do
         { grDeps        = Deps.empty
         , grCache       = Lazy.empty
         , grAlwaysP     = Pulse
-            { evaluateP = return Deps.Children
+            { evaluateP = return Done
             , getValueP = const $ Just ()
+            , writeP    = const id
             , uidP      = uid
             , nameP     = "alwaysP"
             }
@@ -117,18 +118,21 @@ MonadFix  instance while the latter can do arbitrary IO.
 -}
 
 data Pulse a = Pulse
-    { evaluateP :: EvalP Deps.Continue
-    , getValueP :: Lazy.Vault -> Maybe a
+    { evaluateP :: EvalP (ResultP a)
+    , getValueP :: EvalP (Maybe a)
+    , writeP    :: a -> Lazy.Vault -> Lazy.Vault
     , uidP      :: Unique
     , nameP     :: String
     }
+
+data ResultP a = Done | Pure a | BuildIO (BuildIO a)
 
 data Latch a = Latch
     { getValueL :: Future (Dated.Box a)
     }
 
 data LatchWrite = LatchWrite
-    { evaluateL :: EvalP EvalL
+    { evaluateL :: EvalP (Dated.Time -> EvalL)
     , uidL      :: Unique
     }
 
@@ -138,8 +142,7 @@ data Output = Output
     , positionO :: Position
     }
 
-type EvalP = StateT Lazy.Vault BuildIO
-    -- state: current pulse values
+type EvalP = (->) Lazy.Vault
 
 type Future = Dated.Dated
 type EvalL  = Endo Dated.Vault

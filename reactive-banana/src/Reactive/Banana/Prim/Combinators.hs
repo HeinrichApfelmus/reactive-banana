@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE RecursiveDo, ScopedTypeVariables #-}
 module Reactive.Banana.Prim.Combinators where
 
 import Control.Applicative
@@ -10,11 +10,12 @@ import Control.Monad.IO.Class
 
 import Reactive.Banana.Prim.Dated (Box(..))
 import Reactive.Banana.Prim.Plumbing
-    ( neverP, newPulse, newLatch, cachedLatch
+    ( neverP, newPulse, newPulseResultP, newLatch, cachedLatch
     , dependOn, changeParent
-    , readPulseP, readLatchP, readLatchFutureP, liftBuildP, liftBuildIOP
+    , readPulseP, readLatchBIO, readLatchFutureP, liftBuild,
     )
-import Reactive.Banana.Prim.Types (Latch(..), Future, Pulse, Build, BuildIO)
+import Reactive.Banana.Prim.Types
+    (Latch(..), Future, Pulse, Build, BuildIO, ResultP(..), EvalP)
 
 import Debug.Trace
 -- debug s = trace s
@@ -48,13 +49,13 @@ filterJustP p1 = do
 
 unsafeMapIOP :: (a -> IO b) -> Pulse a -> Build (Pulse b)
 unsafeMapIOP f p1 = do
-        p2 <- newPulse "unsafeMapIOP" $
-            {-# SCC unsafeMapIOP #-} eval =<< readPulseP p1
+        p2 <- newPulseResultP "unsafeMapIOP" $
+            {-# SCC unsafeMapIOP #-} eval <$> readPulseP p1
         p2 `dependOn` p1
         return p2
     where
-    eval (Just x) = Just <$> liftIO (f x)
-    eval Nothing  = return Nothing
+    eval (Just x) = BuildIO $ liftIO (f x)
+    eval Nothing  = Done
 
 unionWithP :: (a -> a -> a) -> Pulse a -> Pulse a -> Build (Pulse a)
 unionWithP f px py = do
@@ -72,10 +73,13 @@ unionWithP f px py = do
 -- See note [LatchRecursion]
 applyP :: Latch (a -> b) -> Pulse a -> Build (Pulse b)
 applyP f x = do
-    p <- newPulse "applyP" $
-        {-# SCC applyP #-} fmap <$> readLatchP f <*> readPulseP x
-    p `dependOn` x
-    return p
+        p <- newPulseResultP "applyP" $
+            {-# SCC applyP #-} eval <$> readPulseP x
+        p `dependOn` x
+        return p
+    where
+    eval Nothing  = Done
+    eval (Just a) = BuildIO $ readLatchBIO f <*> return a
 
 pureL :: a -> Latch a
 pureL a = Latch { getValueL = return (pure a) }
@@ -110,16 +114,17 @@ switchL l pl = mdo
     x <- stepperL l pl
     return $ Latch { getValueL = getValueL x >>= \(Box a) -> getValueL a }
 
-executeP :: Pulse (b -> BuildIO a) -> b -> Build (Pulse a)
+executeP :: Pulse (x -> BuildIO a) -> x -> Build (Pulse a)
 executeP p1 b = do
-        p2 <- newPulse "executeP" $ {-# SCC executeP #-} eval =<< readPulseP p1
+        p2 <- newPulseResultP "executeP" $
+            {-# SCC executeP #-} eval <$> readPulseP p1
         p2 `dependOn` p1
         return p2
     where
-    eval (Just x) = Just <$> liftBuildIOP (x b)
-    eval Nothing  = return Nothing
+    eval (Just a) = BuildIO $ a b
+    eval Nothing  = Done
 
-switchP :: Pulse (Pulse a) -> Build (Pulse a)
+switchP :: forall a. Pulse (Pulse a) -> Build (Pulse a)
 switchP pp = mdo
     never <- neverP
     lp    <- stepperL never pp
@@ -127,16 +132,17 @@ switchP pp = mdo
         -- switch to a new parent
         switch = do
             mnew <- readPulseP pp
-            case mnew of
-                Nothing  -> return ()
-                Just new -> liftBuildP $ p2 `changeParent` new
-            return Nothing
+            return $ case mnew of
+                Nothing  -> Done
+                Just new -> BuildIO $ liftBuild $ p2 `changeParent` new
         -- fetch value from old parent
-        eval = readPulseP =<< readLatchP lp
-    
-    p1 <- newPulse "switchP_in" switch :: Build (Pulse ())
+        eval :: EvalP (ResultP a)
+        eval pulses = BuildIO $ readLatchBIO lp >>= \p ->
+            return $ maybe Done Pure $ readPulseP p pulses
+        
+    p1 <- newPulseResultP "switchP_in" switch :: Build (Pulse ())
     p1 `dependOn` pp
-    p2 <- newPulse "switchP_out" eval
+    p2 <- newPulseResultP "switchP_out" eval
     return p2
 
 {-----------------------------------------------------------------------------
