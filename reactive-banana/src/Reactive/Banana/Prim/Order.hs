@@ -47,7 +47,7 @@ ground = 0
 
 -- | Look up the level of an element. Default level is 'ground'.
 level :: (Eq a, Hashable a) => a -> Order a -> Level
-level x = maybe ground id . Map.lookup x
+level x = {-# SCC level #-} maybe ground id . Map.lookup x
 
 -- | Make sure that the first argument is at least one level
 -- above the second argument.

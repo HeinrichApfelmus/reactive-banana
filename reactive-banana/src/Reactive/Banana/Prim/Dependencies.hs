@@ -9,6 +9,8 @@ module Reactive.Banana.Prim.Dependencies (
     addChild, changeParent,
     
     Continue(..), maybeContinue, traverseDependencies,
+    
+    DepsQueue, emptyQ, insert, minView,
     ) where
 
 import           Control.Monad.Trans.Writer
@@ -98,18 +100,35 @@ maybeContinue (Just _) = Children
 -- A child node is only traversed when all its parent nodes have been traversed.
 traverseDependencies :: forall a m. (Eq a, Hashable a, Monad m)
     => (a -> m Continue) -> Deps a -> [a] -> m ()
-traverseDependencies f deps roots = go $ insertList roots Q.empty
+traverseDependencies f deps roots = go $ insertList roots emptyQ
     where
     order = dOrder deps
-    insertList xs q = foldr (\x -> Q.insert (level x order) x) q xs
+    insertList xs q = foldr (\x -> insert (level x order) x) q xs
 
-    go q1 = case Q.minView q1 of
+    go q1 = case minView q1 of
         Nothing      -> return ()
         Just (a, q2) -> do
             continue <- f a
             case continue of
                 Done     -> go q2
                 Children -> go $ insertList (children deps a) q2
+
+-- | Queue for traversing dependencies.
+data DepsQueue a = DQ !(Q.MinPQueue Level a) !(Set a)
+
+emptyQ :: DepsQueue a
+emptyQ = DQ Q.empty Set.empty
+
+insert :: (Eq a, Hashable a) => Level -> a -> DepsQueue a -> DepsQueue a
+insert k a q@(DQ queue seen) = {-# SCC insert #-}
+    if a `Set.member` seen
+        then q
+        else DQ (Q.insert k a queue) (Set.insert a seen)
+
+minView :: DepsQueue a -> Maybe (a, DepsQueue a)
+minView (DQ queue seen) = {-# SCC minView #-} case Q.minView queue of
+    Nothing          -> Nothing
+    Just (a, queue2) -> Just (a, DQ queue2 seen)
 
 {-----------------------------------------------------------------------------
     Small tests
