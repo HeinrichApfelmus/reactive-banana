@@ -83,8 +83,8 @@ findWithDefault a key = do
 
 -- | Update a value inside the cache.
 -- The value will be evaluated to WHNF when the cache is evaluated to WHNF.
-update' :: Key a -> a -> Time -> Vault -> Vault
-update' key a t = Strict.insert key (Timed (a `seq` Box a) t)
+update' :: Key a -> Time -> a -> Vault -> Vault
+update' key t a = Strict.insert key (Timed (a `seq` Box a) t)
 
 cache :: Key a -> Dated (Box a) -> Dated (Box a)
 -- cache key m = m
