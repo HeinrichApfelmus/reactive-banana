@@ -64,12 +64,14 @@ newLatch a = mdo
         }
     let
         err        = error "incorrect Latch write"
-        updateOn p = mdo
+        updateOn p = do
+            w  <- liftIO $ mkWeakIORefValue latch latch 
             lw <- liftIO $ newIORef $ LatchWrite
                 { _evalLW  = maybe err id <$> readPulseP p
                 , _latchLW = w
                 }
-            w  <- liftIO $ mkWeakIORefValue lw latch -- child keeps parent alive
+            -- writer is alive only as long as the latch is alive
+            _  <- liftIO $ mkWeakIORefValue latch lw
             (P p) `addChild` (L lw)
     
     return (updateOn, latch)
