@@ -47,12 +47,12 @@ evaluatePulses :: [SomeNode] -> EvalP ()
 evaluatePulses roots = go =<< insertNodes roots Q.empty
     where
     go :: Queue SomeNode -> EvalP ()
-    go q1 = {-# SCC go #-} case Q.minView q1 of
-        Nothing         -> liftIO (putStrLn "done") >> return ()
-        Just (node, q2) -> do
+    go q = {-# SCC go #-} case Q.minView q of
+        Nothing         -> return ()
+        Just (node, q) -> do
             children <- evaluateNode node
-            q2       <- insertNodes children q1
-            go q2
+            q        <- insertNodes children q
+            go q
 
 -- | Recalculate a given node and return all children nodes
 -- that need to evaluated subsequently.
