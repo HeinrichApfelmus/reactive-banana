@@ -32,10 +32,13 @@ newInput key = mdo
         , _childrenP = []
         , _parentsP  = []
         , _levelP    = ground
+        , _nameP     = "newInput"
         }
     let run a network = do
             modify pulse $ set valueP (Just a)
-            step [P pulse] network
+            a <- step [P pulse] network
+            modify pulse $ set valueP Nothing
+            return a
     return (pulse, run)
 
 -- | Register a handler to be executed whenever a pulse occurs.

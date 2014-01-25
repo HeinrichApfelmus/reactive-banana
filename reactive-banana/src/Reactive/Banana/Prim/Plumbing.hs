@@ -16,7 +16,6 @@ import           Data.List                            (sortBy)
 import           Data.Monoid
 import           System.IO.Unsafe
 
-
 import Reactive.Banana.Prim.Types
 import Reactive.Banana.Prim.Util
 
@@ -34,6 +33,7 @@ newPulse name eval = do
         , _childrenP = []
         , _parentsP  = []
         , _levelP    = ground
+        , _nameP     = name
         }
 
 -- | 'Pulse' that never fires.
@@ -47,6 +47,7 @@ neverP = do
         , _childrenP = []
         , _parentsP  = []
         , _levelP    = ground
+        , _nameP     = "neverP"
         }
 
 alwaysP :: Build (Pulse ())
@@ -121,25 +122,26 @@ addChild :: SomeNode -> SomeNode -> Build ()
 addChild (P parent) (P child) = RWS.tell (Action action,mempty,mempty)
     where
     action = do
-        w <- mkWeakIORefValue child (P parent)  -- parent alive when child is
+        wparent <- mkWeakIORefValue child (P parent)  -- child keeps parent alive
         level1 <- _levelP <$> get child
-        level2 <- _levelP <$> get parent 
+        level2 <- _levelP <$> get parent
         let level = level1 `max` (level2 + 1)
-        modify child  $ update parentsP (w:) . set levelP level
-        w <- mkWeakIORefValue child (P child)   -- child alive when child is
-        modify parent $ update childrenP (w:)
+        modify child  $ update parentsP  (wparent:) . set levelP level
+        wchild <- mkWeakIORefValue child (P child)
+        modify parent $ update childrenP (wchild :)
 addChild (P parent) (L child) = RWS.tell (Action action,mempty,mempty)
     where
     action = do
-        _ <- mkWeakIORefValue child (P parent)  -- parent alive when child is
-        w <- mkWeakIORefValue child (L child)   -- child alive when child is
+        _ <- mkWeakIORefValue child (P parent)  -- child keeps parent alive
+        w <- mkWeakIORefValue child (L child)
         modify parent $ update childrenP (w:)
 addChild (P parent) (O child) = RWS.tell (Action action,mempty,mempty)
     where
     action = do
-        _ <- mkWeakIORefValue child (P parent)  -- parent alive when child is
-        w <- mkWeakIORefValue child (O child)   -- child alive when child is
+        _ <- mkWeakIORefValue child (P parent)  -- child keeps parent alive
+        w <- mkWeakIORefValue child (O child)
         modify parent $ update childrenP (w:)
+
 
 changeParent :: Pulse child -> Pulse parent -> Build ()
 changeParent child parent = undefined

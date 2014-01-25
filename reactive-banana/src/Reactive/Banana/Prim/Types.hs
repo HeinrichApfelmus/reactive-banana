@@ -7,6 +7,7 @@ module Reactive.Banana.Prim.Types where
 import Control.Monad.Trans.RWS
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Writer
+import Data.Functor
 import Data.IORef
 import Data.Monoid
 import System.Mem.Weak
@@ -67,12 +68,13 @@ set f x = update f (const x)
 ------------------------------------------------------------------------------}
 type Pulse  a = IORef (Pulse' a)
 data Pulse' a = Pulse
-    { _seenP     :: Time             -- Timestamp of the current value.
+    { _seenP     :: Time             -- See note [Timestamp].
     , _valueP    :: Maybe a          -- Current value.
     , _evalP     :: EvalP (Maybe a)  -- Calculate current value.
     , _childrenP :: [Weak SomeNode]  -- Weak references to child nodes.
     , _parentsP  :: [Weak SomeNode]  -- Weak reference to parent nodes.
     , _levelP    :: Level            -- Priority in evaluation order.
+    , _nameP     :: String           -- Name for debugging.
     }
 
 type Latch  a = IORef (Latch' a)
@@ -114,3 +116,25 @@ type EvalL = ReaderT Time IO
 type EvalO    = Future (IO ())
 type Future   = IO
 type EvalLW   = Action
+
+{-----------------------------------------------------------------------------
+    Show functions for debugging
+------------------------------------------------------------------------------}
+printNode :: SomeNode -> IO String
+printNode (P p) = _nameP <$> readIORef p
+printNode (L l) = return "L"
+printNode (O o) = return "O"
+
+{-----------------------------------------------------------------------------
+    Notes
+------------------------------------------------------------------------------}
+{- Note [Timestamp]
+
+The time stamp indicates how recent the current value is.
+
+During pulse evaluation, a time stamp equal to the current
+time indicates that the pulse has already been evaluated in this phase.
+For Latches, however, a time stamp equal to the current time indicates
+that the latch needs to be updated after all pulses have been evaluated.
+
+-}

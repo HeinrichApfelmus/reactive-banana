@@ -4,16 +4,16 @@
 {-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Prim.Evaluation where
 
-import Control.Monad (join)
-import Control.Monad.IO.Class
-import Control.Monad (foldM)
-import qualified Control.Exception    as Strict (evaluate)
-import           Data.Maybe                     (catMaybes)
-import qualified Data.PQueue.Prio.Min as Q
+import qualified Control.Exception      as Strict (evaluate)
+import           Control.Monad                    (foldM)
+import           Control.Monad                    (join)
+import           Control.Monad.IO.Class
+import qualified Data.PQueue.Prio.Min   as Q
 import           System.Mem.Weak
 
 import           Reactive.Banana.Prim.Plumbing
 import           Reactive.Banana.Prim.Types
+import           Reactive.Banana.Prim.Util
 
 type Queue = Q.MinPQueue Level
 
@@ -26,14 +26,14 @@ step :: Inputs -> Step
 step roots state1 = {-# SCC step #-} do
     let time1    = nTime state1
         outputs1 = nOutputs state1
+    
     -- evaluate pulses
-    putStrLn "Step"
     ((_, latchUpdates, output), topologyUpdates, os)
             <- runBuildIO time1
             $  runEvalP
             $  evaluatePulses roots
     
-    doit latchUpdates           -- update latch values
+    doit latchUpdates           -- update latch values from pulses
     doit topologyUpdates        -- rearrange graph topology
     let actions = join output   -- output IO actions
         state2  = Network { nTime = next time1, nOutputs = os ++ outputs1 }
@@ -99,7 +99,3 @@ insertNode node q =         -- O and L nodes have only one parent, so
 -- | Insert a list of children into the queue.
 insertNodes :: [SomeNode] -> Queue SomeNode -> EvalP (Queue SomeNode)
 insertNodes = flip $ foldM (flip insertNode)
-
--- | Dereference a list of weak pointers while discarding dead ones.
-deRefWeaks :: [Weak v] -> IO [v]
-deRefWeaks = fmap catMaybes . mapM deRefWeak
