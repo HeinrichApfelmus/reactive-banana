@@ -11,10 +11,12 @@ Description:
     .
     Stability forecast:
     No semantic bugs expected.
+    .
     Significant API changes are likely in future versions,
     though the main interface is beginning to stabilize.
     .
-    The library features an efficient, push-driven implementation.
+    The library features an efficient, push-driven implementation
+    and has seen some optimization work.
     However, there is currently /no/ garbage collection for events that are
     created dynamically with @Reactive.Banana.Switch@.
 
@@ -103,4 +105,4 @@ Test-Suite tests
                         test-framework >= 0.6 && < 0.9,
                         test-framework-hunit >= 0.2 && < 0.4,
                         reactive-banana, vault, containers, transformers,
-                        unordered-containers, hashable
+                        unordered-containers, hashable, pqueue

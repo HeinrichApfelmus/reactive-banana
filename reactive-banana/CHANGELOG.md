@@ -3,9 +3,10 @@ Changelog
 
 **version 0.8.0.0**
 
-* The push-driven implementation now has the performance characteristics of an actual push-driven implementation.
-* A new module `Reactive.Banana.Prim` exports primitive combinators that can be used to implement a variant FRP library.
+* A new module `Reactive.Banana.Prim` exports primitive combinators that you can use to implement your own FRP library with a different API.
+* The push-driven implementation in `Reactive.Banana.Prim` now has the performance characteristics of an actual push-driven implementation. Some work has gone into optimizing constant factors as well. However there is still no garbage collection for dynamically created events and behaviors.
 * The `accumE` and `accumB` combinators evaluate their state to WHNF to avoid a space leak. (Fixes issue #52). On the other hand, `Behavior` values are evaluated on demanded, i.e. only when required by the apply combinator `<@>` or similar.
+* Recursion between events and behaviors should now work as advertised. (Fixed issue #56).
 * The deprecated `liftIONow` function has been removed.
 * The type of the `changes` function now indicates that the new Behavior value is only available in the context of `reactimate`. A variant `reactimate'` makes this explicit.
 * The module `Control.Event.Handler` now exports the `AddHandler` type, which is now a `newtype`. The module `Reactive.Banana.Frameworks.AddHandler` has been removed.
@@ -16,7 +17,7 @@ Changelog
 
 **version 0.7.0.0**
 
-* *Dynamic event switching*. Combinators are available in the module `Reactive.Banana.Switch`.
+* *Dynamic event switching*. Combinators are now available in the module `Reactive.Banana.Switch`.
 * Rename `NetworkDescription` to `Moment`, add class constraint `Frameworks t`.
 * No longer compiles with the JavaScript backend of the Utrecht Haskell compiler.
 * Change the `changes` combinator to be less useful.
