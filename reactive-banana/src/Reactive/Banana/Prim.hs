@@ -10,7 +10,7 @@ module Reactive.Banana.Prim (
     Step, Network, emptyNetwork,
     
     -- * Build FRP networks
-    Build, liftIOLater, BuildIO, BuildT, liftBuild, compile,
+    Build, liftIOLater, BuildIO, liftBuild, compile,
     module Control.Monad.IO.Class,
     
     -- * Testing

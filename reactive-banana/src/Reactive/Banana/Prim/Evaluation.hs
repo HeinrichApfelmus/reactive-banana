@@ -1,75 +1,105 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecursiveDo, BangPatterns #-}
+{-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Prim.Evaluation where
 
+import Control.Monad (join)
+import Control.Monad.IO.Class
+import Control.Monad (foldM)
 import qualified Control.Exception    as Strict (evaluate)
-import           Data.Monoid
-import           Data.List (foldl')
+import           Data.Maybe                     (catMaybes)
+import qualified Data.PQueue.Prio.Min as Q
+import           System.Mem.Weak
 
-import qualified Reactive.Banana.Prim.Dated        as Dated
-import qualified Reactive.Banana.Prim.Dependencies as Deps
-import           Reactive.Banana.Prim.Order
 import           Reactive.Banana.Prim.Plumbing
 import           Reactive.Banana.Prim.Types
 
+type Queue = Q.MinPQueue Level
+
 {-----------------------------------------------------------------------------
-    Graph evaluation
+    Evaluation step
 ------------------------------------------------------------------------------}
 -- | Evaluate all the pulses in the graph,
 -- Rebuild the graph as necessary and update the latch values.
 step :: Inputs -> Step
-step (pulse1, roots) state1 = {-# SCC step #-} mdo
-    let graph1 = nGraph state1
-        latch1 = nLatchValues state1
-        time1  = nTime state1
-
-    -- evaluate pulses while recalculating some latch values
-    ((_, latchUpdates, output), state2)
-            <- runBuildIO state1
-            $  runEvalP pulse1
-            $  evaluatePulses graph1 roots
+step roots state1 = {-# SCC step #-} do
+    let time1    = nTime state1
+        outputs1 = nOutputs state1
+    -- evaluate pulses
+    putStrLn "Step"
+    ((_, latchUpdates, output), topologyUpdates, os)
+            <- runBuildIO time1
+            $  runEvalP
+            $  evaluatePulses roots
     
-    let
-        -- updated graph dependencies
-        graph2 = nGraph state2
-        -- update latch values from accumulations
-        latch2 = appEndo latchUpdates $ nLatchValues state2
-        -- calculate output actions, possibly recalculating more latch values
-        (actions, latch3) = Dated.runDated output latch2
+    doit latchUpdates           -- update latch values
+    doit topologyUpdates        -- rearrange graph topology
+    let actions = join output   -- output IO actions
+        state2  = Network { nTime = next time1, nOutputs = os ++ outputs1 }
+    return (actions, state2)
 
-    -- make sure that the latch values are in WHNF
-    Strict.evaluate $ {-# SCC evaluate #-} latch3
-    return (actions, Network
-            { nGraph       = graph2
-            , nLatchValues = latch3
-            , nTime        = Dated.next time1
-            })
-
-
-type Result = (EvalL, [(Position, EvalO)])
-type Q      = Deps.DepsQueue
-
+{-----------------------------------------------------------------------------
+    Traversal in dependency order
+------------------------------------------------------------------------------}
 -- | Update all pulses in the graph, starting from a given set of nodes
-evaluatePulses :: Graph -> [SomeNode] -> EvalP Result
-evaluatePulses Graph { grDeps = deps } roots =
-        go mempty [] $ insertList roots Deps.emptyQ
+evaluatePulses :: [SomeNode] -> EvalP ()
+evaluatePulses roots = go =<< insertNodes roots Q.empty
     where
-    order = Deps.dOrder deps
-    
-    go :: EvalL -> [(Position,EvalO)] -> Q SomeNode -> EvalP Result
-    go el eo !q1 = {-# SCC go #-} case Deps.minView q1 of
-        Nothing      -> return (el, eo)
-        Just (a, q2) -> case a of
-            P p -> evaluateP p >>= \c -> case c of
-                Deps.Children -> go el eo $ insertList (Deps.children deps a) q2
-                Deps.Done     -> go el eo q2
-            L l -> evaluateL l >>= \x -> go (el `mappend` x) eo      q2
-            O o -> evaluateO o >>= \x -> go el ((positionO o, x):eo) q2
+    go :: Queue SomeNode -> EvalP ()
+    go q1 = {-# SCC go #-} case Q.minView q1 of
+        Nothing         -> liftIO (putStrLn "done") >> return ()
+        Just (node, q2) -> do
+            children <- evaluateNode node
+            q2       <- insertNodes children q1
+            go q2
 
-    insertList :: [SomeNode] -> Q SomeNode -> Q SomeNode
-    insertList xs q = {-# SCC insertList #-}
-        foldl' (\q node -> Deps.insert (level node order) node q) q xs
+-- | Recalculate a given node and return all children nodes
+-- that need to evaluated subsequently.
+evaluateNode :: SomeNode -> EvalP [SomeNode]
+evaluateNode (P p) = do
+    Pulse{..} <- get p
+    ma        <- _evalP
+    modify p $ set valueP ma
+    case ma of
+        Nothing -> return []
+        Just _  -> liftIO $ deRefWeaks _childrenP
+evaluateNode (L lw) = do
+    time           <- getTime
+    LatchWrite{..} <- get lw
+    mlatch         <- liftIO $ deRefWeak _latchLW -- retrieve destination latch
+    case mlatch of
+        Nothing    -> return ()
+        Just latch -> do
+            a <- _evalLW                    -- calculate new latch value
+            liftIO $ Strict.evaluate a      -- force evaluation
+            rememberLatchUpdate $           -- schedule value to be set later
+                modify latch $ set seenL time . set valueL a
+    return []
+evaluateNode (O o) = do
+    Output{..} <- get o
+    m          <- _evalO                    -- calculate output action
+    rememberOutput $ (_positionO, m)
+    return []
 
+-- | Insert a node into the queue.
+insertNode :: SomeNode -> Queue SomeNode -> EvalP (Queue SomeNode)
+insertNode node@(P p) q = do
+    time      <- getTime
+    Pulse{..} <- get p
+    if time <= _seenP
+        then return q       -- pulse has already been put into the queue once
+        else do             -- pulse needs to be scheduled for evaluation
+            modify p $ set seenP time
+            return $ Q.insert _levelP node q
+insertNode node q =         -- O and L nodes have only one parent, so
+                            -- we can insert them at an arbitrary level
+    return $ Q.insert ground node q
 
+-- | Insert a list of children into the queue.
+insertNodes :: [SomeNode] -> Queue SomeNode -> EvalP (Queue SomeNode)
+insertNodes = flip $ foldM (flip insertNode)
+
+-- | Dereference a list of weak pointers while discarding dead ones.
+deRefWeaks :: [Weak v] -> IO [v]
+deRefWeaks = fmap catMaybes . mapM deRefWeak

@@ -1,16 +1,14 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE RecursiveDo #-}
 module Reactive.Banana.Prim.IO where
 
-import           Data.Functor
-import           Data.Unique.Really
-import qualified Data.Vault.Strict  as Strict
-import qualified Data.Vault.Lazy    as Lazy
-import           System.IO.Unsafe             (unsafePerformIO)
+import Control.Monad.IO.Class
+import Data.IORef
+import Data.Functor
 
 import Reactive.Banana.Prim.Combinators  (mapP)
-import Reactive.Banana.Prim.Dependencies (maybeContinue)
 import Reactive.Banana.Prim.Evaluation   (step)
 import Reactive.Banana.Prim.Plumbing
 import Reactive.Banana.Prim.Types
@@ -24,19 +22,21 @@ debug s = id
 --
 -- Together with 'addHandler', this function can be used to operate with
 -- pulses as with standard callback-based events.
-newInput :: Lazy.Key a -> Build (Pulse a, a -> Step)
-newInput key = unsafePerformIO $ do
-    uid <- newUnique
-    let pulse = Pulse
-            { evaluateP = maybeContinue <$> readPulseP pulse
-            , getValueP = Lazy.lookup key
-            , uidP      = uid
-            , nameP     = "newInput"
-            }
-    return $ do
-        always <- alwaysP
-        let inputs a = (Lazy.insert key a Lazy.empty, [P pulse, P always])
-        return (pulse, step . inputs)
+newInput :: void -> Build (Pulse a, a -> Step)
+newInput key = mdo
+    time  <- getTimeB
+    pulse <- liftIO $ newIORef $ Pulse
+        { _seenP     = time
+        , _valueP    = Nothing
+        , _evalP     = _valueP <$> get pulse    -- get its own value
+        , _childrenP = []
+        , _parentsP  = []
+        , _levelP    = ground
+        }
+    let run a network = do
+            modify pulse $ set valueP (Just a)
+            step [P pulse] network
+    return (pulse, run)
 
 -- | Register a handler to be executed whenever a pulse occurs.
 --

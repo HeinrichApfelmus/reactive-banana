@@ -12,9 +12,10 @@ import Reactive.Banana.Prim.Dated (Box(..))
 import Reactive.Banana.Prim.Plumbing
     ( neverP, newPulse, newLatch, cachedLatch
     , dependOn, changeParent
-    , readPulseP, readLatchP, readLatchFutureP, liftBuildP, liftBuildIOP
+    , getValueL
+    , readPulseP, readLatchP, readLatchFutureP, liftBuildP,
     )
-import Reactive.Banana.Prim.Types (Latch(..), Future, Pulse, Build, BuildIO)
+import Reactive.Banana.Prim.Types (Latch, Future, Pulse, Build, BuildIO)
 
 import Debug.Trace
 -- debug s = trace s
@@ -78,15 +79,15 @@ applyP f x = do
     return p
 
 pureL :: a -> Latch a
-pureL a = Latch { getValueL = return (pure a) }
+pureL a = cachedLatch $ return a
 
 -- specialization of   mapL f = applyL (pureL f)
 mapL :: (a -> b) -> Latch a -> Latch b
-mapL f lx = cachedLatch $ {-# SCC mapL #-} fmap f <$> getValueL lx
+mapL f lx = cachedLatch $ {-# SCC mapL #-} f <$> getValueL lx
 
 applyL :: Latch (a -> b) -> Latch a -> Latch b
 applyL lf lx = cachedLatch $
-    {-# SCC applyL #-} (<*>) <$> getValueL lf <*> getValueL lx
+    {-# SCC applyL #-} getValueL lf <*> getValueL lx
 
 accumL :: a -> Pulse (a -> a) -> Build (Latch a, Pulse a)
 accumL a p1 = do
@@ -108,7 +109,7 @@ stepperL a p = do
 switchL :: Latch a -> Pulse (Latch a) -> Build (Latch a)
 switchL l pl = mdo
     x <- stepperL l pl
-    return $ Latch { getValueL = getValueL x >>= \(Box a) -> getValueL a }
+    return $ cachedLatch $ getValueL x >>= getValueL
 
 executeP :: Pulse (b -> BuildIO a) -> b -> Build (Pulse a)
 executeP p1 b = do
@@ -116,7 +117,7 @@ executeP p1 b = do
         p2 `dependOn` p1
         return p2
     where
-    eval (Just x) = Just <$> liftBuildIOP (x b)
+    eval (Just x) = Just <$> liftBuildP (x b)
     eval Nothing  = return Nothing
 
 switchP :: Pulse (Pulse a) -> Build (Pulse a)
