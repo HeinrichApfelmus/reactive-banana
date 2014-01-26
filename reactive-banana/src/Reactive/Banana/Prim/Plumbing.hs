@@ -184,7 +184,13 @@ getTime :: EvalP Time
 getTime = lift $ RWS.ask
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
-readPulseP = liftIO . fmap _valueP . get
+readPulseP p = do
+    time      <- getTime
+    Pulse{..} <- get p
+    -- Check that the current pulse value is, in fact, current.
+    return $ if _seenP == time then _valueP else Nothing
+    -- FIXME: Don't save the value inside the IORef, but use
+    -- a discardable Vault instead, to avoid space leaks?
 
 readLatchP :: Latch a -> EvalP a
 readLatchP = lift . readLatchB

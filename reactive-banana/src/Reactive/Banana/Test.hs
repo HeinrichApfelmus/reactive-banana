@@ -33,6 +33,7 @@ main = defaultMain
         [ testModelMatch "counter"     counter
         , testModelMatch "double"      double
         , testModelMatch "sharing"     sharing
+        , testModelMatch "unionFilter" unionFilter
         , testModelMatch "recursive1"  recursive1
         , testModelMatch "recursive2"  recursive2
         , testModelMatch "recursive3"  recursive3
@@ -105,10 +106,16 @@ counter e = applyE (pure const <*> bcounter) e
 
 merge e1 e2 = unionWith (++) (list e1) (list e2)
     where list = fmap (:[])
-    
+
 double e  = merge e e
 sharing e = merge e1 e1
     where e1 = filterE (< 3) e
+
+unionFilter e1 = unionWith (+) e2 e3
+    where
+    e3 = fmap (+1) $ filterE even e1
+    e2 = fmap (+1) $ filterE odd  e1
+
 recursive1 e1 = e2
     where
     e2 = applyE b e1
