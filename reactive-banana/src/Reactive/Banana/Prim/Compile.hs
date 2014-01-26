@@ -5,7 +5,6 @@ module Reactive.Banana.Prim.Compile where
 
 import           Data.Functor
 import           Data.IORef
-import qualified Data.Vault.Lazy                  as Lazy
 import           Reactive.Banana.Prim.Combinators
 import           Reactive.Banana.Prim.IO
 import           Reactive.Banana.Prim.Plumbing
@@ -38,10 +37,9 @@ compile m state1 = do
 -- that the 'sequence' function does not compute its result lazily.
 interpret :: (Pulse a -> BuildIO (Pulse b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
-    key <- Lazy.newKey
     o   <- newIORef Nothing
     let network = do
-            (pin, sin) <- liftBuild $ newInput key
+            (pin, sin) <- liftBuild $ newInput
             pmid       <- f pin
             pout       <- liftBuild $ mapP return pmid
             liftBuild $ addHandler pout (writeIORef o . Just)
@@ -65,9 +63,8 @@ interpret f xs = do
 -- Mainly useful for testing whether there are space leaks. 
 runSpaceProfile :: (Pulse a -> BuildIO void) -> [a] -> IO ()
 runSpaceProfile f xs = do
-    key <- Lazy.newKey
     let g = do
-        (p1, fire) <- liftBuild $ newInput key
+        (p1, fire) <- liftBuild $ newInput
         f p1
         return fire
     (fire,network) <- compile g emptyNetwork

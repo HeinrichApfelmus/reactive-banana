@@ -22,8 +22,8 @@ debug s = id
 --
 -- Together with 'addHandler', this function can be used to operate with
 -- pulses as with standard callback-based events.
-newInput :: void -> Build (Pulse a, a -> Step)
-newInput key = mdo
+newInput :: Build (Pulse a, a -> Step)
+newInput = mdo
     time  <- getTimeB
     pulse <- liftIO $ newIORef $ Pulse
         { _seenP     = time

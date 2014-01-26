@@ -14,7 +14,6 @@ import           Control.Monad.Trans.Reader
 import           Data.Functor
 import           Data.Functor.Identity
 import           Data.IORef
-import qualified Data.Vault.Lazy             as Lazy
 import qualified Reactive.Banana.Prim        as Prim
 import           Reactive.Banana.Prim.Cached
 
@@ -82,8 +81,7 @@ compile setup = do
 
 fromAddHandler :: AddHandler a -> Moment (Event a)
 fromAddHandler addHandler = do
-    key       <- liftIO $ Lazy.newKey
-    (p, fire) <- liftBuild $ Prim.newInput key
+    (p, fire) <- liftBuild $ Prim.newInput
     network   <- ask
     liftIO $ register addHandler $ runStep network . fire
     return $ Prim.fromPure p
