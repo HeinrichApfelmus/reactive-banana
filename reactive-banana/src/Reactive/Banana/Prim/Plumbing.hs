@@ -101,7 +101,7 @@ cachedLatch eval = unsafePerformIO $ newIORef $ Latch
 addOutput :: Pulse EvalO -> Build ()
 addOutput p = do
     o <- liftIO $ newIORef $ Output
-        { _evalO     = maybe (return nop) id <$> readPulseP p
+        { _evalO     = maybe (return $ debug "nop") id <$> readPulseP p
         , _positionO = 1 -- FIXME: Update position with global state!
         }
     (P p) `addChild` (O o)
@@ -135,6 +135,7 @@ addChild :: SomeNode -> SomeNode -> Build ()
 addChild (P parent) (P child) = RWS.tell (Action action,mempty,mempty)
     where
     action = do
+        debug "P `addChild` P"
         wparent <- mkWeakIORefValue child (P parent)  -- child keeps parent alive
         level1 <- _levelP <$> get child
         level2 <- _levelP <$> get parent
@@ -145,13 +146,15 @@ addChild (P parent) (P child) = RWS.tell (Action action,mempty,mempty)
 addChild (P parent) (L child) = RWS.tell (Action action,mempty,mempty)
     where
     action = do
+        debug "P `addChild` L"
         _ <- mkWeakIORefValue child (P parent)  -- child keeps parent alive
         w <- mkWeakIORefValue child (L child)
         modify' parent $ update childrenP (w:)
 addChild (P parent) (O child) = RWS.tell (Action action,mempty,mempty)
     where
     action = do
-        _ <- mkWeakIORefValue child (P parent)  -- child keeps parent alive
+        debug "P `addChild` O"
+        _ <- mkWeakIORefValueFinalizer child (P parent) (debug "O died")
             -- child keeps parent alive
         w <- mkWeakIORefValue child (O child)
         modify' parent $ update childrenP (w:)

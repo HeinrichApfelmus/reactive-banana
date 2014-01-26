@@ -78,7 +78,8 @@ evaluateNode (L lw) = {-# SCC evaluateNodeL #-} do
                 modify' latch $ \l ->
                     a `seq` l { _seenL = time, _valueL = a }
     return []
-evaluateNode (O o) = {-# SCC evaluateNodeO #-}do
+evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
+    debug "evaluateNode O"
     Output{..} <- get o
     m          <- _evalO                    -- calculate output action
     rememberOutput $ (_positionO, m)

@@ -4,6 +4,7 @@
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
 module Reactive.Banana.Prim.Util where
 
+import Control.Monad.IO.Class
 import           Control.Monad          (foldM)
 import           Data.IORef
 import           Data.Maybe             (catMaybes)
@@ -13,6 +14,9 @@ import qualified GHC.STRef       as GHC
 import qualified GHC.Weak        as GHC
 import           System.Mem.Weak
 
+debug :: MonadIO m => String -> m ()
+-- debug = liftIO . putStrLn
+debug _ = return ()
 
 mkWeakIORefValueFinalizer :: IORef a -> value -> IO () -> IO (Weak value)
 mkWeakIORefValueFinalizer r@(GHC.IORef (GHC.STRef r#)) v f = GHC.IO $ \s ->
