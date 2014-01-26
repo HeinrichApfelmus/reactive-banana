@@ -1,6 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE RecursiveDo #-}
 module Reactive.Banana.Prim (
     -- * Synopsis
     -- | Primitive type and combinators for building FRP networks.
@@ -12,6 +13,9 @@ module Reactive.Banana.Prim (
     -- * Build FRP networks
     Build, liftIOLater, BuildIO, liftBuild, compile,
     module Control.Monad.IO.Class,
+    
+    -- * Caching
+    module Reactive.Banana.Prim.Cached,
     
     -- * Testing
     interpret, mapAccumM, mapAccumM_, runSpaceProfile,
@@ -29,12 +33,85 @@ module Reactive.Banana.Prim (
     
     -- * Dynamic event switching
     switchL, executeP, switchP
+    
+    -- * Notes
+    -- $recursion
   ) where
 
 
 import Control.Monad.IO.Class
+import Reactive.Banana.Prim.Cached
 import Reactive.Banana.Prim.Combinators
 import Reactive.Banana.Prim.Compile
 import Reactive.Banana.Prim.IO
 import Reactive.Banana.Prim.Plumbing (neverP, alwaysP, liftBuild, liftIOLater)
 import Reactive.Banana.Prim.Types
+
+{-----------------------------------------------------------------------------
+    Notes
+------------------------------------------------------------------------------}
+-- Note [Recursion]
+{- $recursion
+
+The 'Build' monad is an instance of 'MonadFix' and supports value recursion.
+However, it is built on top of the 'IO' monad, so the recursion is
+somewhat limited.
+
+The main rule for value recursion in the 'IO' monad is that the action
+to be performed must be known in advance. For instance, the following snippet
+will not work, because 'putStrLn' cannot complete its action without
+inspecting @x@, which is not defined until later.
+
+>   mdo
+>       putStrLn x
+>       let x = "Hello recursion"
+
+On the other hand, whenever the sequence of 'IO' actions can be known
+before inspecting any later arguments, the recursion works.
+For instance the snippet
+
+>   mdo
+>       p1 <- mapP p2
+>       p2 <- neverP
+>       return p1
+
+works because 'mapP' does not inspect its argument. In other words,
+a call @p1 <- mapP undefined@ would perform the same sequence of 'IO' actions.
+(Internally, it essentially calls 'newIORef'.)
+
+With this issue in mind, almost all operations that build 'Latch'
+and 'Pulse' values have been carefully implemented to not inspect
+their arguments.
+In conjunction with the 'Cached' mechanism for observable sharing,
+this allows us to build combinators that can be used recursively.
+One notable exception is the 'readLatch' function, which must
+inspect its argument in order to be able to read its value.
+
+-}
+
+test :: Build (Pulse ())
+test = mdo
+    p1 <- mapP (const ()) p2
+    p2 <- neverP
+    return p1
+
+-- Note [LatchStrictness]
+{-
+
+Any value that is stored in the graph over a longer
+period of time must be stored in WHNF.
+
+This implies that the values in a latch must be forced to WHNF
+when storing them. That doesn't have to be immediately
+since we are tying a knot, but it definitely has to be done
+before  evaluateGraph  is done.
+
+It also implies that reading a value from a latch must
+be forced to WHNF before storing it again, so that we don't
+carry around the old collection of latch values.
+This is particularly relevant for `applyL`.
+
+Conversely, since latches are the only way to store values over time,
+this is enough to guarantee that there are no space leaks in this regard.
+
+-}

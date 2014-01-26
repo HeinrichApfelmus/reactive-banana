@@ -16,34 +16,22 @@ import           Data.Functor.Identity
 import           Data.IORef
 import qualified Data.Vault.Lazy             as Lazy
 import qualified Reactive.Banana.Prim        as Prim
-import qualified Reactive.Banana.Prim.Cached as Prim
-import           Reactive.Banana.Prim.Cached         hiding (runCached)
+import           Reactive.Banana.Prim.Cached
 
 type Build   = Prim.Build
-type Latch   = Prim.Latch
-type Pulse   = Prim.Pulse
+type Latch a = Prim.Latch a
+type Pulse a = Prim.Pulse a
 type Future  = Prim.Future
 
 {-----------------------------------------------------------------------------
     Types
 ------------------------------------------------------------------------------}
-type Behavior a = Cached Moment' (Latch a, Pulse ())
-type Event a    = Cached Moment' (Pulse a)
+type Behavior a = Cached Moment (Latch a, Pulse ())
+type Event a    = Cached Moment (Pulse a)
+type Moment     = ReaderT EventNetwork Prim.Build
 
-type MomentT m  = ReaderT EventNetwork (Prim.BuildT m)
-type Moment     = MomentT IO
-type Moment'    = MomentT Identity
-
-instance (Monad m, MonadFix m, HasCache m)
-    => HasCache (ReaderT EventNetwork m) where
-        retrieve key = lift $ retrieve key
-        write key a  = lift $ write key a
-
-liftBuild :: Monad m => Build a -> MomentT m a
-liftBuild = lift . Prim.liftBuild
-
-runCached :: Monad m => Cached Moment' a -> MomentT m a
-runCached = mapReaderT Prim.liftBuild . Prim.runCached
+liftBuild :: Build a -> Moment a
+liftBuild = lift
 
 {-----------------------------------------------------------------------------
     Interpretation
@@ -172,7 +160,7 @@ trimB b = do
     ~(l,p) <- runCached b               -- add behavior to network
     return $ return $ fromPure (l,p)    -- remember it henceforth
 
-executeP :: Monad m => Pulse (Moment a) -> MomentT m (Pulse a)
+executeP :: Pulse (Moment a) -> Moment (Pulse a)
 executeP p1 = do
     p2 <- liftBuild $ Prim.mapP runReaderT p1
     r <- ask

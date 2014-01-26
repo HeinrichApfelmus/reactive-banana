@@ -72,7 +72,7 @@ evaluateNode (L lw) = do
         Nothing    -> return ()
         Just latch -> do
             a <- _evalLW                    -- calculate new latch value
-            liftIO $ Strict.evaluate a      -- force evaluation
+            liftIO $ Strict.evaluate a      -- see Note [LatchStrictness]
             rememberLatchUpdate $           -- schedule value to be set later
                 modify latch $ set seenL time . set valueL a
     return []

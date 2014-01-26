@@ -43,8 +43,8 @@ main = defaultMain
     , testGroup "Dynamic Event Switching"
         [ testModelMatch  "observeE_id"         observeE_id
         , testModelMatchM "initialB_immediate"  initialB_immediate
-        , testModelMatchM "initialB_recursive1" initialB_recursive1
-        , testModelMatchM "initialB_recursive2" initialB_recursive2
+        -- , testModelMatchM "initialB_recursive1" initialB_recursive1
+        -- , testModelMatchM "initialB_recursive2" initialB_recursive2
         , testModelMatchM "dynamic_apply"       dynamic_apply
         , testModelMatchM "switchE1"            switchE1
         , testModelMatchM "switchB_two"         switchB_two
@@ -121,7 +121,7 @@ recursive2 e1 = e2
 
 type Dummy = Int
 
--- counter that can be decreased as long as it's >= 0
+-- Counter that can be decreased as long as it's >= 0 .
 recursive3 :: Event Dummy -> Event Int
 recursive3 edec = applyE (const <$> bcounter) ecandecrease
     where
@@ -157,33 +157,34 @@ recursive4b eInput = result <@ eInput
         eq     = filterApply ((==) <$> result) input
         neq    = filterApply ((/=) <$> result) input
 
--- test accumE vs accumB
+-- Test 'accumE' vs 'accumB'.
 accumBvsE :: Event Dummy -> Event [Int]
 accumBvsE e = merge e1 e2
     where
     e1 = accumE 0 ((+1) <$ e)
     e2 = let b = accumB 0 ((+1) <$ e) in applyE (const <$> b) e
 
-
 observeE_id = observeE . fmap return -- = id
 
 initialB_immediate e = do
     x <- initialB (stepper 0 e)
     return $ x <$ e
+
+{-- The following tests can no longer work with 'Build'
+being a transformer of the 'IO' monad.
+See Note [Recursion].
+
 initialB_recursive1 e1 = mdo
     _ <- initialB b
     let b = stepper 0 e1
     return $ b <@ e1
-    
--- NOTE: This test case tries to reproduce a situation
--- where the value of a latch is used before the latch was created.
--- This was relevant for the CRUD example, but I can't find a way
--- to make it smaller right now. Oh well.
+
 initialB_recursive2 e1 = mdo
     x <- initialB b
     let bf = const x <$ stepper 0 e1 
     let b  = stepper 0 $ (bf <*> b) <@ e1
     return $ b <@ e1
+-}
 
 dynamic_apply e = do
     mb <- trimB $ stepper 0 e

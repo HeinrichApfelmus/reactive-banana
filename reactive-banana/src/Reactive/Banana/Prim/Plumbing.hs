@@ -36,6 +36,16 @@ newPulse name eval = do
         , _nameP     = name
         }
 
+{-
+* Note [PulseCreation]
+
+We assume that we do not have to calculate a pulse occurrence
+at the moment we create the pulse. Otherwise, we would have
+to recalculate the dependencies *while* doing evaluation;
+this is a recipe for desaster.
+
+-}
+
 -- | 'Pulse' that never fires.
 neverP :: Build (Pulse a)
 neverP = do

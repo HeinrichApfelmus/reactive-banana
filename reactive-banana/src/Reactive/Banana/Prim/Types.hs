@@ -21,6 +21,8 @@ data Network = Network
     , nOutputs :: [Output]     -- Remember outputs to prevent garbage collection.
     }
 
+instance Show Network where show = error "instance Show Network not implemented."
+
 type Inputs        = [SomeNode]
 type EvalNetwork a = Network -> IO (a, Network)
 type Step          = EvalNetwork (IO ())
