@@ -8,7 +8,11 @@ import qualified Control.Exception      as Strict (evaluate)
 import           Control.Monad                    (foldM)
 import           Control.Monad                    (join)
 import           Control.Monad.IO.Class
+import qualified Control.Monad.Trans.RWS    as RWS
+import           Data.Maybe
+import           Data.Functor
 import qualified Data.PQueue.Prio.Min   as Q
+import qualified Data.Vault.Lazy as Lazy
 import           System.Mem.Weak
 
 import           Reactive.Banana.Prim.Plumbing
@@ -23,14 +27,14 @@ type Queue = Q.MinPQueue Level
 -- | Evaluate all the pulses in the graph,
 -- Rebuild the graph as necessary and update the latch values.
 step :: Inputs -> Step
-step roots state1 = {-# SCC step #-} do
+step (roots, pulses1) state1 = {-# SCC step #-} do
     let time1    = nTime state1
         outputs1 = nOutputs state1
     
     -- evaluate pulses
     ((_, latchUpdates, output), topologyUpdates, os)
             <- runBuildIO time1
-            $  runEvalP
+            $  runEvalP pulses1
             $  evaluatePulses roots
     
     doit latchUpdates           -- update latch values from pulses
@@ -57,14 +61,14 @@ evaluatePulses roots = go =<< insertNodes roots Q.empty
 -- | Recalculate a given node and return all children nodes
 -- that need to evaluated subsequently.
 evaluateNode :: SomeNode -> EvalP [SomeNode]
-evaluateNode (P p) = do
+evaluateNode (P p) = {-# SCC evaluateNodeP #-} do
     Pulse{..} <- get p
     ma        <- _evalP
-    modify p $ set valueP ma
+    writePulseP _keyP ma
     case ma of
         Nothing -> return []
         Just _  -> liftIO $ deRefWeaks _childrenP
-evaluateNode (L lw) = do
+evaluateNode (L lw) = {-# SCC evaluateNodeL #-}do
     time           <- getTime
     LatchWrite{..} <- get lw
     mlatch         <- liftIO $ deRefWeak _latchLW -- retrieve destination latch
@@ -72,11 +76,12 @@ evaluateNode (L lw) = do
         Nothing    -> return ()
         Just latch -> do
             a <- _evalLW                    -- calculate new latch value
-            liftIO $ Strict.evaluate a      -- see Note [LatchStrictness]
+            -- liftIO $ Strict.evaluate a      -- see Note [LatchStrictness]
             rememberLatchUpdate $           -- schedule value to be set later
-                modify latch $ set seenL time . set valueL a
+                modify' latch $ \l ->
+                    a `seq` l { _seenL = time, _valueL = a }
     return []
-evaluateNode (O o) = do
+evaluateNode (O o) = {-# SCC evaluateNodeO #-}do
     Output{..} <- get o
     m          <- _evalO                    -- calculate output action
     rememberOutput $ (_positionO, m)
@@ -90,7 +95,7 @@ insertNode node@(P p) q = do
     if time <= _seenP
         then return q       -- pulse has already been put into the queue once
         else do             -- pulse needs to be scheduled for evaluation
-            modify p $ set seenP time
+            modify' p $ set seenP time
             return $ Q.insert _levelP node q
 insertNode node q =         -- O and L nodes have only one parent, so
                             -- we can insert them at an arbitrary level

@@ -7,6 +7,7 @@ module Reactive.Banana.Prim.IO where
 import Control.Monad.IO.Class
 import Data.IORef
 import Data.Functor
+import qualified Data.Vault.Lazy as Lazy
 
 import Reactive.Banana.Prim.Combinators  (mapP)
 import Reactive.Banana.Prim.Evaluation   (step)
@@ -24,21 +25,17 @@ debug s = id
 -- pulses as with standard callback-based events.
 newInput :: Build (Pulse a, a -> Step)
 newInput = mdo
-    time  <- getTimeB
+    key   <- liftIO $ Lazy.newKey
     pulse <- liftIO $ newIORef $ Pulse
-        { _seenP     = time
-        , _valueP    = Nothing
-        , _evalP     = _valueP <$> get pulse    -- get its own value
+        { _keyP      = key
+        , _seenP     = agesAgo
+        , _evalP     = readPulseP pulse    -- get its own value
         , _childrenP = []
         , _parentsP  = []
         , _levelP    = ground
         , _nameP     = "newInput"
         }
-    let run a network = do
-            modify pulse $ set valueP (Just a)
-            a <- step [P pulse] network
-            modify pulse $ set valueP Nothing
-            return a
+    let run a = step ([P pulse], Lazy.insert key (Just a) Lazy.empty)
     return (pulse, run)
 
 -- | Register a handler to be executed whenever a pulse occurs.

@@ -11,6 +11,7 @@ import Data.Functor
 import Data.IORef
 import Data.Monoid
 import System.Mem.Weak
+import qualified Data.Vault.Lazy as Lazy
 
 {-----------------------------------------------------------------------------
     Network
@@ -23,7 +24,7 @@ data Network = Network
 
 instance Show Network where show = error "instance Show Network not implemented."
 
-type Inputs        = [SomeNode]
+type Inputs        = ([SomeNode], Lazy.Vault)
 type EvalNetwork a = Network -> IO (a, Network)
 type Step          = EvalNetwork (IO ())
 
@@ -52,6 +53,9 @@ type Level = Integer
 next :: Time -> Time
 next = (+1)
 
+agesAgo :: Time
+agesAgo = 0
+
 ground :: Level
 ground = 0
 
@@ -70,13 +74,13 @@ set f x = update f (const x)
 ------------------------------------------------------------------------------}
 type Pulse  a = IORef (Pulse' a)
 data Pulse' a = Pulse
-    { _seenP     :: Time             -- See note [Timestamp].
-    , _valueP    :: Maybe a          -- Current value.
-    , _evalP     :: EvalP (Maybe a)  -- Calculate current value.
-    , _childrenP :: [Weak SomeNode]  -- Weak references to child nodes.
-    , _parentsP  :: [Weak SomeNode]  -- Weak reference to parent nodes.
-    , _levelP    :: Level            -- Priority in evaluation order.
-    , _nameP     :: String           -- Name for debugging.
+    { _keyP      :: Lazy.Key (Maybe a) -- Key to retrieve pulse from cache.
+    , _seenP     :: Time               -- See note [Timestamp].
+    , _evalP     :: EvalP (Maybe a)    -- Calculate current value.
+    , _childrenP :: [Weak SomeNode]    -- Weak references to child nodes.
+    , _parentsP  :: [Weak SomeNode]    -- Weak reference to parent nodes.
+    , _levelP    :: !Level             -- Priority in evaluation order.
+    , _nameP     :: String             -- Name for debugging.
     }
 
 type Latch  a = IORef (Latch' a)
@@ -93,7 +97,7 @@ data LatchWrite' = forall a. LatchWrite
 
 type Output  = IORef Output'
 data Output' = Output
-    { _positionO :: Position
+    { _positionO :: !Position
     , _evalO     :: EvalP EvalO
     }
 
@@ -105,16 +109,16 @@ data SomeNode
 -- Lenses for various parameters
 seenP  = Setter $ \f s -> s { _seenP = f (_seenP s) }
 seenL  = Setter $ \f s -> s { _seenL = f (_seenL s) }
-valueP = Setter $ \f s -> s { _valueP = f (_valueP s) }
 valueL = Setter $ \f s -> s { _valueL = f (_valueL s) }
 parentsP = Setter $ \f s -> s { _parentsP = f (_parentsP s) }
 childrenP = Setter $ \f s -> s { _childrenP = f (_childrenP s) }
 levelP = Setter $ \f s -> s { _levelP = f (_levelP s) }
 
 -- | Evaluation monads.
-type EvalP = WriterT (EvalLW,[(Position, EvalO)]) Build
+type EvalP    = RWST () (EvalLW,[(Position, EvalO)]) Lazy.Vault Build
     -- writer : (latch updates, IO action)
-type EvalL = ReaderT Time IO
+    -- state  : pulse values
+type EvalL    = ReaderT Time IO
 type EvalO    = Future (IO ())
 type Future   = IO
 type EvalLW   = Action

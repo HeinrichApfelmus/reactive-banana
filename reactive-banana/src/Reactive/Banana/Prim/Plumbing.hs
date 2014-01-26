@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards, RecursiveDo #-}
 module Reactive.Banana.Prim.Plumbing where
 
+import           Control.Monad (join)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import qualified Control.Monad.Trans.RWS    as RWS
@@ -14,6 +15,7 @@ import           Data.Functor
 import           Data.IORef
 import           Data.List                            (sortBy)
 import           Data.Monoid
+import qualified Data.Vault.Lazy as Lazy
 import           System.IO.Unsafe
 
 import Reactive.Banana.Prim.Types
@@ -24,11 +26,11 @@ import Reactive.Banana.Prim.Util
 ------------------------------------------------------------------------------}
 -- | Make 'Pulse' from evaluation function
 newPulse :: String -> EvalP (Maybe a) -> Build (Pulse a)
-newPulse name eval = do
-    time <- getTimeB
-    liftIO $ newIORef $ Pulse
-        { _seenP     = time
-        , _valueP    = Nothing
+newPulse name eval = liftIO $ do
+    key <- Lazy.newKey
+    newIORef $ Pulse
+        { _keyP      = key
+        , _seenP     = agesAgo
         , _evalP     = eval
         , _childrenP = []
         , _parentsP  = []
@@ -48,11 +50,11 @@ this is a recipe for desaster.
 
 -- | 'Pulse' that never fires.
 neverP :: Build (Pulse a)
-neverP = do
-    time <- getTimeB
-    liftIO $ newIORef $ Pulse
-        { _seenP     = time
-        , _valueP    = Nothing
+neverP = liftIO $ do
+    key <- Lazy.newKey
+    newIORef $ Pulse
+        { _keyP      = key
+        , _seenP     = agesAgo
         , _evalP     = return Nothing
         , _childrenP = []
         , _parentsP  = []
@@ -169,9 +171,9 @@ getValueL l = do
     Latch{..} <- get l
     _evalL
 
-runEvalP :: EvalP a -> Build (a, EvalLW, EvalO)
-runEvalP m = do
-    (a,(wl,wo)) <- Writer.runWriterT m
+runEvalP :: Lazy.Vault -> EvalP a -> Build (a, EvalLW, EvalO)
+runEvalP s m = do
+    (a,_,(wl,wo)) <- RWS.runRWST m () s
     return (a,wl, sequence_ <$> sequence (sortOutputs wo))
 
 sortOutputs :: Ord k => [(k,a)] -> [a]
@@ -185,12 +187,11 @@ getTime = liftBuildP $ RWS.ask
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP p = do
-    time      <- getTime
     Pulse{..} <- get p
-    -- Check that the current pulse value is, in fact, current.
-    return $ if _seenP == time then _valueP else Nothing
-    -- FIXME: Don't save the value inside the IORef, but use
-    -- a discardable Vault instead, to avoid space leaks?
+    join . Lazy.lookup _keyP <$> RWS.get
+
+writePulseP :: Lazy.Key (Maybe a) -> Maybe a -> EvalP ()
+writePulseP key ma = RWS.modify $ Lazy.insert key ma
 
 readLatchP :: Latch a -> EvalP a
 readLatchP = lift . readLatchB
@@ -199,10 +200,10 @@ readLatchFutureP :: Latch a -> EvalP (Future a)
 readLatchFutureP latch = error "FIXME: readLatchFutureP not implemented."
 
 rememberLatchUpdate :: IO () -> EvalP ()
-rememberLatchUpdate x = Writer.tell (Action x,mempty)
+rememberLatchUpdate x = RWS.tell (Action x,mempty)
 
 rememberOutput :: (Position, EvalO) -> EvalP ()
-rememberOutput x = Writer.tell (mempty,[x])
+rememberOutput x = RWS.tell (mempty,[x])
 
 {-----------------------------------------------------------------------------
     IORef
@@ -213,5 +214,7 @@ get = liftIO . readIORef
 put :: MonadIO m => IORef a -> a -> m ()
 put ref = liftIO . writeIORef ref
 
+-- | Strictly modify an 'IORef'.
 modify :: MonadIO m => IORef a -> (a -> a) -> m ()
 modify ref f = get ref >>= put ref . f
+
