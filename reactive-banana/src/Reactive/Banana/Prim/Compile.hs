@@ -1,14 +1,17 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE BangPatterns #-}
 module Reactive.Banana.Prim.Compile where
 
-import           Data.Functor
-import           Data.IORef
-import           Reactive.Banana.Prim.Combinators
-import           Reactive.Banana.Prim.IO
-import           Reactive.Banana.Prim.Plumbing
-import           Reactive.Banana.Prim.Types
+import Control.Monad (void)
+import Control.Exception                (evaluate)
+import Data.Functor
+import Data.IORef
+import Reactive.Banana.Prim.Combinators
+import Reactive.Banana.Prim.IO
+import Reactive.Banana.Prim.Plumbing
+import Reactive.Banana.Prim.Types
 
 {-----------------------------------------------------------------------------
    Compilation
@@ -58,14 +61,17 @@ interpret f xs = do
     
     mapAccumM go state xs         -- run several steps
 
--- | Execute an FRP network with a sequence of inputs, but discard results.
+-- | Execute an FRP network with a sequence of inputs.
+-- Make sure that outputs are evaluated, but don't display their values.
 -- 
 -- Mainly useful for testing whether there are space leaks. 
-runSpaceProfile :: (Pulse a -> BuildIO void) -> [a] -> IO ()
+runSpaceProfile :: (Pulse a -> BuildIO (Pulse void)) -> [a] -> IO ()
 runSpaceProfile f xs = do
     let g = do
         (p1, fire) <- liftBuild $ newInput
-        f p1
+        p2 <- f p1
+        p3 <- mapP return p2
+        addHandler p3 (void . evaluate)
         return fire
     (fire,network) <- compile g emptyNetwork
     
@@ -81,8 +87,8 @@ mapAccumM f s0 (x:xs) = do
 
 -- | Strict 'mapAccum' for a monad. Discards results.
 mapAccumM_ :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m ()
-mapAccumM_ _ _  []     = return ()
-mapAccumM_ f s0 (x:xs) = do
+mapAccumM_ _ _   []     = return ()
+mapAccumM_ f !s0 (x:xs) = do
     (_,s1) <- f x s0
     mapAccumM_ f s1 xs
 

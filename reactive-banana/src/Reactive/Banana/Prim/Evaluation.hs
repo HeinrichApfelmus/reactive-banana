@@ -27,10 +27,7 @@ type Queue = Q.MinPQueue Level
 -- | Evaluate all the pulses in the graph,
 -- Rebuild the graph as necessary and update the latch values.
 step :: Inputs -> Step
-step (roots, pulses1) state1 = {-# SCC step #-} do
-    let time1    = nTime state1
-        outputs1 = nOutputs state1
-    
+step (roots, pulses1) (Network time1 outputs1) = {-# SCC step #-} do
     -- evaluate pulses
     ((_, latchUpdates, output), topologyUpdates, os)
             <- runBuildIO time1
@@ -68,7 +65,7 @@ evaluateNode (P p) = {-# SCC evaluateNodeP #-} do
     case ma of
         Nothing -> return []
         Just _  -> liftIO $ deRefWeaks _childrenP
-evaluateNode (L lw) = {-# SCC evaluateNodeL #-}do
+evaluateNode (L lw) = {-# SCC evaluateNodeL #-} do
     time           <- getTime
     LatchWrite{..} <- get lw
     mlatch         <- liftIO $ deRefWeak _latchLW -- retrieve destination latch
@@ -89,13 +86,20 @@ evaluateNode (O o) = {-# SCC evaluateNodeO #-}do
 
 -- | Insert a node into the queue.
 insertNode :: SomeNode -> Queue SomeNode -> EvalP (Queue SomeNode)
-insertNode node@(P p) q = do
+insertNode node@(P p) q = {-# SCC insertNode #-} do
     time      <- getTime
     Pulse{..} <- get p
     if time <= _seenP
         then return q       -- pulse has already been put into the queue once
         else do             -- pulse needs to be scheduled for evaluation
-            modify' p $ set seenP time
+            -- the following code yields a more regular space profile
+            -- and reduces entry count for  evaluateNodeP ??
+            -- Apparently, that's because of garbage collection!
+            put p $! (let p = Pulse{..} in p { _seenP = time })
+            
+            -- Compared to that, the following code does not work so well:
+            -- What the heck?
+            -- modify' p $ set seenP time
             return $ Q.insert _levelP node q
 insertNode node q =         -- O and L nodes have only one parent, so
                             -- we can insert them at an arbitrary level

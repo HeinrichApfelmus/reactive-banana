@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ExistentialQuantification, NamedFieldPuns #-}
 module Reactive.Banana.Prim.Types where
 
 import Control.Monad.Trans.RWS
@@ -18,8 +18,8 @@ import qualified Data.Vault.Lazy as Lazy
 ------------------------------------------------------------------------------}
 -- | A 'Network' represents the state of a pulse/latch network,
 data Network = Network
-    { nTime    :: Time         -- Current time.
-    , nOutputs :: [Output]     -- Remember outputs to prevent garbage collection.
+    { nTime    :: !Time         -- Current time.
+    , nOutputs :: ![Output]     -- Remember outputs to prevent garbage collection.
     }
 
 instance Show Network where show = error "instance Show Network not implemented."
@@ -44,11 +44,11 @@ type BuildIO = Build
     Synonyms
 ------------------------------------------------------------------------------}
 -- | Timestamp used to determine cache validity.
-type Time  = Integer
+type Time  = Int
 -- | Priority used to keep track of declaration order for outputs.
-type Position = Integer
+type Position = Int
 -- | Priority used to determine evaluation order for pulses.
-type Level = Integer
+type Level = Int
 
 next :: Time -> Time
 next = (+1)
@@ -66,8 +66,9 @@ instance Monoid Action where
     (Action x) `mappend` (Action y) = Action (x >> y)
 
 -- | Lens-like functionality.
-newtype Setter b a = Setter { update :: (a -> a) -> (b -> b) }
-set f x = update f (const x)
+data Lens s a = Lens (s -> a) (a -> s -> s)
+set    (Lens _   set)   = set
+update (Lens get set) f = \s -> set (f $ get s) s
 
 {-----------------------------------------------------------------------------
     Pulse and Latch
@@ -75,7 +76,7 @@ set f x = update f (const x)
 type Pulse  a = IORef (Pulse' a)
 data Pulse' a = Pulse
     { _keyP      :: Lazy.Key (Maybe a) -- Key to retrieve pulse from cache.
-    , _seenP     :: Time               -- See note [Timestamp].
+    , _seenP     :: !Time              -- See note [Timestamp].
     , _evalP     :: EvalP (Maybe a)    -- Calculate current value.
     , _childrenP :: [Weak SomeNode]    -- Weak references to child nodes.
     , _parentsP  :: [Weak SomeNode]    -- Weak reference to parent nodes.
@@ -85,7 +86,7 @@ data Pulse' a = Pulse
 
 type Latch  a = IORef (Latch' a)
 data Latch' a = Latch
-    { _seenL  :: Time                -- Timestamp for the current value.
+    { _seenL  :: !Time               -- Timestamp for the current value.
     , _valueL :: a                   -- Current value.
     , _evalL  :: EvalL a             -- Recalculate current latch value.
     }
@@ -107,12 +108,12 @@ data SomeNode
     | O Output
 
 -- Lenses for various parameters
-seenP  = Setter $ \f s -> s { _seenP = f (_seenP s) }
-seenL  = Setter $ \f s -> s { _seenL = f (_seenL s) }
-valueL = Setter $ \f s -> s { _valueL = f (_valueL s) }
-parentsP = Setter $ \f s -> s { _parentsP = f (_parentsP s) }
-childrenP = Setter $ \f s -> s { _childrenP = f (_childrenP s) }
-levelP = Setter $ \f s -> s { _levelP = f (_levelP s) }
+seenP  = Lens _seenP  (\a s -> s { _seenP = a })
+seenL  = Lens _seenL  (\a s -> s { _seenL = a })
+valueL = Lens _valueL (\a s -> s { _valueL = a })
+parentsP  = Lens _parentsP (\a s -> s { _parentsP = a })
+childrenP = Lens _childrenP (\a s -> s { _childrenP = a })
+levelP = Lens _levelP (\a s -> s { _levelP = a })
 
 -- | Evaluation monads.
 type EvalP    = RWST () (EvalLW,[(Position, EvalO)]) Lazy.Vault Build

@@ -68,9 +68,8 @@ alwaysP = error "FIXME: alwaysP not implemented"
 -- | Make new 'Latch' that can be updated by a 'Pulse'
 newLatch :: a -> Build (Pulse a -> Build (), Latch a)
 newLatch a = mdo
-    time  <- getTimeB
     latch <- liftIO $ newIORef $ Latch
-        { _seenL  = time
+        { _seenL  = agesAgo
         , _valueL = a
         , _evalL  = _valueL <$> get latch
         }
@@ -91,7 +90,7 @@ newLatch a = mdo
 -- | Make a new 'Latch' that caches a previous computation.
 cachedLatch :: EvalL a -> Latch a
 cachedLatch eval = unsafePerformIO $ newIORef $ Latch
-    { _seenL  = undefined
+    { _seenL  = agesAgo
     , _valueL = undefined
     , _evalL  = eval        -- TODO: Cache computation!
     }
@@ -140,25 +139,26 @@ addChild (P parent) (P child) = RWS.tell (Action action,mempty,mempty)
         level1 <- _levelP <$> get child
         level2 <- _levelP <$> get parent
         let level = level1 `max` (level2 + 1)
-        modify child  $ update parentsP  (wparent:) . set levelP level
+        modify' child  $ update parentsP  (wparent:) . set levelP level
         wchild <- mkWeakIORefValue child (P child)
-        modify parent $ update childrenP (wchild :)
+        modify' parent $ update childrenP (wchild :)
 addChild (P parent) (L child) = RWS.tell (Action action,mempty,mempty)
     where
     action = do
         _ <- mkWeakIORefValue child (P parent)  -- child keeps parent alive
         w <- mkWeakIORefValue child (L child)
-        modify parent $ update childrenP (w:)
+        modify' parent $ update childrenP (w:)
 addChild (P parent) (O child) = RWS.tell (Action action,mempty,mempty)
     where
     action = do
         _ <- mkWeakIORefValue child (P parent)  -- child keeps parent alive
+            -- child keeps parent alive
         w <- mkWeakIORefValue child (O child)
-        modify parent $ update childrenP (w:)
+        modify' parent $ update childrenP (w:)
 
 
 changeParent :: Pulse child -> Pulse parent -> Build ()
-changeParent child parent = undefined
+changeParent child parent = error "FIXME: changeParent not implemented."
 
 liftIOLater :: IO () -> Build ()
 liftIOLater x = RWS.tell (mempty, Action x, mempty)
@@ -215,6 +215,6 @@ put :: MonadIO m => IORef a -> a -> m ()
 put ref = liftIO . writeIORef ref
 
 -- | Strictly modify an 'IORef'.
-modify :: MonadIO m => IORef a -> (a -> a) -> m ()
-modify ref f = get ref >>= put ref . f
+modify' :: MonadIO m => IORef a -> (a -> a) -> m ()
+modify' ref f = get ref >>= \x -> put ref $! f x
 
