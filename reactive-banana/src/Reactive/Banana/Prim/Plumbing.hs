@@ -61,7 +61,7 @@ neverP = do
         }
 
 alwaysP :: Build (Pulse ())
-alwaysP = undefined
+alwaysP = error "FIXME: alwaysP not implemented"
 
 -- | Make new 'Latch' that can be updated by a 'Pulse'
 newLatch :: a -> Build (Pulse a -> Build (), Latch a)
@@ -181,7 +181,7 @@ liftBuildP :: Build a -> EvalP a
 liftBuildP = lift
 
 getTime :: EvalP Time
-getTime = lift $ RWS.ask
+getTime = liftBuildP $ RWS.ask
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP p = do
@@ -196,7 +196,7 @@ readLatchP :: Latch a -> EvalP a
 readLatchP = lift . readLatchB
 
 readLatchFutureP :: Latch a -> EvalP (Future a)
-readLatchFutureP latch = undefined
+readLatchFutureP latch = error "FIXME: readLatchFutureP not implemented."
 
 rememberLatchUpdate :: IO () -> EvalP ()
 rememberLatchUpdate x = Writer.tell (Action x,mempty)
