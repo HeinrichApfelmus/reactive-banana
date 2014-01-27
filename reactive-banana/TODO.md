@@ -3,8 +3,6 @@ FIXME
 
 * Implement caching for latches.
 
-* Implement `switchP` properly with dependencies.
-
 * Implement `readFutureLatchP`.
 
 * Implement `alwaysP` so that `fromPoll` works again.

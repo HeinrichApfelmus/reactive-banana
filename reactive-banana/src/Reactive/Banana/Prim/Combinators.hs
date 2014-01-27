@@ -10,7 +10,7 @@ import Control.Monad.IO.Class
 
 import Reactive.Banana.Prim.Plumbing
     ( neverP, newPulse, newLatch, cachedLatch
-    , dependOn, changeParent
+    , dependOn, keepAlive, changeParent
     , getValueL
     , readPulseP, readLatchP, readLatchFutureP, liftBuildP,
     )
@@ -120,8 +120,6 @@ executeP p1 b = do
     eval Nothing  = return Nothing
 
 switchP :: Pulse (Pulse a) -> Build (Pulse a)
-switchP = undefined
-{-
 switchP pp = mdo
     never <- neverP
     lp    <- stepperL never pp
@@ -139,5 +137,5 @@ switchP pp = mdo
     p1 <- newPulse "switchP_in" switch :: Build (Pulse ())
     p1 `dependOn` pp
     p2 <- newPulse "switchP_out" eval
+    p2 `keepAlive` p1
     return p2
--}

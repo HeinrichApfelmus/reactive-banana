@@ -118,6 +118,12 @@ instance Eq SomeNode where
     (L x) == (L y) = equalRef x y
     (O x) == (O y) = equalRef x y
 
+{-# INLINE mkWeakNodeValue #-}
+mkWeakNodeValue :: SomeNode -> v -> IO (Weak v)
+mkWeakNodeValue (P x) = mkWeakRefValue x
+mkWeakNodeValue (L x) = mkWeakRefValue x
+mkWeakNodeValue (O x) = mkWeakRefValue x
+
 -- Lenses for various parameters
 seenP  = Lens _seenP  (\a s -> s { _seenP = a })
 seenL  = Lens _seenL  (\a s -> s { _seenL = a })

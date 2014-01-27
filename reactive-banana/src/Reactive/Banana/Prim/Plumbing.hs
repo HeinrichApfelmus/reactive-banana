@@ -17,6 +17,7 @@ import           Data.Monoid
 import qualified Data.Vault.Lazy as Lazy
 import           System.IO.Unsafe
 
+import qualified Reactive.Banana.Prim.Dependencies as Deps
 import Reactive.Banana.Prim.Types
 import Reactive.Banana.Prim.Util
 
@@ -134,34 +135,12 @@ keepAlive :: Pulse child -> Pulse parent -> Build ()
 keepAlive child parent = liftIO $ mkWeakRefValue child parent >> return ()
 
 addChild :: SomeNode -> SomeNode -> Build ()
-addChild (P parent) (P child) = RW.tell (Action action,mempty,mempty)
-    where
-    action = do
-        debug "P `addChild` P"
-        wparent <- mkWeakRefValue child (P parent)  -- child keeps parent alive
-        level1 <- _levelP <$> readRef child
-        level2 <- _levelP <$> readRef parent
-        let level = level1 `max` (level2 + 1)
-        modify' child  $ update parentsP  (wparent:) . set levelP level
-        wchild <- mkWeakRefValue child (P child)
-        modify' parent $ update childrenP (wchild :)
-addChild (P parent) (L child) = RW.tell (Action action,mempty,mempty)
-    where
-    action = do
-        debug "P `addChild` L"
-        _ <- mkWeakRefValue child (P parent)  -- child keeps parent alive
-        w <- mkWeakRefValue child (L child)
-        modify' parent $ update childrenP (w:)
-addChild (P parent) (O child) = RW.tell (Action action,mempty,mempty)
-    where
-    action = do
-        debug "P `addChild` O"
-        _ <- mkWeakRefValue child (P parent)   -- child keeps parent alive
-        w <- mkWeakRefValue child (O child)
-        modify' parent $ update childrenP (w:)
+addChild parent child =
+    RW.tell (Action $ Deps.addChild parent child,mempty,mempty)
 
 changeParent :: Pulse child -> Pulse parent -> Build ()
-changeParent child parent = error "FIXME: changeParent not implemented."
+changeParent node parent =
+    RW.tell (Action $ Deps.changeParent node parent,mempty,mempty)
 
 liftIOLater :: IO () -> Build ()
 liftIOLater x = RW.tell (mempty, Action x, mempty)
