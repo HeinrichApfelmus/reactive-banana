@@ -116,9 +116,9 @@ childrenP = Lens _childrenP (\a s -> s { _childrenP = a })
 levelP = Lens _levelP (\a s -> s { _levelP = a })
 
 -- | Evaluation monads.
-type EvalP    = RWST () (EvalLW,[(Position, EvalO)]) Lazy.Vault Build
+type EvalP    = ReaderWriterIOT Lazy.Vault (EvalLW,[(Position, EvalO)]) Build
+    -- reader : current pulse values
     -- writer : (latch updates, IO action)
-    -- state  : pulse values
 type EvalL    = ReaderT Time IO
 type EvalO    = Future (IO ())
 type Future   = IO

@@ -49,3 +49,6 @@ with all Behaviors kept in scope, so that they cannot be garbage collected. Prof
 * Implementation of `Build` using `ReaderWriterIOT`
     ~ 1.67 secs
 
+* Implementation of `EvalP` using `ReaderWriterIOT`. The `Lazy.Vault` state is threaded by hand. 
+    ~ 0.79 secs
+

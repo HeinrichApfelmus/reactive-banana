@@ -8,7 +8,7 @@ import qualified Control.Exception      as Strict (evaluate)
 import           Control.Monad                    (foldM)
 import           Control.Monad                    (join)
 import           Control.Monad.IO.Class
-import qualified Control.Monad.Trans.RWS    as RWS
+import qualified Control.Monad.Trans.ReaderWriterIO as RW
 import           Data.Maybe
 import           Data.Functor
 import qualified Data.PQueue.Prio.Min   as Q
@@ -27,12 +27,12 @@ type Queue = Q.MinPQueue Level
 -- | Evaluate all the pulses in the graph,
 -- Rebuild the graph as necessary and update the latch values.
 step :: Inputs -> Step
-step (roots, pulses1) (Network time1 outputs1) = {-# SCC step #-} do
+step inputs (Network time1 outputs1) = {-# SCC step #-} do
     -- evaluate pulses
     ((_, latchUpdates, output), topologyUpdates, os)
             <- runBuildIO time1
-            $  runEvalP pulses1
-            $  evaluatePulses roots
+            $  runEvalP Lazy.empty
+            $  evaluatePulses inputs
     
     doit latchUpdates           -- update latch values from pulses
     doit topologyUpdates        -- rearrange graph topology
@@ -44,27 +44,28 @@ step (roots, pulses1) (Network time1 outputs1) = {-# SCC step #-} do
     Traversal in dependency order
 ------------------------------------------------------------------------------}
 -- | Update all pulses in the graph, starting from a given set of nodes
-evaluatePulses :: [SomeNode] -> EvalP ()
-evaluatePulses roots = go =<< insertNodes roots Q.empty
+evaluatePulses :: Inputs -> EvalP ()
+evaluatePulses (roots, pulses) = go pulses =<< insertNodes roots Q.empty
     where
-    go :: Queue SomeNode -> EvalP ()
-    go q = {-# SCC go #-} case ({-# SCC minView #-} Q.minView q) of
+    go :: Lazy.Vault -> Queue SomeNode -> EvalP ()
+    go p q = {-# SCC go #-} case ({-# SCC minView #-} Q.minView q) of
         Nothing         -> return ()
-        Just (node, q) -> do
-            children <- evaluateNode node
-            q        <- insertNodes children q
-            go q
+        Just (node, q)  -> do
+            (p, children) <- RW.local (const p) (evaluateNode node)
+            q             <- insertNodes children q
+            go p q
 
 -- | Recalculate a given node and return all children nodes
 -- that need to evaluated subsequently.
-evaluateNode :: SomeNode -> EvalP [SomeNode]
+evaluateNode :: SomeNode -> EvalP (Lazy.Vault, [SomeNode])
 evaluateNode (P p) = {-# SCC evaluateNodeP #-} do
     Pulse{..} <- get p
     ma        <- _evalP
-    writePulseP _keyP ma
-    case ma of
+    pulses2   <- Lazy.insert _keyP ma <$> RW.ask
+    children  <- case ma of
         Nothing -> return []
         Just _  -> liftIO $ deRefWeaks _childrenP
+    return (pulses2, children)
 evaluateNode (L lw) = {-# SCC evaluateNodeL #-} do
     time           <- getTime
     LatchWrite{..} <- get lw
@@ -77,13 +78,15 @@ evaluateNode (L lw) = {-# SCC evaluateNodeL #-} do
             rememberLatchUpdate $           -- schedule value to be set later
                 modify' latch $ \l ->
                     a `seq` l { _seenL = time, _valueL = a }
-    return []
+    r <- RW.ask
+    return (r,[])
 evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
     debug "evaluateNode O"
     Output{..} <- get o
     m          <- _evalO                    -- calculate output action
     rememberOutput $ (_positionO, m)
-    return []
+    r <- RW.ask
+    return (r,[])
 
 -- | Insert a node into the queue.
 insertNode :: SomeNode -> Queue SomeNode -> EvalP (Queue SomeNode)

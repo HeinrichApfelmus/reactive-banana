@@ -4,7 +4,7 @@ module Control.Monad.Trans.ReaderWriterIO (
     -- using an 'IORef' for the writer.
     
     -- * Documentation
-    ReaderWriterIOT, runReaderWriterIOT, tell, ask,
+    ReaderWriterIOT, runReaderWriterIOT, tell, ask, local,
     ) where
 
 import Control.Applicative
@@ -34,6 +34,10 @@ instance MonadFix m => MonadFix (ReaderWriterIOT r w m) where
 instance MonadIO m => MonadIO (ReaderWriterIOT r w m) where
     liftIO m = ReaderWriterIOT $ \x y -> liftIO m
 
+instance MonadTrans (ReaderWriterIOT r w) where
+    lift m = ReaderWriterIOT $ \x y -> m
+
+
 runReaderWriterIOT :: (MonadIO m, Monoid w) => ReaderWriterIOT r w m a -> r -> m (a,w)
 runReaderWriterIOT m r = do
     ref <- liftIO $ newIORef mempty
@@ -43,6 +47,9 @@ runReaderWriterIOT m r = do
 
 tell :: (MonadIO m, Monoid w) => w -> ReaderWriterIOT r w m ()
 tell w = ReaderWriterIOT $ \_ ref -> liftIO $ modifyIORef ref (`mappend` w)
+
+local :: MonadIO m => (r -> r) -> ReaderWriterIOT r w m a -> ReaderWriterIOT r w m a
+local f m = ReaderWriterIOT $ \r ref -> run m (f r) ref
 
 ask :: Monad m => ReaderWriterIOT r w m r
 ask = ReaderWriterIOT $ \r _ -> return r

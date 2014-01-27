@@ -177,8 +177,8 @@ getValueL l = do
     _evalL
 
 runEvalP :: Lazy.Vault -> EvalP a -> Build (a, EvalLW, EvalO)
-runEvalP s m = do
-    (a,_,(wl,wo)) <- RWS.runRWST m () s
+runEvalP r m = do
+    (a,(wl,wo)) <- RW.runReaderWriterIOT m r
     return (a,wl, sequence_ <$> sequence (sortOutputs wo))
 
 sortOutputs :: Ord k => [(k,a)] -> [a]
@@ -193,10 +193,7 @@ getTime = liftBuildP $ RW.ask
 readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP p = do
     Pulse{..} <- get p
-    join . Lazy.lookup _keyP <$> RWS.get
-
-writePulseP :: Lazy.Key (Maybe a) -> Maybe a -> EvalP ()
-writePulseP key ma = RWS.modify $ Lazy.insert key ma
+    join . Lazy.lookup _keyP <$> RW.ask
 
 readLatchP :: Latch a -> EvalP a
 readLatchP = lift . readLatchB
@@ -205,10 +202,10 @@ readLatchFutureP :: Latch a -> EvalP (Future a)
 readLatchFutureP latch = error "FIXME: readLatchFutureP not implemented."
 
 rememberLatchUpdate :: IO () -> EvalP ()
-rememberLatchUpdate x = RWS.tell (Action x,mempty)
+rememberLatchUpdate x = RW.tell (Action x,mempty)
 
 rememberOutput :: (Position, EvalO) -> EvalP ()
-rememberOutput x = RWS.tell (mempty,[x])
+rememberOutput x = RW.tell (mempty,[x])
 
 {-----------------------------------------------------------------------------
     IORef
