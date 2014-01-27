@@ -51,15 +51,15 @@ benchmark netsize duration = measureTwo phase1 phase2
                 e  <- fromAddHandler clock
                 let countBs = map count es
                 trimmedBs <- mapM trimB countBs
-                let outputE = doSomething "x" <$ e
-                reactimate outputE
+                let outputE = doSomething (show . length $ trimmedBs) <$ e
+                reactimate $ outputE
 
             count :: Event t () -> Behavior t Int
             count e = accumB 0 $ (+1) <$ e
         
         network <- compile networkD
         -- force network to get accurate timing
-        evaluate . rnf =<< showNetwork network
+        -- evaluate . rnf =<< showNetwork network
         actuate network
         
         return (triggers, trigger)

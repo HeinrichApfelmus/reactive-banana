@@ -30,4 +30,4 @@ nop = return ()
 
 -- | Dereference a list of weak pointers while discarding dead ones.
 deRefWeaks :: [Weak v] -> IO [v]
-deRefWeaks = fmap catMaybes . mapM deRefWeak
+deRefWeaks ws = {-# SCC deRefWeaks #-} fmap catMaybes $ mapM deRefWeak ws

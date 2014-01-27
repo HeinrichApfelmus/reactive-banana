@@ -48,7 +48,7 @@ evaluatePulses :: [SomeNode] -> EvalP ()
 evaluatePulses roots = go =<< insertNodes roots Q.empty
     where
     go :: Queue SomeNode -> EvalP ()
-    go q = {-# SCC go #-} case Q.minView q of
+    go q = {-# SCC go #-} case ({-# SCC minView #-} Q.minView q) of
         Nothing         -> return ()
         Just (node, q) -> do
             children <- evaluateNode node
