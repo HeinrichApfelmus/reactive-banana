@@ -33,3 +33,19 @@ Starting point
 
 * Turn `EvalP` into a reader monad to avoid lifting `Build` in many cases.
     ~ 1.03 secs
+
+
+Jan 27, 2014
+------------
+Starting point
+
+    > benchmark 100 3000
+
+with all Behaviors kept in scope, so that they cannot be garbage collected. Profile shows 60000 entries of `evaluateNodeL` and 441000 entries for `go`.
+
+* Starting point
+    ~ 5.22 secs. Space profile shows many allocations spent on `runBuild`.
+
+* Implementation of `Build` using `ReaderWriterIOT`
+    ~ 1.67 secs
+

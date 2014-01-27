@@ -9,7 +9,7 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import qualified Control.Monad.Trans.RWS    as RWS
 import qualified Control.Monad.Trans.Reader as Reader
-import qualified Control.Monad.Trans.Writer as Writer
+import qualified Control.Monad.Trans.ReaderWriterIO as RW
 import           Data.Function                        (on)
 import           Data.Functor
 import           Data.IORef
@@ -105,14 +105,14 @@ addOutput p = do
         , _positionO = 1 -- FIXME: Update position with global state!
         }
     (P p) `addChild` (O o)
-    RWS.tell (mempty,mempty,[o])
+    RW.tell (mempty,mempty,[o])
 
 {-----------------------------------------------------------------------------
     Build
 ------------------------------------------------------------------------------}
 runBuildIO :: Time -> BuildIO a -> IO (a, Action, [Output])
 runBuildIO time m = {-# SCC runBuild #-} do
-    (a,_,(topologyUpdates,liftIOLaters,os)) <- RWS.runRWST m time ()
+    (a,(topologyUpdates,liftIOLaters,os)) <- RW.runReaderWriterIOT m time
     doit $ liftIOLaters          -- execute late IOs
     return (a,topologyUpdates,os)
 
@@ -120,19 +120,22 @@ liftBuild :: Build a -> BuildIO a
 liftBuild = id
 
 getTimeB :: Build Time
-getTimeB = RWS.ask
+getTimeB = RW.ask
 
 readLatchB :: Latch a -> Build a
 readLatchB latch = do
-    time      <- RWS.ask
+    time      <- RW.ask
     Latch{..} <- get latch
     liftIO $ Reader.runReaderT _evalL time
 
 dependOn :: Pulse child -> Pulse parent -> Build ()
 dependOn child parent = (P parent) `addChild` (P child)
 
+keepAlive :: Pulse child -> Pulse parent -> Build ()
+keepAlive child parent = liftIO $ mkWeakIORefValue child parent >> return ()
+
 addChild :: SomeNode -> SomeNode -> Build ()
-addChild (P parent) (P child) = RWS.tell (Action action,mempty,mempty)
+addChild (P parent) (P child) = RW.tell (Action action,mempty,mempty)
     where
     action = do
         debug "P `addChild` P"
@@ -143,14 +146,14 @@ addChild (P parent) (P child) = RWS.tell (Action action,mempty,mempty)
         modify' child  $ update parentsP  (wparent:) . set levelP level
         wchild <- mkWeakIORefValue child (P child)
         modify' parent $ update childrenP (wchild :)
-addChild (P parent) (L child) = RWS.tell (Action action,mempty,mempty)
+addChild (P parent) (L child) = RW.tell (Action action,mempty,mempty)
     where
     action = do
         debug "P `addChild` L"
         _ <- mkWeakIORefValue child (P parent)  -- child keeps parent alive
         w <- mkWeakIORefValue child (L child)
         modify' parent $ update childrenP (w:)
-addChild (P parent) (O child) = RWS.tell (Action action,mempty,mempty)
+addChild (P parent) (O child) = RW.tell (Action action,mempty,mempty)
     where
     action = do
         debug "P `addChild` O"
@@ -159,12 +162,11 @@ addChild (P parent) (O child) = RWS.tell (Action action,mempty,mempty)
         w <- mkWeakIORefValue child (O child)
         modify' parent $ update childrenP (w:)
 
-
 changeParent :: Pulse child -> Pulse parent -> Build ()
 changeParent child parent = error "FIXME: changeParent not implemented."
 
 liftIOLater :: IO () -> Build ()
-liftIOLater x = RWS.tell (mempty, Action x, mempty)
+liftIOLater x = RW.tell (mempty, Action x, mempty)
 
 {-----------------------------------------------------------------------------
     EvalP monad
@@ -186,7 +188,7 @@ liftBuildP :: Build a -> EvalP a
 liftBuildP = lift
 
 getTime :: EvalP Time
-getTime = liftBuildP $ RWS.ask
+getTime = liftBuildP $ RW.ask
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP p = do

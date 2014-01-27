@@ -19,4 +19,5 @@ profile :
 	$(COMPILE) -o Performance $(Performance) -outputdir $(OBJ)/Performance.tmp/ \
 		-prof -O \
 		-main-is Reactive.Banana.Test.Performance.main
+	# ./Performance +RTS -hc -L50 2>/dev/null && hp2ps -c Performance.hp
 	./Performance +RTS -prof 2>/dev/null

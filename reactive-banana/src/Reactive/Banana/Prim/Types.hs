@@ -6,7 +6,7 @@ module Reactive.Banana.Prim.Types where
 
 import Control.Monad.Trans.RWS
 import Control.Monad.Trans.Reader
-import Control.Monad.Trans.Writer
+import Control.Monad.Trans.ReaderWriterIO
 import Data.Functor
 import Data.IORef
 import Data.Monoid
@@ -33,7 +33,7 @@ emptyNetwork = Network
     , nOutputs = []
     }
 
-type Build = RWST Time (Action,Action,[Output]) () IO
+type Build = ReaderWriterIOT Time (Action,Action,[Output]) IO
     -- reader : current timestamp
     -- writer : (actions that change the network topology
     --          ,late IO actions
