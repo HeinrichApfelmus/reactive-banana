@@ -52,3 +52,5 @@ with all Behaviors kept in scope, so that they cannot be garbage collected. Prof
 * Implementation of `EvalP` using `ReaderWriterIOT`. The `Lazy.Vault` state is threaded by hand. 
     ~ 0.79 secs
 
+* A new type `Ref` represents mutable references that, unlike `IORef`, can be hashed and tested for equality.
+    ~ 0.92 secs

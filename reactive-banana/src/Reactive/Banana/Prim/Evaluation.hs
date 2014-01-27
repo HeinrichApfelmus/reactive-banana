@@ -59,7 +59,7 @@ evaluatePulses (roots, pulses) = go pulses =<< insertNodes roots Q.empty
 -- that need to evaluated subsequently.
 evaluateNode :: SomeNode -> EvalP (Lazy.Vault, [SomeNode])
 evaluateNode (P p) = {-# SCC evaluateNodeP #-} do
-    Pulse{..} <- get p
+    Pulse{..} <- readRef p
     ma        <- _evalP
     pulses2   <- Lazy.insert _keyP ma <$> RW.ask
     children  <- case ma of
@@ -68,7 +68,7 @@ evaluateNode (P p) = {-# SCC evaluateNodeP #-} do
     return (pulses2, children)
 evaluateNode (L lw) = {-# SCC evaluateNodeL #-} do
     time           <- getTime
-    LatchWrite{..} <- get lw
+    LatchWrite{..} <- readRef lw
     mlatch         <- liftIO $ deRefWeak _latchLW -- retrieve destination latch
     case mlatch of
         Nothing    -> return ()
@@ -82,7 +82,7 @@ evaluateNode (L lw) = {-# SCC evaluateNodeL #-} do
     return (r,[])
 evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
     debug "evaluateNode O"
-    Output{..} <- get o
+    Output{..} <- readRef o
     m          <- _evalO                    -- calculate output action
     rememberOutput $ (_positionO, m)
     r <- RW.ask
@@ -92,7 +92,7 @@ evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
 insertNode :: SomeNode -> Queue SomeNode -> EvalP (Queue SomeNode)
 insertNode node@(P p) q = {-# SCC insertNode #-} do
     time      <- getTime
-    Pulse{..} <- get p
+    Pulse{..} <- readRef p
     if time <= _seenP
         then return q       -- pulse has already been put into the queue once
         else do             -- pulse needs to be scheduled for evaluation

@@ -13,6 +13,7 @@ import Reactive.Banana.Prim.Combinators  (mapP)
 import Reactive.Banana.Prim.Evaluation   (step)
 import Reactive.Banana.Prim.Plumbing
 import Reactive.Banana.Prim.Types
+import Reactive.Banana.Prim.Util
 
 debug s = id
 
@@ -26,7 +27,7 @@ debug s = id
 newInput :: Build (Pulse a, a -> Step)
 newInput = mdo
     key   <- liftIO $ Lazy.newKey
-    pulse <- liftIO $ newIORef $ Pulse
+    pulse <- liftIO $ newRef $ Pulse
         { _keyP      = key
         , _seenP     = agesAgo
         , _evalP     = readPulseP pulse    -- get its own value

@@ -4,14 +4,15 @@
 {-# LANGUAGE ExistentialQuantification, NamedFieldPuns #-}
 module Reactive.Banana.Prim.Types where
 
-import Control.Monad.Trans.RWS
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.ReaderWriterIO
-import Data.Functor
-import Data.IORef
-import Data.Monoid
-import System.Mem.Weak
-import qualified Data.Vault.Lazy as Lazy
+import           Control.Monad.Trans.RWS
+import           Control.Monad.Trans.Reader
+import           Control.Monad.Trans.ReaderWriterIO
+import           Data.Functor
+import           Data.Hashable
+import           Data.Monoid
+import qualified Data.Vault.Lazy                    as Lazy
+import           Reactive.Banana.Prim.Util
+import           System.Mem.Weak
 
 {-----------------------------------------------------------------------------
     Network
@@ -73,7 +74,7 @@ update (Lens get set) f = \s -> set (f $ get s) s
 {-----------------------------------------------------------------------------
     Pulse and Latch
 ------------------------------------------------------------------------------}
-type Pulse  a = IORef (Pulse' a)
+type Pulse  a = Ref (Pulse' a)
 data Pulse' a = Pulse
     { _keyP      :: Lazy.Key (Maybe a) -- Key to retrieve pulse from cache.
     , _seenP     :: !Time              -- See note [Timestamp].
@@ -84,19 +85,19 @@ data Pulse' a = Pulse
     , _nameP     :: String             -- Name for debugging.
     }
 
-type Latch  a = IORef (Latch' a)
+type Latch  a = Ref (Latch' a)
 data Latch' a = Latch
     { _seenL  :: !Time               -- Timestamp for the current value.
     , _valueL :: a                   -- Current value.
     , _evalL  :: EvalL a             -- Recalculate current latch value.
     }
-type LatchWrite = IORef LatchWrite'
+type LatchWrite = Ref LatchWrite'
 data LatchWrite' = forall a. LatchWrite
     { _evalLW  :: EvalP a            -- Calculate value to write.
     , _latchLW :: Weak (Latch a)     -- Destination 'Latch' to write to.
     }
 
-type Output  = IORef Output'
+type Output  = Ref Output'
 data Output' = Output
     { _positionO :: !Position
     , _evalO     :: EvalP EvalO
@@ -106,6 +107,16 @@ data SomeNode
     = forall a. P (Pulse a)
     | L LatchWrite
     | O Output
+
+instance Hashable SomeNode where
+    hashWithSalt s (P x) = hashWithSalt s x
+    hashWithSalt s (L x) = hashWithSalt s x
+    hashWithSalt s (O x) = hashWithSalt s x
+
+instance Eq SomeNode where
+    (P x) == (P y) = equalRef x y
+    (L x) == (L y) = equalRef x y
+    (O x) == (O y) = equalRef x y
 
 -- Lenses for various parameters
 seenP  = Lens _seenP  (\a s -> s { _seenP = a })
@@ -128,7 +139,7 @@ type EvalLW   = Action
     Show functions for debugging
 ------------------------------------------------------------------------------}
 printNode :: SomeNode -> IO String
-printNode (P p) = _nameP <$> readIORef p
+printNode (P p) = _nameP <$> readRef p
 printNode (L l) = return "L"
 printNode (O o) = return "O"
 
