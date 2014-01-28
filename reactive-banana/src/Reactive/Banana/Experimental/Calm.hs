@@ -29,7 +29,7 @@ module Reactive.Banana.Experimental.Calm (
     -- $Accumulation.
     accumB, mapAccum,
     -- ** Apply class
-    Reactive.Banana.Combinators.Apply(..),
+    (<@>), (<@),
     ) where
 
 import Control.Applicative
@@ -119,7 +119,12 @@ accumB acc = Prim.accumB acc . unE
 mapAccum :: acc -> Event t (acc -> (x,acc)) -> (Event t x, Behavior t acc)
 mapAccum acc ef = let (e,b) = Prim.mapAccum acc (unE ef) in (E e, b)
 
-instance Reactive.Banana.Combinators.Apply (Behavior t) (Event t) where
-    (<@>) = apply
+-- | Infix synonym for the 'apply' combinator. Similar to '<*>'.
+(<@>) :: Behavior t (a -> b) -> Event t a -> Event t b
+(<@>) = apply
+
+-- | Tag all event occurrences with a time-varying value. Similar to '<*'.
+(<@)  :: Behavior t a -> Event t b -> Event t a
+f <@ g = (const <$> f) <@> g 
 
 

@@ -22,6 +22,8 @@ module Reactive.Banana.Combinators (
     -- $classes
     
     -- * Derived Combinators
+    -- ** Infix operators
+    (<@>), (<@),
     -- ** Filtering
     filterJust, filterApply, whenE, split,
     -- ** Accumulation
@@ -29,8 +31,6 @@ module Reactive.Banana.Combinators (
     accumB, mapAccum,
     -- ** Simultaneous event occurrences
     calm, unionWith,
-    -- ** Apply class
-    Apply(..),
     ) where
 
 import Control.Applicative
@@ -77,7 +77,6 @@ model implementation. See "Reactive.Banana.Model" for more.
 interpret :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
 interpret f xs =
     map toList <$> Prim.interpret (return . unE . f . E) (map Just xs)
-
 
 toList :: Maybe [a] -> [a]
 toList Nothing   = []
@@ -187,6 +186,8 @@ scanl' f x ys = x : case ys of
 -- Think of it as
 -- 
 -- > apply bf ex = [(time, bf time x) | (time, x) <- ex]
+--
+-- This function is generally used in its infix variant '<@>'.
 apply    :: Behavior t (a -> b) -> Event t a -> Event t b
 apply bf ex = E $ Prim.applyE (Prim.mapB map $ unB bf) (unE ex)
 
@@ -243,6 +244,19 @@ instance Num a => Num (Behavior t a) where
     signum = fmap signum
     fromInteger = pure . fromInteger
 -}
+infixl 4 <@>, <@
+
+-- | Infix synonym for the 'apply' combinator. Similar to '<*>'.
+-- 
+-- > infixl 4 <@>
+(<@>) :: Behavior t (a -> b) -> Event t a -> Event t b
+(<@>) = apply
+
+-- | Tag all event occurrences with a time-varying value. Similar to '<*'.
+--
+-- > infixl 4 <@
+(<@)  :: Behavior t b -> Event t a -> Event t b
+f <@ g = (const <$> f) <@> g 
 
 -- | Allow all events that fulfill the time-varying predicate, discard the rest.
 -- Generalization of 'filterE'.
@@ -265,7 +279,6 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     fromRight (Left  a) = Nothing
     fromRight (Right b) = Just b
 
-
 -- | Combine simultaneous event occurrences into a single occurrence.
 --
 -- > unionWith f e1 e2 = fmap (foldr1 f) <$> collect (e1 `union` e2)
@@ -276,8 +289,6 @@ unionWith f e1 e2 = E $ Prim.unionWith g (unE e1) (unE e2)
 -- | Keep only the last occurrence when simultaneous occurrences happen.
 calm :: Event t a -> Event t a
 calm = fmap last . collect
-
-
 
 -- $Accumulation.
 -- Note: all accumulation functions are strict in the accumulated value!
@@ -300,20 +311,4 @@ accumB  acc = stepper acc . accumE acc
 mapAccum :: acc -> Event t (acc -> (x,acc)) -> (Event t x, Behavior t acc)
 mapAccum acc ef = (fst <$> e, stepper acc (snd <$> e))
     where e = accumE (undefined,acc) ((. snd) <$> ef)
-
-
-infixl 4 <@>, <@
-
--- | Class for overloading the 'apply' function.
-class (Functor f, Functor g) => Apply f g where
-    -- | Infix operation for the 'apply' function, similar to '<*>'
-    (<@>) :: f (a -> b) -> g a -> g b
-    -- | Convenience function, similar to '<*'
-    (<@)  :: f a -> g b -> g a
-    
-    f <@ g = (const <$> f) <@> g 
-
-instance Apply (Behavior t) (Event t) where
-    (<@>) = apply
-
 
