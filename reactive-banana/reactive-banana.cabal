@@ -9,7 +9,8 @@ Description:
     See the project homepage <http://haskell.org/haskellwiki/Reactive-banana>
     for more detailed documentation and examples.
     .
-    Stability forecast:
+    /Stability forecast:/
+    .
     No semantic bugs expected.
     .
     Significant API changes are likely in future versions,
@@ -17,7 +18,8 @@ Description:
     .
     The library features an efficient, push-driven implementation
     and has seen some optimization work.
-    However, there is currently /no/ garbage collection for events that are
+    However, the inner loop still has a rather large constant factor overhead.
+    Moreover, there is currently /no/ garbage collection for events that are
     created dynamically with @Reactive.Banana.Switch@.
 
 Homepage:            http://haskell.org/haskellwiki/Reactive-banana
@@ -25,7 +27,6 @@ License:             BSD3
 License-file:        LICENSE
 Author:              Heinrich Apfelmus
 Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
-Stability:           Experimental
 Category:            FRP
 Cabal-version:       >= 1.9.2
 Build-type:          Simple

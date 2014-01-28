@@ -21,11 +21,12 @@ License-file:        LICENSE
 Author:              Heinrich Apfelmus
 Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Category:            FRP, GUI
-Cabal-version:       >=1.8
+Cabal-version:       >= 1.8
 
 
 Build-type:          Custom
-Extra-source-files:  Makefile
+Extra-source-files:  CHANGELOG.md,
+                     Makefile
 
 data-dir:            data
 data-files:          *.ico, *.wav, *.png

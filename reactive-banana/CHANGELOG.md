@@ -1,5 +1,5 @@
-Changelog
----------
+Changelog for the `reactive-banana` package
+-------------------------------------------
 
 **version 0.8.0.0**
 

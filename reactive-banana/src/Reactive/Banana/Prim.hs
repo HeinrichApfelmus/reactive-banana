@@ -3,8 +3,10 @@
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Prim (
     -- * Synopsis
-    -- | Primitive type and combinators for building FRP networks.
-    -- More practical FRP combinators can be built on top of these.
+    -- | This is an internal module, useful if you want to
+    -- implemented your own FRP library.
+    -- If you just want to use FRP in your project,
+    -- have a look at "Reactive.Banana" instead.
     
     -- * Evaluation
     Step, Network, emptyNetwork,

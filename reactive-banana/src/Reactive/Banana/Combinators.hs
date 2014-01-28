@@ -291,8 +291,10 @@ calm :: Event t a -> Event t a
 calm = fmap last . collect
 
 -- $Accumulation.
--- Note: all accumulation functions are strict in the accumulated value!
--- acc -> (x,acc) is the order used by 'unfoldr' and 'State'.
+-- Note: All accumulation functions are strict in the accumulated value!
+-- 
+-- Note: The order of arguments is @acc -> (x,acc)@
+-- which is also the convention used by 'unfoldr' and 'State'.
 
 -- | The 'accumB' function is similar to a /strict/ left fold, 'foldl''.
 -- It starts with an initial value and combines it with incoming events.
