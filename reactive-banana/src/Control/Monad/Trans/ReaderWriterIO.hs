@@ -11,7 +11,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.IO.Class
-import Control.Monad.Trans
+import Control.Monad.Trans.Class
 import Data.IORef
 import Data.Monoid
 

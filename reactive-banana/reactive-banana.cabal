@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.8.0.0
+Version:             0.9.0.0
 Synopsis:            Library for functional reactive programming (FRP).
 Description:
     Reactive-banana is a library for Functional Reactive Programming (FRP).
@@ -82,7 +82,7 @@ Library
                         Reactive.Banana.Switch
     
     other-modules:
-                        Control.Monad.Trans.RWIO,
+                        Control.Monad.Trans.ReaderWriterIO,
                         Reactive.Banana.Internal.Combinators,
                         Reactive.Banana.Internal.Phantom,
                         Reactive.Banana.Prim.Combinators,
@@ -91,10 +91,10 @@ Library
                         Reactive.Banana.Prim.Dependencies,
                         Reactive.Banana.Prim.Evaluation,
                         Reactive.Banana.Prim.IO,
-                        Reactive.Banana.Prim.Order,
                         Reactive.Banana.Prim.Plumbing,
                         Reactive.Banana.Prim.Test,
                         Reactive.Banana.Prim.Types,
+                        Reactive.Banana.Prim.Util,
                         Reactive.Banana.Types
 
 Test-Suite tests

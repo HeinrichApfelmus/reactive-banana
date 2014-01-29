@@ -51,6 +51,13 @@ benchmark netsize duration = measureTwo phase1 phase2
                 e  <- fromAddHandler clock
                 let countBs = map count es
                 trimmedBs <- mapM trimB countBs
+                
+                {-
+                let step10E     = filterE (\cnt -> cnt `rem` 10 == 0) e
+                let selectedB_E = head <$> accumE trimmedBs (keepTail <$ step10E)
+                let selectedB   = switchB (head countBs) selectedB_E
+                let outputE     = (doSomething . show <$> selectedB) <@ step10E
+                -}
                 let outputE = doSomething (show . length $ trimmedBs) <$ e
                 reactimate $ outputE
 
@@ -75,3 +82,7 @@ benchmark netsize duration = measureTwo phase1 phase2
                 maybe (error "benchmark: trigger not found") ($ ()) $
                     IM.lookup ev trigMap
 
+keepTail :: [a] -> [a]
+keepTail (_:y:zs) = y:zs
+keepTail [x]      = [x]
+keepTail []       = []
