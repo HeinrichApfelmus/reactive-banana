@@ -4,7 +4,7 @@ module Control.Monad.Trans.ReaderWriterIO (
     -- using an 'IORef' for the writer.
     
     -- * Documentation
-    ReaderWriterIOT, runReaderWriterIOT, tell, ask, local,
+    ReaderWriterIOT, readerWriterIOT, runReaderWriterIOT, tell, ask, local,
     ) where
 
 import Control.Applicative
@@ -15,28 +15,51 @@ import Control.Monad.Trans.Class
 import Data.IORef
 import Data.Monoid
 
+{-----------------------------------------------------------------------------
+    Type and class instances
+------------------------------------------------------------------------------}
 newtype ReaderWriterIOT r w m a = ReaderWriterIOT { run :: r -> IORef w -> m a }
 
-instance Functor m => Functor (ReaderWriterIOT r w m) where
-    fmap f m = ReaderWriterIOT $ \x y -> fmap f (run m x y)
+instance Functor m => Functor (ReaderWriterIOT r w m)   where fmap = fmapR
 
 instance Applicative m => Applicative (ReaderWriterIOT r w m) where
-    pure a  = ReaderWriterIOT $ \x y -> pure a
-    f <*> a = ReaderWriterIOT $ \x y -> run f x y <*> run a x y
-
+    pure  = pureR
+    (<*>) = apR
+    
 instance Monad m => Monad (ReaderWriterIOT r w m) where
-    return a = ReaderWriterIOT $ \_ _ -> return a
-    m >>= k  = ReaderWriterIOT $ \x y -> run m x y >>= \a -> run (k a) x y
+    return = returnR
+    (>>=)  = bindR
 
-instance MonadFix m => MonadFix (ReaderWriterIOT r w m) where
-    mfix f = ReaderWriterIOT $ \x y -> mfix (\a -> run (f a) x y)
+instance MonadFix m => MonadFix (ReaderWriterIOT r w m) where mfix = mfixR
+instance MonadIO m => MonadIO (ReaderWriterIOT r w m)   where liftIO = liftIOR
+instance MonadTrans (ReaderWriterIOT r w)               where lift = liftR
 
-instance MonadIO m => MonadIO (ReaderWriterIOT r w m) where
-    liftIO m = ReaderWriterIOT $ \x y -> liftIO m
+{-----------------------------------------------------------------------------
+    Functions
+------------------------------------------------------------------------------}
+liftIOR m = ReaderWriterIOT $ \x y -> liftIO m
 
-instance MonadTrans (ReaderWriterIOT r w) where
-    lift m = ReaderWriterIOT $ \x y -> m
+liftR m = ReaderWriterIOT $ \x y -> m
 
+fmapR f m = ReaderWriterIOT $ \x y -> fmap f (run m x y)
+
+returnR a = ReaderWriterIOT $ \_ _ -> return a
+
+bindR m k = ReaderWriterIOT $ \x y -> run m x y >>= \a -> run (k a) x y
+
+mfixR f = ReaderWriterIOT $ \x y -> mfix (\a -> run (f a) x y)
+
+pureR a = ReaderWriterIOT $ \_ _ -> pure a
+
+apR f a = ReaderWriterIOT $ \x y -> run f x y <*> run a x y
+
+readerWriterIOT :: (MonadIO m, Monoid w) =>
+    (r -> IO (a, w)) -> ReaderWriterIOT r w m a
+readerWriterIOT f = do
+    r <- ask
+    (a,w) <- liftIOR $ f r
+    tell w
+    return a
 
 runReaderWriterIOT :: (MonadIO m, Monoid w) => ReaderWriterIOT r w m a -> r -> m (a,w)
 runReaderWriterIOT m r = do

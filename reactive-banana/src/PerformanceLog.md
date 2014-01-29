@@ -54,3 +54,27 @@ with all Behaviors kept in scope, so that they cannot be garbage collected. Prof
 
 * A new type `Ref` represents mutable references that, unlike `IORef`, can be hashed and tested for equality.
     ~ 0.92 secs
+
+
+Jan 29, 2014
+------------
+Starting point
+
+    > benchmark 100 3000
+
+* Starting point
+    ~ 0.90 secs. Time profile shows that most time is spent in (>>=)
+
+* Export only `step` from `Reactive.Banana.Prim.Evaluation`.
+  Unroll the `EvalP` monad transformer.
+
+    ~ 0.80 secs. Time profile still shows that most time is spent in monad plumbing.
+
+    GHC Core indicates that `go` is not fully saturated and
+    recursively creates a closure.
+    Also, seemingly trivial closures are being allocated and deallocated,
+    along the lines of
+    
+        let x = case .. of { .. -> (\_ _ -> y) } in y a b 
+
+

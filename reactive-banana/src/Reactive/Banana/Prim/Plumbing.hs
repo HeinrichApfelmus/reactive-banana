@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards, RecursiveDo #-}
+{-# LANGUAGE RecordWildCards, RecursiveDo, BangPatterns #-}
 module Reactive.Banana.Prim.Plumbing where
 
 import           Control.Monad (join)
@@ -108,7 +108,7 @@ addOutput p = do
     RW.tell (mempty,mempty,[o])
 
 {-----------------------------------------------------------------------------
-    Build
+    Build monad
 ------------------------------------------------------------------------------}
 runBuildIO :: Time -> BuildIO a -> IO (a, Action, [Output])
 runBuildIO time m = {-# SCC runBuild #-} do
@@ -154,32 +154,42 @@ getValueL l = do
     _evalL
 
 runEvalP :: Lazy.Vault -> EvalP a -> Build (a, EvalLW, EvalO)
-runEvalP r m = do
-    (a,(wl,wo)) <- RW.runReaderWriterIOT m r
-    return (a,wl, sequence_ <$> sequence (sortOutputs wo))
+runEvalP r1 m = RW.readerWriterIOT $ \r2 -> do
+    (a,((wl,wo),w2)) <- RW.runReaderWriterIOT m (r1,r2)
+    return ((a,wl, sequence_ <$> sequence (sortOutputs wo)), w2)
 
 sortOutputs :: Ord k => [(k,a)] -> [a]
 sortOutputs = map snd . sortBy (compare `on` fst)
 
 liftBuildP :: Build a -> EvalP a
-liftBuildP = lift
+liftBuildP m = RW.readerWriterIOT $ \(_,r2) -> do
+    (a,w2) <- RW.runReaderWriterIOT m r2
+    return (a,(mempty,w2))
 
-getTime :: EvalP Time
-getTime = liftBuildP $ RW.ask
+withVault :: Lazy.Vault -> EvalP a -> EvalP a
+withVault r1 m = do
+    r2 <- snd <$> RW.ask
+    RW.local (const (r1,r2)) m 
+
+askVault :: EvalP Lazy.Vault
+askVault = fst <$> RW.ask
+
+askTime :: EvalP Time
+askTime = snd <$> RW.ask
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP p = do
     Pulse{..} <- readRef p
-    join . Lazy.lookup _keyP <$> RW.ask
+    join . Lazy.lookup _keyP . fst <$> RW.ask
 
 readLatchP :: Latch a -> EvalP a
-readLatchP = lift . readLatchB
+readLatchP = liftBuildP . readLatchB
 
 readLatchFutureP :: Latch a -> EvalP (Future a)
 readLatchFutureP latch = error "FIXME: readLatchFutureP not implemented."
 
 rememberLatchUpdate :: IO () -> EvalP ()
-rememberLatchUpdate x = RW.tell (Action x,mempty)
+rememberLatchUpdate x = RW.tell ((Action x,mempty),mempty)
 
 rememberOutput :: (Position, EvalO) -> EvalP ()
-rememberOutput x = RW.tell (mempty,[x])
+rememberOutput x = RW.tell ((mempty,[x]),mempty)

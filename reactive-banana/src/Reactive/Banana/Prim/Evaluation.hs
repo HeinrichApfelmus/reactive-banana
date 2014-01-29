@@ -1,8 +1,10 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards #-}
-module Reactive.Banana.Prim.Evaluation where
+{-# LANGUAGE RecordWildCards, BangPatterns #-}
+module Reactive.Banana.Prim.Evaluation (
+    step
+    ) where
 
 import qualified Control.Exception      as Strict (evaluate)
 import           Control.Monad                    (foldM)
@@ -51,7 +53,7 @@ evaluatePulses (roots, pulses) = go pulses =<< insertNodes roots Q.empty
     go p q = {-# SCC go #-} case ({-# SCC minView #-} Q.minView q) of
         Nothing         -> return ()
         Just (node, q)  -> do
-            (p, children) <- RW.local (const p) (evaluateNode node)
+            (p, children) <- withVault p (evaluateNode node)
             q             <- insertNodes children q
             go p q
 
@@ -61,13 +63,13 @@ evaluateNode :: SomeNode -> EvalP (Lazy.Vault, [SomeNode])
 evaluateNode (P p) = {-# SCC evaluateNodeP #-} do
     Pulse{..} <- readRef p
     ma        <- _evalP
-    pulses2   <- Lazy.insert _keyP ma <$> RW.ask
+    pulses2   <- Lazy.insert _keyP ma <$> askVault
     children  <- case ma of
         Nothing -> return []
         Just _  -> liftIO $ deRefWeaks _childrenP
     return (pulses2, children)
 evaluateNode (L lw) = {-# SCC evaluateNodeL #-} do
-    time           <- getTime
+    time           <- askTime
     LatchWrite{..} <- readRef lw
     mlatch         <- liftIO $ deRefWeak _latchLW -- retrieve destination latch
     case mlatch of
@@ -78,20 +80,20 @@ evaluateNode (L lw) = {-# SCC evaluateNodeL #-} do
             rememberLatchUpdate $           -- schedule value to be set later
                 modify' latch $ \l ->
                     a `seq` l { _seenL = time, _valueL = a }
-    r <- RW.ask
+    r <- askVault
     return (r,[])
 evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
     debug "evaluateNode O"
     Output{..} <- readRef o
     m          <- _evalO                    -- calculate output action
     rememberOutput $ (_positionO, m)
-    r <- RW.ask
+    r <- askVault
     return (r,[])
 
 -- | Insert a node into the queue.
 insertNode :: SomeNode -> Queue SomeNode -> EvalP (Queue SomeNode)
 insertNode node@(P p) q = {-# SCC insertNode #-} do
-    time      <- getTime
+    time      <- askTime
     Pulse{..} <- readRef p
     if time <= _seenP
         then return q       -- pulse has already been put into the queue once

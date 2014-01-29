@@ -34,7 +34,9 @@ emptyNetwork = Network
     , nOutputs = []
     }
 
-type Build = ReaderWriterIOT Time (Action,Action,[Output]) IO
+type Build  = ReaderWriterIOT BuildR BuildW IO
+type BuildR = Time
+type BuildW = (Action, Action, [Output])
     -- reader : current timestamp
     -- writer : (actions that change the network topology
     --          ,late IO actions
@@ -133,9 +135,14 @@ childrenP = Lens _childrenP (\a s -> s { _childrenP = a })
 levelP = Lens _levelP (\a s -> s { _levelP = a })
 
 -- | Evaluation monads.
-type EvalP    = ReaderWriterIOT Lazy.Vault (EvalLW,[(Position, EvalO)]) Build
+type EvalPW   = (EvalLW, [(Position, EvalO)])
+-- type EvalP = ReaderWriterIOT Lazy.Vault EvalPW Build
+
+-- Note: For efficiency reasons, we unroll the monad transformer stack.
+type EvalP    = ReaderWriterIOT (Lazy.Vault,BuildR) (EvalPW,BuildW) IO
     -- reader : current pulse values
     -- writer : (latch updates, IO action)
+
 type EvalL    = ReaderT Time IO
 type EvalO    = Future (IO ())
 type Future   = IO
