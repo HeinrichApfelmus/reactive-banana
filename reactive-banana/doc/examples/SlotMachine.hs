@@ -78,11 +78,6 @@ type Reels = (Int,Int,Int)
 -- A win consist of either double or triple numbers
 data Win = Double | Triple
 
--- payout for each win
-payout :: Win -> Money
-payout Double = 20
-payout Triple = 200
-
 
 -- Set up the program logic in terms of events and behaviors.
 setupNetwork :: forall t. Frameworks t => 
