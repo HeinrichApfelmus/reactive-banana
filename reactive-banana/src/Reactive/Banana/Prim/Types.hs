@@ -4,7 +4,7 @@
 {-# LANGUAGE ExistentialQuantification, NamedFieldPuns #-}
 module Reactive.Banana.Prim.Types where
 
-import           Control.Monad.Trans.RWS
+import           Control.Monad.Trans.RWSIO
 import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.ReaderWriterIO
 import           Data.Functor
@@ -136,12 +136,12 @@ levelP = Lens _levelP (\a s -> s { _levelP = a })
 
 -- | Evaluation monads.
 type EvalPW   = (EvalLW, [(Position, EvalO)])
--- type EvalP = ReaderWriterIOT Lazy.Vault EvalPW Build
 
 -- Note: For efficiency reasons, we unroll the monad transformer stack.
-type EvalP    = ReaderWriterIOT (Lazy.Vault,BuildR) (EvalPW,BuildW) IO
-    -- reader : current pulse values
+-- type EvalP = RWST () Lazy.Vault EvalPW Build
+type EvalP    = RWSIOT BuildR (EvalPW,BuildW) Lazy.Vault IO
     -- writer : (latch updates, IO action)
+    -- state  : current pulse values
 
 type EvalL    = ReaderT Time IO
 type EvalO    = Future (IO ())

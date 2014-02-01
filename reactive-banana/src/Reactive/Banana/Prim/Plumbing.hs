@@ -7,9 +7,9 @@ module Reactive.Banana.Prim.Plumbing where
 import           Control.Monad (join)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
-import qualified Control.Monad.Trans.RWS    as RWS
 import qualified Control.Monad.Trans.Reader as Reader
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
+import qualified Control.Monad.Trans.RWSIO as RWS
 import           Data.Function                        (on)
 import           Data.Functor
 import           Data.List                            (sortBy)
@@ -154,42 +154,39 @@ getValueL l = do
     _evalL
 
 runEvalP :: Lazy.Vault -> EvalP a -> Build (a, EvalLW, EvalO)
-runEvalP r1 m = RW.readerWriterIOT $ \r2 -> do
-    (a,((wl,wo),w2)) <- RW.runReaderWriterIOT m (r1,r2)
+runEvalP s1 m = RW.readerWriterIOT $ \r2 -> do
+    (a,_,((wl,wo),w2)) <- RWS.runRWSIOT m r2 s1
     return ((a,wl, sequence_ <$> sequence (sortOutputs wo)), w2)
 
 sortOutputs :: Ord k => [(k,a)] -> [a]
 sortOutputs = map snd . sortBy (compare `on` fst)
 
 liftBuildP :: Build a -> EvalP a
-liftBuildP m = RW.readerWriterIOT $ \(_,r2) -> do
+liftBuildP m = RWS.rwsT $ \r2 s -> do
     (a,w2) <- RW.runReaderWriterIOT m r2
-    return (a,(mempty,w2))
-
-withVault :: Lazy.Vault -> EvalP a -> EvalP a
-withVault r1 m = do
-    r2 <- snd <$> RW.ask
-    RW.local (const (r1,r2)) m 
-
-askVault :: EvalP Lazy.Vault
-askVault = fst <$> RW.ask
+    return (a,s,(mempty,w2))
 
 askTime :: EvalP Time
-askTime = snd <$> RW.ask
+askTime = RWS.ask
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP p = do
     Pulse{..} <- readRef p
-    join . Lazy.lookup _keyP . fst <$> RW.ask
+    join . Lazy.lookup _keyP <$> RWS.get
 
 readLatchP :: Latch a -> EvalP a
 readLatchP = liftBuildP . readLatchB
+
+writeLatchP :: Lazy.Key (Maybe a) -> Maybe a -> EvalP ()
+writeLatchP key a = do
+    s <- RWS.get
+    RWS.put $ Lazy.insert key a s
 
 readLatchFutureP :: Latch a -> EvalP (Future a)
 readLatchFutureP latch = error "FIXME: readLatchFutureP not implemented."
 
 rememberLatchUpdate :: IO () -> EvalP ()
-rememberLatchUpdate x = RW.tell ((Action x,mempty),mempty)
+rememberLatchUpdate x = RWS.tell ((Action x,mempty),mempty)
 
 rememberOutput :: (Position, EvalO) -> EvalP ()
-rememberOutput x = RW.tell ((mempty,[x]),mempty)
+rememberOutput x = RWS.tell ((mempty,[x]),mempty)

@@ -63,7 +63,8 @@ Starting point
     > benchmark 100 3000
 
 * Starting point
-    ~ 0.90 secs. Time profile shows that most time is spent in (>>=)
+    ~ 0.90 secs. Time profile shows that most time is spent in
+    closures like `>>=.\` and `>>-.\.\`.
 
 * Export only `step` from `Reactive.Banana.Prim.Evaluation`.
   Unroll the `EvalP` monad transformer.
@@ -83,4 +84,11 @@ Starting point
 
     The GHC Core has improved with regards to `put` and `get`,
     but the inner loops still allocates closures.
-    
+
+* Implement a Reader/Writer/State monad `RWSIO` with a single reader-like argument.
+
+    ~ 0.72 secs
+
+    The compiled `step_go` code still allocates a closure for the pattern match on
+    `P`, `O` and `L`, and still connects it with a closure for `insterNodes`.
+
