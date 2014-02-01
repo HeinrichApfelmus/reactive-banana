@@ -190,3 +190,7 @@ rememberLatchUpdate x = RWS.tell ((Action x,mempty),mempty)
 
 rememberOutput :: (Position, EvalO) -> EvalP ()
 rememberOutput x = RWS.tell ((mempty,[x]),mempty)
+
+-- worker wrapper to break sharing and support better inlining
+unwrapEvalP r m = RWS.run m r
+wrapEvalP   m   = RWS.R m

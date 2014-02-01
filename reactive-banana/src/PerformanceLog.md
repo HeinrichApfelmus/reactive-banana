@@ -92,3 +92,13 @@ Starting point
     The compiled `step_go` code still allocates a closure for the pattern match on
     `P`, `O` and `L`, and still connects it with a closure for `insterNodes`.
 
+* Two functions `wrapEvalP` and `unwrapEvalP` can access the `RWSIOT` parameter directly. This allows us to reorder argument and reduce sharing.
+
+    This finally gets rid of the closure for the pattern match on the `evaluteNode` function.
+    
+* Implement `insertNodes` as a recursive loop.
+
+    ~ 0.54 secs
+
+    The program still spends a lot of time in `bindR.\` and `bindR.\.\`,
+    but at least it's not as bad as before anymore.

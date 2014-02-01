@@ -11,6 +11,7 @@ import           Control.Monad                    (foldM)
 import           Control.Monad                    (join)
 import           Control.Monad.IO.Class
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
+import qualified Control.Monad.Trans.RWSIO as RWS
 import           Data.Maybe
 import           Data.Functor
 import qualified Data.PQueue.Prio.Min   as Q
@@ -47,15 +48,16 @@ step (inputs,pulses) (Network time1 outputs1) = {-# SCC step #-} do
 ------------------------------------------------------------------------------}
 -- | Update all pulses in the graph, starting from a given set of nodes
 evaluatePulses :: [SomeNode] -> EvalP ()
-evaluatePulses roots = go =<< insertNodes roots Q.empty
+evaluatePulses roots = wrapEvalP $ \r -> go r =<< insertNodes r roots Q.empty
     where
-    go :: Queue SomeNode -> EvalP ()
-    go q = {-# SCC go #-} case ({-# SCC minView #-} Q.minView q) of
-        Nothing         -> return ()
-        Just (node, q)  -> do
-            children <- evaluateNode node
-            q        <- insertNodes children q
-            go q
+    -- go :: Queue SomeNode -> EvalP ()
+    go r q = {-# SCC go #-}
+        case ({-# SCC minView #-} Q.minView q) of
+            Nothing         -> return ()
+            Just (node, q)  -> do
+                children <- unwrapEvalP r (evaluateNode node)
+                q        <- insertNodes r children q
+                go r q
 
 -- | Recalculate a given node and return all children nodes
 -- that need to evaluated subsequently.
@@ -87,27 +89,18 @@ evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
     rememberOutput $ (_positionO, m)
     return []
 
--- | Insert a node into the queue.
-insertNode :: SomeNode -> Queue SomeNode -> EvalP (Queue SomeNode)
-insertNode node@(P p) q = {-# SCC insertNode #-} do
-    time      <- askTime
-    Pulse{..} <- readRef p
-    if time <= _seenP
-        then return q       -- pulse has already been put into the queue once
-        else do             -- pulse needs to be scheduled for evaluation
-            -- the following code yields a more regular space profile
-            -- and reduces entry count for  evaluateNodeP ??
-            -- Apparently, that's because of garbage collection!
-            put p $! (let p = Pulse{..} in p { _seenP = time })
-            
-            -- Compared to that, the following code does not work so well:
-            -- What the heck?
-            -- modify' p $ set seenP time
-            return $ Q.insert _levelP node q
-insertNode node q =         -- O and L nodes have only one parent, so
-                            -- we can insert them at an arbitrary level
-    return $ Q.insert ground node q
-
--- | Insert a list of children into the queue.
-insertNodes :: [SomeNode] -> Queue SomeNode -> EvalP (Queue SomeNode)
-insertNodes = flip $ foldM (flip insertNode)
+-- | Insert nodes into the queue
+-- insertNode :: [SomeNode] -> Queue SomeNode -> EvalP (Queue SomeNode)
+insertNodes (RWS.Tuple time _ _) = {-# SCC insertNodes #-} go
+    where
+    go []              q = return q
+    go (node@(P p):xs) q = do
+        Pulse{..} <- readRef p
+        if time <= _seenP
+            then go xs q        -- pulse has already been put into the queue once
+            else do             -- pulse needs to be scheduled for evaluation
+                put p $! (let p = Pulse{..} in p { _seenP = time })
+                go xs (Q.insert _levelP node q)
+    go (node:xs)      q = go xs (Q.insert ground node q)
+            -- O and L nodes have only one parent, so
+            -- we can insert them at an arbitrary level

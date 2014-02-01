@@ -4,7 +4,7 @@ module Control.Monad.Trans.RWSIO (
     -- using an 'IORef'.
     
     -- * Documentation
-    RWSIOT, rwsT, runRWSIOT, tell, ask, get, put,
+    RWSIOT(..), Tuple(..), rwsT, runRWSIOT, tell, ask, get, put,
     ) where
 
 import Control.Applicative
