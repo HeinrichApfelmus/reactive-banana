@@ -16,7 +16,8 @@ space : SpaceLeaks
 # Compile and inspect core for the inner loop
 MODULE=src/Reactive/Banana/Prim/Evaluation
 core :
-	$(COMPILE) -fforce-recomp -O -ddump-simpl \
+	$(COMPILE) -fforce-recomp \
+		-O -ddump-simpl \
 		$(MODULE).hs > $(MODULE).core.hs
 
 # Run performance test

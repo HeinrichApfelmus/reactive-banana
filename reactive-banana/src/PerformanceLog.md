@@ -77,4 +77,10 @@ Starting point
     
         let x = case .. of { .. -> (\_ _ -> y) } in y a b 
 
+* Lazy pattern match on the `Ref` in `put`, `get` and `modify'`.
 
+    ~ 0.78 secs
+
+    The GHC Core has improved with regards to `put` and `get`,
+    but the inner loops still allocates closures.
+    

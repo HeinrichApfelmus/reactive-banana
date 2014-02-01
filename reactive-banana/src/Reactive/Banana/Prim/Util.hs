@@ -37,14 +37,14 @@ newRef :: MonadIO m => a -> m (Ref a)
 newRef a = liftIO $ liftM2 Ref (newIORef a) newUnique
 
 readRef :: MonadIO m => Ref a -> m a
-readRef (Ref ref _) = liftIO $ readIORef ref
+readRef ~(Ref ref _) = liftIO $ readIORef ref
 
 put :: MonadIO m => Ref a -> a -> m ()
-put (Ref ref _) = liftIO . writeIORef ref
+put ~(Ref ref _) = liftIO . writeIORef ref
 
 -- | Strictly modify an 'IORef'.
 modify' :: MonadIO m => Ref a -> (a -> a) -> m ()
-modify' ref f = readRef ref >>= \x -> put ref $! f x
+modify' ~(Ref ref _) f = liftIO $ readIORef ref >>= \x -> writeIORef ref $! f x
 
 {-----------------------------------------------------------------------------
     Weak pointers
