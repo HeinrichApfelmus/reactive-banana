@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
     
-    Example: Hacking Actuate and pause an event network
+    Example: Actuate and pause an event network acting as a counter
 ------------------------------------------------------------------------------}
 import Control.Monad (when)
 import System.IO
