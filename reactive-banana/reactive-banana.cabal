@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.8.0.0
+Version:             0.8.0.1
 Synopsis:            Library for functional reactive programming (FRP).
 Description:
     Reactive-banana is a library for Functional Reactive Programming (FRP).

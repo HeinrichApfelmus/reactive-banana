@@ -1,6 +1,10 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 0.8.0.1**
+
+* New examples `Counter.hs` and `Octave.hs`.
+
 **version 0.8.0.0**
 
 * A new module `Reactive.Banana.Prim` exports primitive combinators that you can use to implement your own FRP library with a different API.

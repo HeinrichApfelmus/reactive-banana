@@ -65,6 +65,8 @@ With contributions from
 * Gregory Crosswhite
 * Elliott Hird
 * John Lato
+* Vladimir Lopatin
+* Peter Minten
 * Gideon Sireling
 * Henning Thielemann
 * Daniel Werner

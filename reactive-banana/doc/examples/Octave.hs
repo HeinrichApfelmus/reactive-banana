@@ -1,3 +1,10 @@
+{-----------------------------------------------------------------------------
+    reactive-banana
+    
+    Example: "The world's worst synthesizer"
+    from the unofficial tutorial.
+    <http://www.haskell.org/haskellwiki/FRP_explanation_using_reactive-banana>
+------------------------------------------------------------------------------}
 module Main where
 
 import Data.Char (toUpper)
@@ -6,6 +13,7 @@ import System.IO (BufferMode(..), hSetEcho, hSetBuffering, stdin)
 import Reactive.Banana
 import Reactive.Banana.Prim (addHandler)
 import Reactive.Banana.Frameworks
+
 
 type Octave = Int
 
