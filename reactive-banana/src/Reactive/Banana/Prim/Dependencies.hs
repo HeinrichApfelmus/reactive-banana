@@ -19,7 +19,7 @@ import qualified Data.HashSet               as Set
 import           Data.Hashable
 import qualified Data.PQueue.Prio.Min       as Q
 
-import           Reactive.Banana.Prim.Order hiding (empty)
+import           Reactive.Banana.Prim.Order
 import qualified Reactive.Banana.Prim.Order as Order
 
 type Map = Map.HashMap

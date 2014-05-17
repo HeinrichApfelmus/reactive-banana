@@ -1,6 +1,10 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 0.8.0.2**
+
+* Fix compilation issue with hiding `empty` from the module `Reactive.Banana.Prim.Order`.
+
 **version 0.8.0.1**
 
 * New examples `Counter.hs` and `Octave.hs`.
