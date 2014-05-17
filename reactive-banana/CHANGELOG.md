@@ -4,6 +4,7 @@ Changelog for the `reactive-banana` package
 **version 0.8.0.1**
 
 * New examples `Counter.hs` and `Octave.hs`.
+* Bump `transfomers` dependency.
 
 **version 0.8.0.0**
 
