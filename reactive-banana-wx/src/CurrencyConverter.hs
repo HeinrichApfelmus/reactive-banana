@@ -17,17 +17,19 @@ import Reactive.Banana.WX
 ------------------------------------------------------------------------------}
 main :: IO ()
 main = start $ do
-    -- FIXME: Why does tab traversal not work?
     f        <- frame   [ text := "Currency Converter", tabTraversal := True ]
-    dollar   <- entry f []
-    euro     <- entry f []
+    p        <- panel f []  -- Use panel for tab traversal
+    dollar   <- entry p []
+    euro     <- entry p []
     
-    set f [layout := margin 10 $
+    set p [layout := margin 10 $
             column 10 [
                 grid 10 10 [[label "Dollar:", widget dollar],
                             [label "Euro:"  , widget euro  ]]
             , label "Amounts update while typing."
             ]]
+    set f [layout := widget p]
+    focusOn dollar
 
     let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
