@@ -1,0 +1,41 @@
+% reactivebanana-Hr.tex
+\begin{hcarentry}[updated]{reactive-banana}
+\report{Heinrich Apfelmus}%11/14
+\status{active development}
+\makeheader
+
+%**<img width=200 src="./banana.jpg">
+%*ignore
+\begin{center}
+\includegraphics[width=0.2\textwidth]{html/banana.jpg}
+\end{center}
+%*endignore
+
+Reactive-banana is a library for functional reactive programming (FRP).
+
+FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. It promises to avoid the spaghetti code that is all too common in traditional approaches to GUI programming.
+
+The goal of the library is to provide a solid foundation.
+\begin{itemize}
+\item Writing \emph{graphical user interfaces} with FRP is made easy. The library can be hooked into any existing event-based framework like wxHaskell or Gtk2Hs. A plethora of example code helps with getting started. You can mix FRP and imperative style. If you don't know how to express functionality in terms of FRP, just temporarily switch back to the imperative style.
+\item Programmers interested in implementing FRP will have a \emph{reference} for a \emph{simple semantics} with a working implementation. The library stays close to the semantics pioneered by Conal Elliott.
+\item It features an \emph{efficient implementation}. No more spooky time leaks, predicting space \& time usage should be straightforward.
+\end{itemize}
+
+\emph{Status.} The latest version of the reactive-banana library is \verb!0.8.0.2!.
+
+Compared to the previous report, the library finally features a push-driven implementation that actually deserves that name, i.e.\ events that depend on other events will only be considered when the latter have an occurrence. I have also made some additional performance improvements to the library.
+
+During my work on graphical user interfaces, mainly the \verb`threepenny-gui` project \cref{threepenny-gui}, I have also found that some aspects of the reactive-banana API are very cumbersome, in particular the type parameter \verb`t` used to indicated starting times. I don't think that the current API will work out in the long run, but I don't want to shut off this part of the design space just yet.
+Rather than changing the entire API, I have decided to export some primitive combinators in the module \verb`Reactive.Banana.Prim` instead, which you can use to implement your own flavor of FRP. This module offers two types \verb`Pulse` and \verb`Latch`, on top of which you can implement custom \verb`Event` and \verb`Behavior` types, with or without type parameters, or any other design trade-off you want to make.
+
+\emph{Current development.}
+I have already put some effort into the next version of reactive-banana. It will finally implement garbage collection for dynamically created events and behaviors, and it will also feature some dramatic performance improvements.
+
+\FurtherReading
+\begin{compactitem}
+\item Project homepage: \url{http://haskell.org/haskellwiki/Reactive-banana}
+\item Example code: \url{http://haskell.org/haskellwiki/Reactive-banana/Examples}
+\item threepenny-gui: \url{http://haskell.org/haskellwiki/Threepenny-gui}
+\end{compactitem}
+\end{hcarentry}
