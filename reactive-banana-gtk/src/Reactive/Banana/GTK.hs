@@ -48,12 +48,32 @@ event0 widget signal = do
 -- | Event that occure when the text in the entry change
 eventEntry :: (Frameworks t, EntryClass e) => e -> Moment t (Event t String)
 eventEntry widget = do
-    addHandler <- liftIO $ signal0ToAddHandler widget entryActivated
-    fromAddHandler $ mapIO (const $ get widget entryText) addHandler 
+    addHandlerInsert <- liftIO $ signal1ToAddHandler widget entryInsertAtCursor
+    addHandlerDelete <- liftIO $ signal2ToAddHandler widget entryDeleteFromCursor
+    eInsert <- fromAddHandler $ mapIO (const $ get widget entryText) addHandlerInsert 
+    eDelete <- fromAddHandler $ mapIO (const $ get widget entryText) addHandlerDelete
+    return eInsert `union` eDelete
+
 
 -- | Behavior from attribute.
 behavior :: Frameworks t => w -> Attr w a -> Moment t (Behavior t a)
 behavior widget attr = fromPoll $ get widget attr
+
+-- | Obtain an 'AddHandler' from a Signal.
+-- The callback in the signal take one parameter
+signal1ToAddHandler :: w -> Signal w (a -> IO ()) -> IO (AddHandler a)
+signal1ToAddHandler widget signal = do
+    (addHandler, addEvent) <- newAddHandler
+    on widget signal addEvent
+    return addHandler
+
+-- | Obtain an 'AddHandler' from a Signal.
+-- The callback in the signal take one parameter
+signal2ToAddHandler :: w -> Signal w (a -> b -> IO ()) -> IO (AddHandler (a,b))
+signal2ToAddHandler widget signal = do
+    (addHandler, addEvent) <- newAddHandler
+    on widget signal (curry addEvent)
+    return addHandler
 
 -- | Obtain an 'AddHandler from a Signal.
 signal0ToAddHandler :: w -> Signal w (IO ()) -> IO (AddHandler ())
