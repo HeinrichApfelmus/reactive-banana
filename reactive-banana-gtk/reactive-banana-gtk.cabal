@@ -35,3 +35,12 @@ Executable Counter
   hs-source-dirs:       src
   main-is:              Counter.hs
   default-language:     Haskell2010
+
+Executable Matrix
+  if flag(buildExamples)
+      build-depends:    base, reactive-banana, vector, gtk, glib
+  else
+      buildable:        False
+  hs-source-dirs:       src
+  main-is:              Matrix.hs
+  default-language:     Haskell2010  

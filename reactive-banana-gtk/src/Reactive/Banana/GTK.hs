@@ -10,8 +10,15 @@ module Reactive.Banana.GTK (
     -- * General
     Attr'(..), sink,
 
+    -- * Behavior
+    behavior,
+
+    -- * Event 
+    eventEntry,
+
     -- * Mapping signal to AddHandler
-    buttonActivatedToAddHandler
+    event0,
+    signal0ToAddHandler,
     ) where
 
 import Graphics.UI.Gtk
@@ -22,6 +29,7 @@ data Attr' t w = forall a. (Attr w a) :== Behavior t a
 
 infix 0 :==
 
+-- | Animate a attribute from a Behavior
 sink :: Frameworks t => w -> [Attr' t w] -> Moment t ()
 sink widget = mapM_ sink1
     where 
@@ -31,8 +39,26 @@ sink widget = mapM_ sink1
             e <- changes b
             reactimate' $ (fmap $ \x -> set widget [attr := x]) <$> e
 
-buttonActivatedToAddHandler :: ButtonClass self => self -> IO (AddHandler ())
-buttonActivatedToAddHandler button = do
+-- | Event with zero parameter from a Signal
+event0 :: Frameworks t => w -> Signal w (IO ()) -> Moment t (Event t ())
+event0 widget signal = do
+    addHandler <- liftIO $ signal0ToAddHandler widget signal
+    fromAddHandler addHandler
+
+-- | Event that occure when the text in the entry change
+eventEntry :: (Frameworks t, EntryClass e) => e -> Moment t (Event t String)
+eventEntry widget = do
+    addHandler <- liftIO $ signal0ToAddHandler widget entryActivated
+    fromAddHandler $ mapIO (const $ get widget entryText) addHandler 
+
+-- | Behavior from attribute.
+behavior :: Frameworks t => w -> Attr w a -> Moment t (Behavior t a)
+behavior widget attr = fromPoll $ get widget attr
+
+-- | Obtain an 'AddHandler from a Signal.
+signal0ToAddHandler :: w -> Signal w (IO ()) -> IO (AddHandler ())
+signal0ToAddHandler widget signal = do
     (addHandler, addEvent) <- newAddHandler
-    on button buttonActivated (addEvent ())
-    return addHandler
+    on widget signal (addEvent ())
+    return addHandler 
+
