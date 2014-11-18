@@ -46,14 +46,10 @@ event0 widget signal = do
     fromAddHandler addHandler
 
 -- | Event that occure when the text in the entry change
-eventEntry :: (Frameworks t, EntryClass e) => e -> Moment t (Event t String)
+eventEntry :: (Frameworks t, EntryClass e, EditableClass e) => e -> Moment t (Event t String)
 eventEntry widget = do
-    addHandlerInsert <- liftIO $ signal1ToAddHandler widget entryInsertAtCursor
-    addHandlerDelete <- liftIO $ signal2ToAddHandler widget entryDeleteFromCursor
-    eInsert <- fromAddHandler $ mapIO (const $ get widget entryText) addHandlerInsert 
-    eDelete <- fromAddHandler $ mapIO (const $ get widget entryText) addHandlerDelete
-    return eInsert `union` eDelete
-
+    addHandler <- liftIO $ signal0ToAddHandler widget editableChanged
+    fromAddHandler $ mapIO (const $ get widget entryText) addHandler
 
 -- | Behavior from attribute.
 behavior :: Frameworks t => w -> Attr w a -> Moment t (Behavior t a)
