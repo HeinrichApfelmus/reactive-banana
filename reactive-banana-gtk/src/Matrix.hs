@@ -1,12 +1,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-import           Graphics.UI.Gtk
-import           Data.Vector
-import           Reactive.Banana
-import           Reactive.Banana.Frameworks
-import           Reactive.Banana.GTK
+import          Graphics.UI.Gtk
+import          Data.Vector
+import          Reactive.Banana
+import          Reactive.Banana.Frameworks
+import          Reactive.Banana.GTK
+import          Text.Read
 
-
+validateInput :: Maybe Integer -> String
+validateInput Nothing = "Invalid input"
+validateInput (Just int) = show int
 
 main :: IO ()
 main = do
@@ -25,8 +28,10 @@ main = do
     -- Network
     let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription  = do
-            entryE <- eventEntry entry
-            sink label [labelLabel :== stepper "" entryE]
+            eEntry <- eventEntry entry
+            let bEntry = stepper "" eEntry
+                bMaybe = readMaybe <$> bEntry
+            sink label [labelLabel :== validateInput <$> bMaybe]
 
     network <- compile networkDescription
     actuate network
