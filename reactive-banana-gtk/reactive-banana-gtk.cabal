@@ -44,3 +44,12 @@ Executable Matrix
   hs-source-dirs:       src
   main-is:              Matrix.hs
   default-language:     Haskell2010  
+
+Executable Nodes
+  if flag(buildExamples)
+      build-depends:    base, reactive-banana, gtk, glib, cairo
+  else
+      buildable:        False
+  hs-source-dirs:       src
+  main-is:              Nodes.hs
+  default-language:     Haskell2010  
