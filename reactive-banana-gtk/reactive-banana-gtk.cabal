@@ -38,7 +38,7 @@ Executable Counter
 
 Executable Matrix
   if flag(buildExamples)
-      build-depends:    base, reactive-banana, vector, gtk, glib
+      build-depends:    base, reactive-banana, gtk, glib
   else
       buildable:        False
   hs-source-dirs:       src

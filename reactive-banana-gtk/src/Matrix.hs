@@ -1,5 +1,4 @@
 import          Graphics.UI.Gtk
-import          Data.Vector
 import          Reactive.Banana
 import          Reactive.Banana.Frameworks
 import          Reactive.Banana.GTK
