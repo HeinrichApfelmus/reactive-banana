@@ -1,6 +1,15 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 0.8.0.4**
+
+* Just a reupload. The previous archive was broken.
+
+**version 0.8.0.3**
+
+* Export the `Future` type.
+* Restrict `containers` dependency to lower bound 0.5.
+
 **version 0.8.0.2**
 
 * Fix compilation issue with hiding `empty` from the module `Reactive.Banana.Prim.Order`.
