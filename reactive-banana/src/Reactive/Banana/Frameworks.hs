@@ -16,7 +16,7 @@ module Reactive.Banana.Frameworks (
     compile, Frameworks,
     module Control.Event.Handler,
     fromAddHandler, fromChanges, fromPoll,
-    reactimate, reactimate', initial, changes, imposeChanges,
+    reactimate, Future, reactimate', initial, changes, imposeChanges,
     FrameworksMoment(..), execute, liftIOLater,
     -- $liftIO
     module Control.Monad.IO.Class,
