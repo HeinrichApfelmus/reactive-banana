@@ -125,10 +125,10 @@ insert k a q@(DQ queue seen) = {-# SCC insert #-}
         then q
         else DQ (Q.insert k a queue) (Set.insert a seen)
 
-minView :: DepsQueue a -> Maybe (a, DepsQueue a)
+minView :: (Eq a, Hashable a) => DepsQueue a -> Maybe (a, DepsQueue a)
 minView (DQ queue seen) = {-# SCC minView #-} case Q.minView queue of
     Nothing          -> Nothing
-    Just (a, queue2) -> Just (a, DQ queue2 seen)
+    Just (a, queue2) -> Just (a, DQ queue2 (Set.delete a seen))
 
 {-----------------------------------------------------------------------------
     Small tests
