@@ -44,6 +44,16 @@ instance Functor (Identity t) where
 -- | Value present at any/every moment in time.
 newtype AnyMoment f a = AnyMoment { now :: forall t. Moment t (f t a) }
 
+instance Functor (AnyMoment Identity) where
+    fmap = liftM
+
+instance Applicative (AnyMoment Identity) where
+    pure = return
+    f <*> x = do
+        f' <- f
+        x' <- x
+        return (f' x')
+
 instance Monad (AnyMoment Identity) where
     return x = AnyMoment $ return (Identity x)
     (AnyMoment m) >>= g = AnyMoment $ m >>= \(Identity x) -> now (g x)
