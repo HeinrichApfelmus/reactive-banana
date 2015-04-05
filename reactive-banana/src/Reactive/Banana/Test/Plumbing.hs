@@ -60,6 +60,13 @@ instance Functor     Behavior where fmap = mapB
 instance Applicative Behavior where pure = pureB; (<*>) = applyB
 
 instance Functor Moment where fmap = liftM
+instance Applicative Moment where
+    pure = return
+    f <*> x = do
+        f' <- f
+        x' <- x
+        return (f' x')
+
 instance Monad Moment where
     return a = M (return a) (return a)
     (M x y) >>= g = M (x >>= fstM . g) (y >>= sndM . g)
