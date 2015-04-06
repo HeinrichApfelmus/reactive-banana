@@ -7,7 +7,7 @@
 module Reactive.Banana.Test.Plumbing where
 
 import Control.Applicative
-import Control.Monad (liftM)
+import Control.Monad (liftM, ap)
 import Control.Monad.Fix
 
 import qualified Reactive.Banana.Model as X
@@ -60,6 +60,9 @@ instance Functor     Behavior where fmap = mapB
 instance Applicative Behavior where pure = pureB; (<*>) = applyB
 
 instance Functor Moment where fmap = liftM
+instance Applicative Moment where
+    pure  = return
+    (<*>) = ap
 instance Monad Moment where
     return a = M (return a) (return a)
     (M x y) >>= g = M (x >>= fstM . g) (y >>= sndM . g)
