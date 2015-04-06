@@ -60,12 +60,16 @@ Send me your examples, bindings, problems, suggestions, etc!
 With contributions from
 
 * Abu Alam
-* Alexander Berntsen
+* *Alexander Berntsen*
+* Vincent Berthoux
 * Kevin Cantu
 * Gregory Crosswhite
+* Peter Hillerström
 * Elliott Hird
+* Matt Kraai
 * John Lato
 * Vladimir Lopatin
+* *madjestic*
 * Peter Minten
 * Gideon Sireling
 * Henning Thielemann

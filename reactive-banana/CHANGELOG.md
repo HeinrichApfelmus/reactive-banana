@@ -1,6 +1,12 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 0.8.1.0**
+
+* Module `Reactive.Banana.Switch` now adheres to the "Functor Applicative Monad Proposal" proposal][amp-proposal].
+
+  [amp-proposal]: https://wiki.haskell.org/Functor-Applicative-Monad_Proposal
+
 **version 0.8.0.4**
 
 * Just a reupload. The previous archive was broken.
