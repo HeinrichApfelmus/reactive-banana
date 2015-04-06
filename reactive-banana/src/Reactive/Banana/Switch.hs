@@ -64,6 +64,9 @@ instance Applicative (AnyMoment Behavior) where
     pure x  = AnyMoment $ return $ pure x
     (AnyMoment f) <*> (AnyMoment x) = AnyMoment $ liftM2 (<*>) f x
 
+instance Functor (AnyMoment Event) where
+    fmap f (AnyMoment x) = AnyMoment (fmap (fmap f) x)
+
 anyMoment :: (forall t. Moment t (f t a)) -> AnyMoment f a
 anyMoment = AnyMoment
 
