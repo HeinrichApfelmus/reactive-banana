@@ -3,7 +3,7 @@
     
     Example: "The world's worst synthesizer"
     from the unofficial tutorial.
-    <http://www.haskell.org/haskellwiki/FRP_explanation_using_reactive-banana>
+    <http://wiki.haskell.org/FRP_explanation_using_reactive-banana>
 ------------------------------------------------------------------------------}
 module Main where
 
