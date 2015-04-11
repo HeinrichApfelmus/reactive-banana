@@ -10,8 +10,8 @@ Support the project with a small donation: [![Flattr this](http://api.flattr.com
 
 See the **[project homepage][homepage]** for **documentation**, **examples** and so on.
 
-  [homepage]: http://haskell.org/haskellwiki/Reactive-banana
-  [frp]: http://haskell.org/haskellwiki/Functional_Reactive_Programming
+  [homepage]: http://wiki.haskell.org/Reactive-banana
+  [frp]: http://wiki.haskell.org/Functional_Reactive_Programming
 
 ## Compilation from the repository
 
@@ -27,7 +27,7 @@ Prerequisites: the wxHaskell package
 
     cabal install wx
 
-Note that you need to have a development version of the wxWidgets libraries installed before building wx. If you run into `ExitFailure 1` exceptions, please follow the [wxHaskell Quick Start](http://www.haskell.org/haskellwiki/WxHaskell/Building) instructions and try again.
+Note that you need to have a development version of the wxWidgets libraries installed before building wx. If you run into `ExitFailure 1` exceptions, please follow the [wxHaskell Quick Start](http://wiki.haskell.org/WxHaskell/Building) instructions and try again.
 
 To build the wx examples, type
 
@@ -42,8 +42,8 @@ The project contains several directories:
 * `reactive-banana` — the core library
 * `reactive-banana-wx` — bindings to the [wxHaskell][] GUI library, includes many examples
 
-  [wxhaskell]: http://haskell.org/haskellwiki/WxHaskell
-  [threepenny-gui]: http://www.haskell.org/haskellwiki/Threepenny-gui
+  [wxhaskell]: http://wiki.haskell.org/WxHaskell
+  [threepenny-gui]: http://wiki.haskell.org/Threepenny-gui
 
 The reactive-banana library actually contains *two* FRP implementations:
 

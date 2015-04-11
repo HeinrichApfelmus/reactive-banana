@@ -3,7 +3,7 @@
     
     Example:
     Asteroids, adapted from
-        http://www.haskell.org/haskellwiki/WxAsteroids
+        http://wiki.haskell.org/WxAsteroids
     
     The original example has a few graphics issues
     and I didn't put much work into correcting them.

@@ -15,7 +15,7 @@ Description:
     .
     Stability forecast: The wrapper functions are rather provisional.
 
-Homepage:            http://haskell.org/haskellwiki/Reactive-banana
+Homepage:            http://wiki.haskell.org/Reactive-banana
 License:             BSD3
 License-file:        LICENSE
 Author:              Heinrich Apfelmus
