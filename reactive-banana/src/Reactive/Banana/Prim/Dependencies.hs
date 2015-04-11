@@ -62,7 +62,7 @@ addChild parent child deps1@(Deps{..}) = deps2
     deps2 = Deps
         { dChildren = Map.insertWith (++) parent [child] dChildren
         , dParents  = Map.insertWith (++) child [parent] dParents
-        , dOrder    = ensureAbove child parent dOrder
+        , dOrder    = recalculateParent child parent (parents deps2) dOrder
         }
     when b f = if b then f else id
 

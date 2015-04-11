@@ -8,7 +8,7 @@ module Reactive.Banana.Prim.Order (
     
     -- * Order
     Order, flat,
-    ensureAbove, recalculateParent,
+    recalculateParent,
     Level, level,
     
     ) where
@@ -48,12 +48,6 @@ ground = 0
 -- | Look up the level of an element. Default level is 'ground'.
 level :: (Eq a, Hashable a) => a -> Order a -> Level
 level x = {-# SCC level #-} maybe ground id . Map.lookup x
-
--- | Make sure that the first argument is at least one level
--- above the second argument.
-ensureAbove :: (Eq a, Hashable a) => a -> a -> Order a -> Order a
-ensureAbove child parent order =
-    Map.insertWith max child (level parent order + 1) order
 
 -- | Reassign the parent for a child and recalculate the levels
 -- for the new parents and grandparents.
