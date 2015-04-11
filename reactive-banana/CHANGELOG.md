@@ -1,6 +1,10 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 0.8.1.1**
+
+* Links to the Haskell wiki now point to the `http://wiki.haskell.org` subdomain.
+
 **version 0.8.1.0**
 
 * Module `Reactive.Banana.Switch` now adheres to the "Functor Applicative Monad Proposal" proposal][amp-proposal].

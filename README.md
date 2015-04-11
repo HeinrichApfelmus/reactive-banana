@@ -65,6 +65,7 @@ With contributions from
 * Kevin Cantu
 * Gregory Crosswhite
 * Peter Hillerström
+* Joseph Heinemeyer
 * Elliott Hird
 * Matt Kraai
 * John Lato
