@@ -1,6 +1,13 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 0.8.1.2**
+
+* Depend on the [psqueues][] package instead of the [pqueue][] package for the priority queue.
+
+  [psqueues]: https://hackage.haskell.org/package/psqueues
+  [pqueue]: http://hackage.haskell.org/package/pqueue
+
 **version 0.8.1.1**
 
 * Links to the Haskell wiki now point to the `http://wiki.haskell.org` subdomain.

@@ -17,7 +17,7 @@ import           Control.Monad.Trans.Writer
 import qualified Data.HashMap.Strict        as Map
 import qualified Data.HashSet               as Set
 import           Data.Hashable
-import qualified Data.PQueue.Prio.Min       as Q
+import qualified Data.IntPSQ                as Q
 
 import           Reactive.Banana.Prim.Order
 import qualified Reactive.Banana.Prim.Order as Order
@@ -114,21 +114,23 @@ traverseDependencies f deps roots = go $ insertList roots emptyQ
                 Children -> go $ insertList (children deps a) q2
 
 -- | Queue for traversing dependencies.
-data DepsQueue a = DQ !(Q.MinPQueue Level a) !(Set a)
+--
+-- The 'Int' is a key supply for the priority search queue.
+data DepsQueue a = DQ !(Q.IntPSQ Level a) !(Set a) Int
 
 emptyQ :: DepsQueue a
-emptyQ = DQ Q.empty Set.empty
+emptyQ = DQ Q.empty Set.empty 0
 
 insert :: (Eq a, Hashable a) => Level -> a -> DepsQueue a -> DepsQueue a
-insert k a q@(DQ queue seen) = {-# SCC insert #-}
+insert k a q@(DQ queue seen n) = {-# SCC insert #-}
     if a `Set.member` seen
         then q
-        else DQ (Q.insert k a queue) (Set.insert a seen)
+        else DQ (Q.insert (n+1) k a queue) (Set.insert a seen) (n+1)
 
 minView :: DepsQueue a -> Maybe (a, DepsQueue a)
-minView (DQ queue seen) = {-# SCC minView #-} case Q.minView queue of
-    Nothing          -> Nothing
-    Just (a, queue2) -> Just (a, DQ queue2 seen)
+minView (DQ queue seen n) = {-# SCC minView #-} case Q.minView queue of
+    Nothing                -> Nothing
+    Just (_, _, a, queue2) -> Just (a, DQ queue2 seen n)
 
 {-----------------------------------------------------------------------------
     Small tests
