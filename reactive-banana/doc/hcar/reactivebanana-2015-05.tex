@@ -1,0 +1,36 @@
+% reactivebanana-Hr.tex
+\begin{hcarentry}[updated]{reactive-banana}
+\report{Heinrich Apfelmus}%05/15
+\status{active development}
+\makeheader
+
+%**<img width=200 src="./banana.jpg">
+%*ignore
+\begin{center}
+\includegraphics[width=0.2\textwidth]{html/banana.jpg}
+\end{center}
+%*endignore
+
+Reactive-banana is a library for functional reactive programming (FRP).
+
+FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. It promises to avoid the spaghetti code that is all too common in traditional approaches to GUI programming.
+
+The goal of the library is to provide a solid foundation.
+\begin{itemize}
+\item Programmers interested in the implementation of FRP will have a \emph{reference} for a \emph{simple semantics} with a working implementation. The library stays close to the semantics pioneered by Conal Elliott.
+\item The library features an \emph{efficient implementation}. No more spooky time leaks, predicting space \& time usage should be straightforward.
+\end{itemize}
+
+The library is meant to be used in conjunction with existing libraries that are specific to your problem domain. For instance, you can hook it into any event-based GUI framework, like wxHaskell or Gtk2Hs. Several helper packages like reactive-banana-wx provide a small amount of glue code that can make life easier.
+
+\emph{Status.} The latest version of the reactive-banana library is \verb!0.8.1.2!. The library is still in active development, but compared to the previous report, releases have mostly been aimed at ensuring compatibility with the current Haskell ecosystem.
+
+\emph{Current development.}
+The next version reactive-banana will finally implement garbage collection for dynamically created events and behaviors, and it will also feature some dramatic performance improvements. Judging from various user reports, it also seems that the API for dynamic event switching is too complex, in particular concerning the phantom type parameter \verb`t`. Chances are that reactive-banana will drastically change its API in the future.
+
+\FurtherReading
+\begin{compactitem}
+\item Project homepage: \url{http://wiki.haskell.org/Reactive-banana}
+\item Example code: \url{http://wiki.haskell.org/Reactive-banana/Examples}
+\end{compactitem}
+\end{hcarentry}
