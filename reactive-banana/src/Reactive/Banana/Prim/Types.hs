@@ -2,6 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE ExistentialQuantification, NamedFieldPuns #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 module Reactive.Banana.Prim.Types where
 
 import           Control.Monad.Trans.RWSIO
