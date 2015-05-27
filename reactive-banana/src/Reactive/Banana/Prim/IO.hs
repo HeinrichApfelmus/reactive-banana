@@ -1,19 +1,19 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE RecursiveDo #-}
 module Reactive.Banana.Prim.IO where
 
-import           Data.Functor
-import           Data.Unique.Really
-import qualified Data.Vault.Strict  as Strict
-import qualified Data.Vault.Lazy    as Lazy
-import           System.IO.Unsafe             (unsafePerformIO)
+import Control.Monad.IO.Class
+import Data.IORef
+import Data.Functor
+import qualified Data.Vault.Lazy as Lazy
 
 import Reactive.Banana.Prim.Combinators  (mapP)
-import Reactive.Banana.Prim.Dependencies (maybeContinue)
 import Reactive.Banana.Prim.Evaluation   (step)
 import Reactive.Banana.Prim.Plumbing
 import Reactive.Banana.Prim.Types
+import Reactive.Banana.Prim.Util
 
 debug s = id
 
@@ -24,19 +24,20 @@ debug s = id
 --
 -- Together with 'addHandler', this function can be used to operate with
 -- pulses as with standard callback-based events.
-newInput :: Lazy.Key a -> Build (Pulse a, a -> Step)
-newInput key = unsafePerformIO $ do
-    uid <- newUnique
-    let pulse = Pulse
-            { evaluateP = maybeContinue <$> readPulseP pulse
-            , getValueP = Lazy.lookup key
-            , uidP      = uid
-            , nameP     = "newInput"
-            }
-    return $ do
-        always <- alwaysP
-        let inputs a = (Lazy.insert key a Lazy.empty, [P pulse, P always])
-        return (pulse, step . inputs)
+newInput :: Build (Pulse a, a -> Step)
+newInput = mdo
+    key   <- liftIO $ Lazy.newKey
+    pulse <- liftIO $ newRef $ Pulse
+        { _keyP      = key
+        , _seenP     = agesAgo
+        , _evalP     = readPulseP pulse    -- get its own value
+        , _childrenP = []
+        , _parentsP  = []
+        , _levelP    = ground
+        , _nameP     = "newInput"
+        }
+    let run a = step ([P pulse], Lazy.insert key (Just a) Lazy.empty)
+    return (pulse, run)
 
 -- | Register a handler to be executed whenever a pulse occurs.
 --

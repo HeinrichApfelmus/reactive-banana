@@ -1,197 +1,174 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ExistentialQuantification, NamedFieldPuns #-}
 module Reactive.Banana.Prim.Types where
 
-import           Control.Monad.Trans.Class
-import           Control.Monad.Trans.RWS.Lazy
-import           Control.Monad.Trans.State
-import           Data.Functor.Identity
-import qualified Data.HashMap.Strict          as Map
-import qualified Data.HashSet                 as Set
+import           Control.Monad.Trans.RWSIO
+import           Control.Monad.Trans.Reader
+import           Control.Monad.Trans.ReaderWriterIO
+import           Data.Functor
 import           Data.Hashable
 import           Data.Monoid
-import           Data.Unique.Really
-import qualified Data.Vault.Lazy              as Lazy
-import           System.IO.Unsafe                       (unsafePerformIO)
-
-import           Reactive.Banana.Prim.Cached
-import qualified Reactive.Banana.Prim.Dated        as Dated
-import qualified Reactive.Banana.Prim.Dependencies as Deps
-
-type Deps = Deps.Deps
+import qualified Data.Vault.Lazy                    as Lazy
+import           Reactive.Banana.Prim.Util
+import           System.Mem.Weak
 
 {-----------------------------------------------------------------------------
-    Graph
+    Network
 ------------------------------------------------------------------------------}
--- | A 'Graph' represents the connections between pulses and events.
-data Graph = Graph
-    { grDeps        :: Deps SomeNode   -- dependency information
-    , grCache       :: Lazy.Vault      -- cache for the monad
-    , grAlwaysP     :: Pulse ()        -- special pulse that always fires
-    , grOutputCount :: !Position       -- ensure declaration order
-    }
-type Position = Integer
-
-instance Show Graph where show = showDeps . grDeps
-
 -- | A 'Network' represents the state of a pulse/latch network,
--- which consists of a 'Graph' and the values of all accumulated latches
--- in the network.
 data Network = Network
-    { nGraph       :: Graph
-    , nLatchValues :: Dated.Vault
-    , nTime        :: Dated.Time
+    { nTime    :: !Time         -- Current time.
+    , nOutputs :: ![Output]     -- Remember outputs to prevent garbage collection.
     }
 
-instance Show Network where show = show . nGraph
+instance Show Network where show = error "instance Show Network not implemented."
 
-type Inputs        = (Lazy.Vault, [SomeNode])
+type Inputs        = ([SomeNode], Lazy.Vault)
 type EvalNetwork a = Network -> IO (a, Network)
 type Step          = EvalNetwork (IO ())
 
--- | Lenses for the 'Graph' and the 'Network' type
-updateGraph       f = \s -> s { nGraph       = f (nGraph s) }
-updateLatchValues f = \s -> s { nLatchValues = f (nLatchValues s) }
-updateDeps        f = \s -> s { grDeps       = f (grDeps s) }
-updateCache       f = \s -> s { grCache      = f (grCache s) }
-updateOutputCount f = \s -> s { grOutputCount = f (grOutputCount s) }
-
-emptyGraph :: Graph
-emptyGraph = unsafePerformIO $ do
-    uid <- newUnique
-    return $ Graph
-        { grDeps        = Deps.empty
-        , grCache       = Lazy.empty
-        , grAlwaysP     = Pulse
-            { evaluateP = return Deps.Children
-            , getValueP = const $ Just ()
-            , uidP      = uid
-            , nameP     = "alwaysP"
-            }
-        , grOutputCount = 0
-        }
-
--- | The 'Network' that contains no pulses or latches.
-emptyNetwork :: Network
 emptyNetwork = Network
-    { nGraph       = emptyGraph
-    , nLatchValues = Dated.empty
-    , nTime        = Dated.beginning
+    { nTime    = 0
+    , nOutputs = []
     }
 
--- The 'Build' monad is used to change the graph, for example to
--- * add nodes
--- * change dependencies
--- * add inputs or outputs
-type BuildT  = RWST () BuildConf Network
-type Build   = BuildT Identity 
-type BuildIO = BuildT IO
+type Build  = ReaderWriterIOT BuildR BuildW IO
+type BuildR = Time
+type BuildW = (Action, Action, [Output])
+    -- reader : current timestamp
+    -- writer : (actions that change the network topology
+    --          ,late IO actions
+    --          ,outputs to be added to the network)
+type BuildIO = Build
 
-type BuildConf = [IO ()] -- liftIOLater
+{-----------------------------------------------------------------------------
+    Synonyms
+------------------------------------------------------------------------------}
+-- | Timestamp used to determine cache validity.
+type Time  = Int
+-- | Priority used to keep track of declaration order for outputs.
+type Position = Int
+-- | Priority used to determine evaluation order for pulses.
+type Level = Int
 
-{- Note [BuildT]
+next :: Time -> Time
+next = (+1)
 
-It is very convenient to be able to perform some IO functions
-while (re)building a network graph. At the same time,
-we need a good  MonadFix  instance to build recursive networks.
-These requirements clash, so the solution is to split the types
-into a pure variant and IO variant, the former having a good
-MonadFix  instance while the latter can do arbitrary IO.
+agesAgo :: Time
+agesAgo = 0
 
--}
+ground :: Level
+ground = 0
+
+-- | 'IO' actions as a monoid with respect to sequencing.
+newtype Action = Action { doit :: IO () }
+instance Monoid Action where
+    mempty = Action $ return ()
+    (Action x) `mappend` (Action y) = Action (x >> y)
+
+-- | Lens-like functionality.
+data Lens s a = Lens (s -> a) (a -> s -> s)
+set    (Lens _   set)   = set
+update (Lens get set) f = \s -> set (f $ get s) s
 
 {-----------------------------------------------------------------------------
     Pulse and Latch
 ------------------------------------------------------------------------------}
-{-
-    evaluateL/P
-        calculates the next value and makes sure that it's cached
-    getValueL/P
-        retrieves the current value
-    uidL/P
-        used for dependency tracking and evaluation order
-    nameP
-        used for debugging
--}
-
-data Pulse a = Pulse
-    { evaluateP :: EvalP Deps.Continue
-    , getValueP :: Lazy.Vault -> Maybe a
-    , uidP      :: Unique
-    , nameP     :: String
+type Pulse  a = Ref (Pulse' a)
+data Pulse' a = Pulse
+    { _keyP      :: Lazy.Key (Maybe a) -- Key to retrieve pulse from cache.
+    , _seenP     :: !Time              -- See note [Timestamp].
+    , _evalP     :: EvalP (Maybe a)    -- Calculate current value.
+    , _childrenP :: [Weak SomeNode]    -- Weak references to child nodes.
+    , _parentsP  :: [Weak SomeNode]    -- Weak reference to parent nodes.
+    , _levelP    :: !Level             -- Priority in evaluation order.
+    , _nameP     :: String             -- Name for debugging.
     }
 
 instance Show (Pulse a) where
-    show p = nameP p ++ " " ++ show (hashWithSalt 0 $ uidP p)
+    show p = _nameP (unsafePerformIO $ readRef p) ++ " " ++ show (hashWithSalt 0 p)
 
-data Latch a = Latch
-    { getValueL :: Future (Dated.Box a)
+type Latch  a = Ref (Latch' a)
+data Latch' a = Latch
+    { _seenL  :: !Time               -- Timestamp for the current value.
+    , _valueL :: a                   -- Current value.
+    , _evalL  :: EvalL a             -- Recalculate current latch value.
+    }
+type LatchWrite = Ref LatchWrite'
+data LatchWrite' = forall a. LatchWrite
+    { _evalLW  :: EvalP a            -- Calculate value to write.
+    , _latchLW :: Weak (Latch a)     -- Destination 'Latch' to write to.
     }
 
-data LatchWrite = LatchWrite
-    { evaluateL :: EvalP EvalL
-    , uidL      :: Unique
+type Output  = Ref Output'
+data Output' = Output
+    { _positionO :: !Position
+    , _evalO     :: EvalP EvalO
     }
 
-data Output = Output
-    { evaluateO :: EvalP EvalO
-    , uidO      :: Unique
-    , positionO :: Position
-    }
-
-type EvalP = StateT Lazy.Vault BuildIO
-    -- state: current pulse values
-
-type Future = Dated.Dated
-type EvalL  = Endo Dated.Vault
-type EvalO  = Future (IO ())
-
-nop :: EvalO
-nop = return $ return ()
-
--- | Existential quantification for dependency tracking
 data SomeNode
     = forall a. P (Pulse a)
     | L LatchWrite
     | O Output
 
-instance Show SomeNode where show = show . hash
+instance Hashable SomeNode where
+    hashWithSalt s (P x) = hashWithSalt s x
+    hashWithSalt s (L x) = hashWithSalt s x
+    hashWithSalt s (O x) = hashWithSalt s x
 
 instance Eq SomeNode where
-    (P x) == (P y)  =  uidP x == uidP y
-    (L x) == (L y)  =  uidL x == uidL y
-    (O x) == (O y)  =  uidO x == uidO y
-    _     == _      =  False
+    (P x) == (P y) = equalRef x y
+    (L x) == (L y) = equalRef x y
+    (O x) == (O y) = equalRef x y
 
-uid :: SomeNode -> Unique
-uid (P x) = uidP x
-uid (L x) = uidL x
-uid (O x) = uidO x
+{-# INLINE mkWeakNodeValue #-}
+mkWeakNodeValue :: SomeNode -> v -> IO (Weak v)
+mkWeakNodeValue (P x) = mkWeakRefValue x
+mkWeakNodeValue (L x) = mkWeakRefValue x
+mkWeakNodeValue (O x) = mkWeakRefValue x
 
-instance Hashable SomeNode where
-    hashWithSalt s = hashWithSalt s . uid
+-- Lenses for various parameters
+seenP  = Lens _seenP  (\a s -> s { _seenP = a })
+seenL  = Lens _seenL  (\a s -> s { _seenL = a })
+valueL = Lens _valueL (\a s -> s { _valueL = a })
+parentsP  = Lens _parentsP (\a s -> s { _parentsP = a })
+childrenP = Lens _childrenP (\a s -> s { _childrenP = a })
+levelP = Lens _levelP (\a s -> s { _levelP = a })
+
+-- | Evaluation monads.
+type EvalPW   = (EvalLW, [(Position, EvalO)])
+
+-- Note: For efficiency reasons, we unroll the monad transformer stack.
+-- type EvalP = RWST () Lazy.Vault EvalPW Build
+type EvalP    = RWSIOT BuildR (EvalPW,BuildW) Lazy.Vault IO
+    -- writer : (latch updates, IO action)
+    -- state  : current pulse values
+
+type EvalL    = ReaderT Time IO
+type EvalO    = Future (IO ())
+type Future   = IO
+type EvalLW   = Action
 
 {-----------------------------------------------------------------------------
     Show functions for debugging
 ------------------------------------------------------------------------------}
-showDeps :: Deps SomeNode -> String
-showDeps deps = unlines $
-        [ detail node ++
-          if null children then "" else " -> " ++ unwords (map short children)
-        | node <- nodes
-        , let children = Deps.children deps node
-        ]
-    where
-    allChildren = Deps.allChildren deps
-    nodes       = Set.toList . Set.fromList $
-                  concat [x : xs | (x,xs) <- allChildren]
-    dictionary  = Map.fromList $ zip nodes [1..]
-    
-    short node = maybe "X" show $ Map.lookup node dictionary
-    
-    detail (P x) = "P " ++ nameP x ++ " " ++ short (P x)
-    detail (L x) = "L " ++ short (L x)
-    detail (O x) = "O " ++ short (O x)
+printNode :: SomeNode -> IO String
+printNode (P p) = _nameP <$> readRef p
+printNode (L l) = return "L"
+printNode (O o) = return "O"
 
+{-----------------------------------------------------------------------------
+    Notes
+------------------------------------------------------------------------------}
+{- Note [Timestamp]
+
+The time stamp indicates how recent the current value is.
+
+During pulse evaluation, a time stamp equal to the current
+time indicates that the pulse has already been evaluated in this phase.
+For Latches, however, a time stamp equal to the current time indicates
+that the latch needs to be updated after all pulses have been evaluated.
+
+-}

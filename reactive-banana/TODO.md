@@ -1,7 +1,21 @@
 FIXME
 -----
 
-No items that need immediate fixing right now.
+* Implement caching for latches.
+
+* Implement `readFutureLatchP`.
+
+* Implement `alwaysP` so that `fromPoll` works again.
+
+* Try more test cases to find bugs.
+
+* Garbage collection:
+
+  Does it make a difference whether we use  weak  pointers for the
+  _parentP field or not? What about dependencies via  readPulseP ?
+  the goal is tobe able to garbage collect whole chains at once,
+  otherwise it would take too much time.
+
 
 Implementation Notes
 --------------------

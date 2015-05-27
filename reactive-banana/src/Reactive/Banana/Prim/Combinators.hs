@@ -8,13 +8,13 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
 
-import Reactive.Banana.Prim.Dated (Box(..))
 import Reactive.Banana.Prim.Plumbing
     ( neverP, newPulse, newLatch, cachedLatch
-    , dependOn, changeParent
-    , readPulseP, readLatchP, readLatchFutureP, liftBuildP, liftBuildIOP
+    , dependOn, keepAlive, changeParent
+    , getValueL
+    , readPulseP, readLatchP, readLatchFutureP, liftBuildP,
     )
-import Reactive.Banana.Prim.Types (Latch(..), Future, Pulse, Build, BuildIO)
+import Reactive.Banana.Prim.Types (Latch, Future, Pulse, Build)
 
 import Debug.Trace
 -- debug s = trace s
@@ -78,15 +78,15 @@ applyP f x = do
     return p
 
 pureL :: a -> Latch a
-pureL a = Latch { getValueL = return (pure a) }
+pureL a = cachedLatch $ return a
 
 -- specialization of   mapL f = applyL (pureL f)
 mapL :: (a -> b) -> Latch a -> Latch b
-mapL f lx = cachedLatch $ {-# SCC mapL #-} fmap f <$> getValueL lx
+mapL f lx = cachedLatch $ {-# SCC mapL #-} f <$> getValueL lx
 
 applyL :: Latch (a -> b) -> Latch a -> Latch b
 applyL lf lx = cachedLatch $
-    {-# SCC applyL #-} (<*>) <$> getValueL lf <*> getValueL lx
+    {-# SCC applyL #-} getValueL lf <*> getValueL lx
 
 accumL :: a -> Pulse (a -> a) -> Build (Latch a, Pulse a)
 accumL a p1 = do
@@ -108,15 +108,15 @@ stepperL a p = do
 switchL :: Latch a -> Pulse (Latch a) -> Build (Latch a)
 switchL l pl = mdo
     x <- stepperL l pl
-    return $ Latch { getValueL = getValueL x >>= \(Box a) -> getValueL a }
+    return $ cachedLatch $ getValueL x >>= getValueL
 
-executeP :: Pulse (b -> BuildIO a) -> b -> Build (Pulse a)
+executeP :: Pulse (b -> Build a) -> b -> Build (Pulse a)
 executeP p1 b = do
         p2 <- newPulse "executeP" $ {-# SCC executeP #-} eval =<< readPulseP p1
         p2 `dependOn` p1
         return p2
     where
-    eval (Just x) = Just <$> liftBuildIOP (x b)
+    eval (Just x) = Just <$> liftBuildP (x b)
     eval Nothing  = return Nothing
 
 switchP :: Pulse (Pulse a) -> Build (Pulse a)
@@ -137,55 +137,5 @@ switchP pp = mdo
     p1 <- newPulse "switchP_in" switch :: Build (Pulse ())
     p1 `dependOn` pp
     p2 <- newPulse "switchP_out" eval
+    p2 `keepAlive` p1
     return p2
-
-{-----------------------------------------------------------------------------
-    Notes
-------------------------------------------------------------------------------}
-{-
-
-* Note [PulseCreation]
-
-We assume that we do not have to calculate a pulse occurrence
-at the moment we create the pulse. Otherwise, we would have
-to recalculate the dependencies *while* doing evaluation;
-this is a recipe for desaster.
-
-* Note [unsafePerformIO]
-
-We're using @unsafePerformIO@ only to get @Key@ and @Unique@.
-It's not great, but it works.
-
-Unfortunately, using @IO@ as the base of the @Network@ monad
-transformer doens't work because it doesn't support recursion
-and @mfix@ very well.
-
-We could use the @ST@ monad, but this would add a type parameter
-to everything. A refactoring of this scope is too annoying for
-my taste right now.
-
-* Note [LatchRecursion]
-
-...
-
-* Note [LatchStrictness]
-
-Any value that is stored in the graph over a longer
-period of time must be stored in WHNF.
-
-This implies that the values in a latch must be forced to WHNF
-when storing them. That doesn't have to be immediately
-since we are tying a knot, but it definitely has to be done
-before  evaluateGraph  is done.
-
-It also implies that reading a value from a latch must
-be forced to WHNF before storing it again, so that we don't
-carry around the old collection of latch values.
-This is particularly relevant for `applyL`.
-
-Conversely, since latches are the only way to store values over time,
-this is enough to guarantee that there are no space leaks in this regard.
-
--}
-
-

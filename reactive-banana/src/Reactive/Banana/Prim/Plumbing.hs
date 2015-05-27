@@ -1,163 +1,196 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards, RecursiveDo, BangPatterns #-}
 module Reactive.Banana.Prim.Plumbing where
 
-import           Control.Monad
-import           Control.Monad.Fix
+import           Control.Monad (join)
+import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
-import           Control.Monad.Trans.RWS
-import qualified Control.Monad.Trans.State as State
-import           Data.Function
+import qualified Control.Monad.Trans.Reader as Reader
+import qualified Control.Monad.Trans.ReaderWriterIO as RW
+import qualified Control.Monad.Trans.RWSIO as RWS
+import           Data.Function                        (on)
 import           Data.Functor
-import           Data.Functor.Identity
-import           Data.List
+import           Data.List                            (sortBy)
 import           Data.Monoid
-import           Data.Unique.Really
-import qualified Data.Vault.Lazy           as Lazy
-import           System.IO.Unsafe                  (unsafePerformIO)
+import qualified Data.Vault.Lazy as Lazy
+import           System.IO.Unsafe
 
-import           Reactive.Banana.Prim.Cached                (HasCache(..))
-import qualified Reactive.Banana.Prim.Dated        as Dated
 import qualified Reactive.Banana.Prim.Dependencies as Deps
-import           Reactive.Banana.Prim.Types
+import Reactive.Banana.Prim.Types
+import Reactive.Banana.Prim.Util
 
 {-----------------------------------------------------------------------------
     Build primitive pulses and latches
 ------------------------------------------------------------------------------}
 -- | Make 'Pulse' from evaluation function
 newPulse :: String -> EvalP (Maybe a) -> Build (Pulse a)
-newPulse name eval = unsafePerformIO $ do
+newPulse name eval = liftIO $ do
     key <- Lazy.newKey
-    uid <- newUnique
-    return $ do
-        let write = maybe (return Deps.Done) ((Deps.Children <$) . writePulseP key)
-        return $ Pulse
-            { evaluateP = {-# SCC evaluateP #-} write =<< eval
-            , getValueP = Lazy.lookup key
-            , uidP      = uid
-            , nameP     = name
-            }
+    newRef $ Pulse
+        { _keyP      = key
+        , _seenP     = agesAgo
+        , _evalP     = eval
+        , _childrenP = []
+        , _parentsP  = []
+        , _levelP    = ground
+        , _nameP     = name
+        }
+
+{-
+* Note [PulseCreation]
+
+We assume that we do not have to calculate a pulse occurrence
+at the moment we create the pulse. Otherwise, we would have
+to recalculate the dependencies *while* doing evaluation;
+this is a recipe for desaster.
+
+-}
 
 -- | 'Pulse' that never fires.
 neverP :: Build (Pulse a)
-neverP = unsafePerformIO $ do
-    uid <- newUnique
-    return $ return $ Pulse
-        { evaluateP = return Deps.Done
-        , getValueP = const Nothing
-        , uidP      = uid
-        , nameP     = "neverP"
+neverP = liftIO $ do
+    key <- Lazy.newKey
+    newRef $ Pulse
+        { _keyP      = key
+        , _seenP     = agesAgo
+        , _evalP     = return Nothing
+        , _childrenP = []
+        , _parentsP  = []
+        , _levelP    = ground
+        , _nameP     = "neverP"
         }
 
--- | Make new 'Latch' that can be updated.
-newLatch :: a -> Build (Pulse a -> Build (), Latch a)
-newLatch a = unsafePerformIO $ do
-    key <- Dated.newKey
-    uid <- newUnique
-    return $ do
-        let
-            write time   = maybe mempty (Endo . Dated.update' key time)
-            latchWrite p = LatchWrite
-                { evaluateL = {-# SCC evaluateL #-} do
-                    time <- lift $ nTime <$> get
-                    write (Dated.next time) <$> readPulseP p
-                , uidL      = uid
-                }
-            updateOn p   = P p `addChild` L (latchWrite p)
-        return
-            (updateOn, Latch { getValueL = Dated.findWithDefault a key })
+alwaysP :: Build (Pulse ())
+alwaysP = error "FIXME: alwaysP not implemented"
 
--- | Make a new 'Latch' that caches a previous computation
-cachedLatch :: Dated.Dated (Dated.Box a) -> Latch a
-cachedLatch eval = unsafePerformIO $ do
-    key <- Dated.newKey
-    return $ Latch { getValueL = {-# SCC getValueL #-} Dated.cache key eval }
+-- | Make new 'Latch' that can be updated by a 'Pulse'
+newLatch :: a -> Build (Pulse a -> Build (), Latch a)
+newLatch a = mdo
+    latch <- liftIO $ newRef $ Latch
+        { _seenL  = agesAgo
+        , _valueL = a
+        , _evalL  = _valueL <$> readRef latch
+        }
+    let
+        err        = error "incorrect Latch write"
+        updateOn p = do
+            w  <- liftIO $ mkWeakRefValue latch latch 
+            lw <- liftIO $ newRef $ LatchWrite
+                { _evalLW  = maybe err id <$> readPulseP p
+                , _latchLW = w
+                }
+            -- writer is alive only as long as the latch is alive
+            _  <- liftIO $ mkWeakRefValue latch lw
+            (P p) `addChild` (L lw)
+    
+    return (updateOn, latch)
+
+-- | Make a new 'Latch' that caches a previous computation.
+cachedLatch :: EvalL a -> Latch a
+cachedLatch eval = unsafePerformIO $ newRef $ Latch
+    { _seenL  = agesAgo
+    , _valueL = undefined
+    , _evalL  = eval        -- TODO: Cache computation!
+    }
 
 -- | Add a new output that depends on a 'Pulse'.
 --
 -- TODO: Return function to unregister the output again.
 addOutput :: Pulse EvalO -> Build ()
-addOutput p = unsafePerformIO $ do
-    uid <- newUnique
-    return $ do
-        pos <- grOutputCount . nGraph <$> get
-        let o = Output
-                { evaluateO = {-# SCC evaluateO #-} maybe nop id <$> readPulseP p
-                , uidO      = uid
-                , positionO = pos
-                }
-        modify $ updateGraph $ updateOutputCount $ (+1)
-        P p `addChild` O o
+addOutput p = do
+    o <- liftIO $ newRef $ Output
+        { _evalO     = maybe (return $ debug "nop") id <$> readPulseP p
+        , _positionO = 1 -- FIXME: Update position with global state!
+        }
+    (P p) `addChild` (O o)
+    RW.tell (mempty,mempty,[o])
 
 {-----------------------------------------------------------------------------
-    Build monad - add and delete nodes from the graph
+    Build monad
 ------------------------------------------------------------------------------}
-runBuildIO :: Network -> BuildIO a -> IO (a, Network)
-runBuildIO s1 m = {-# SCC runBuildIO #-} do
-    (a,s2,liftIOLaters) <- runRWST m () s1
-    sequence_ liftIOLaters          -- execute late IOs
-    return (a,s2)
+runBuildIO :: Time -> BuildIO a -> IO (a, Action, [Output])
+runBuildIO time m = {-# SCC runBuild #-} do
+    (a,(topologyUpdates,liftIOLaters,os)) <- RW.runReaderWriterIOT m time
+    doit $ liftIOLaters          -- execute late IOs
+    return (a,topologyUpdates,os)
 
--- Lift a pure  Build  computation into any monad.
--- See note [BuildT]
-liftBuild :: Monad m => Build a -> BuildT m a
-liftBuild m = RWST $ \r s -> return . runIdentity $ runRWST m r s
+liftBuild :: Build a -> BuildIO a
+liftBuild = id
+
+getTimeB :: Build Time
+getTimeB = RW.ask
 
 readLatchB :: Latch a -> Build a
-readLatchB latch = state $ \network ->
-    let (a,v) = Dated.runDated (getValueL latch) (nLatchValues network)
-    in  (Dated.unBox a, network { nLatchValues = v } )
-
-alwaysP :: Build (Pulse ())
-alwaysP = grAlwaysP . nGraph <$> get
-
-instance (MonadFix m, Functor m) => HasCache (BuildT m) where
-    retrieve key = Lazy.lookup key . grCache . nGraph <$> get
-    write key a  = modify $ updateGraph $ updateCache $ Lazy.insert key a
+readLatchB latch = do
+    time      <- RW.ask
+    Latch{..} <- readRef latch
+    liftIO $ Reader.runReaderT _evalL time
 
 dependOn :: Pulse child -> Pulse parent -> Build ()
 dependOn child parent = (P parent) `addChild` (P child)
 
-changeParent :: Pulse child -> Pulse parent -> Build ()
-changeParent child parent =
-    modify . updateGraph . updateDeps $ Deps.changeParent (P child) (P parent)
+keepAlive :: Pulse child -> Pulse parent -> Build ()
+keepAlive child parent = liftIO $ mkWeakRefValue child parent >> return ()
 
 addChild :: SomeNode -> SomeNode -> Build ()
 addChild parent child =
-    modify . updateGraph . updateDeps $ Deps.addChild parent child
+    RW.tell (Action $ Deps.addChild parent child,mempty,mempty)
+
+changeParent :: Pulse child -> Pulse parent -> Build ()
+changeParent node parent =
+    RW.tell (Action $ Deps.changeParent node parent,mempty,mempty)
 
 liftIOLater :: IO () -> Build ()
-liftIOLater x = tell [x]
+liftIOLater x = RW.tell (mempty, Action x, mempty)
 
 {-----------------------------------------------------------------------------
-    EvalP - evaluate pulses
+    EvalP monad
 ------------------------------------------------------------------------------}
-runEvalP :: Lazy.Vault -> EvalP (EvalL, [(Position, EvalO)])
-    -> BuildIO (Lazy.Vault, EvalL, EvalO)
-runEvalP pulse m = do
-        ((wl,wo),s) <- State.runStateT m pulse
-        return (s,wl, sequence_ <$> sequence (sortOutputs wo))
-    where
-    sortOutputs = map snd . sortBy (compare `on` fst)
+getValueL :: Latch a -> EvalL a
+getValueL l = do
+    Latch{..} <- readRef l
+    _evalL
 
-readLatchP :: Latch a -> EvalP a
-readLatchP = {-# SCC readLatchP #-} lift . liftBuild . readLatchB
+runEvalP :: Lazy.Vault -> EvalP a -> Build (a, EvalLW, EvalO)
+runEvalP s1 m = RW.readerWriterIOT $ \r2 -> do
+    (a,_,((wl,wo),w2)) <- RWS.runRWSIOT m r2 s1
+    return ((a,wl, sequence_ <$> sequence (sortOutputs wo)), w2)
 
-readLatchFutureP :: Latch a -> EvalP (Future a)
-readLatchFutureP latch = State.state $ \s -> (Dated.unBox <$> getValueL latch,s)
-
-writePulseP :: Lazy.Key a -> a -> EvalP ()
-writePulseP key a = {-# SCC writePulseP #-} State.modify $ Lazy.insert key a
-
-readPulseP :: Pulse a -> EvalP (Maybe a)
-readPulseP pulse = {-# SCC readPulseP #-} getValueP pulse <$> State.get
-
-liftBuildIOP :: BuildIO a -> EvalP a
-liftBuildIOP = lift
+sortOutputs :: Ord k => [(k,a)] -> [a]
+sortOutputs = map snd . sortBy (compare `on` fst)
 
 liftBuildP :: Build a -> EvalP a
-liftBuildP = liftBuildIOP . liftBuild
+liftBuildP m = RWS.rwsT $ \r2 s -> do
+    (a,w2) <- RW.runReaderWriterIOT m r2
+    return (a,s,(mempty,w2))
 
+askTime :: EvalP Time
+askTime = RWS.ask
 
+readPulseP :: Pulse a -> EvalP (Maybe a)
+readPulseP p = do
+    Pulse{..} <- readRef p
+    join . Lazy.lookup _keyP <$> RWS.get
+
+readLatchP :: Latch a -> EvalP a
+readLatchP = liftBuildP . readLatchB
+
+writeLatchP :: Lazy.Key (Maybe a) -> Maybe a -> EvalP ()
+writeLatchP key a = do
+    s <- RWS.get
+    RWS.put $ Lazy.insert key a s
+
+readLatchFutureP :: Latch a -> EvalP (Future a)
+readLatchFutureP latch = error "FIXME: readLatchFutureP not implemented."
+
+rememberLatchUpdate :: IO () -> EvalP ()
+rememberLatchUpdate x = RWS.tell ((Action x,mempty),mempty)
+
+rememberOutput :: (Position, EvalO) -> EvalP ()
+rememberOutput x = RWS.tell ((mempty,[x]),mempty)
+
+-- worker wrapper to break sharing and support better inlining
+unwrapEvalP r m = RWS.run m r
+wrapEvalP   m   = RWS.R m
