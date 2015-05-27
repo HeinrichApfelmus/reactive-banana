@@ -123,6 +123,9 @@ data Pulse a = Pulse
     , nameP     :: String
     }
 
+instance Show (Pulse a) where
+    show p = nameP p ++ " " ++ show (hashWithSalt 0 $ uidP p)
+
 data Latch a = Latch
     { getValueL :: Future (Dated.Box a)
     }

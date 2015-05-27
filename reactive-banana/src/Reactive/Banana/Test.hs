@@ -49,6 +49,9 @@ main = defaultMain
         , testModelMatchM "switchE1"            switchE1
         , testModelMatchM "switchB_two"         switchB_two
         ]
+    , testGroup "Regression tests"
+        [ testModelMatch "issue79" issue79
+        ]
     -- TODO:
     --  * algebraic laws
     --  * larger examples
@@ -198,3 +201,24 @@ switchB_two e = do
     b0  <- mb0
     let b = switchB b0 $ (\x -> if odd x then mb1 else mb0) <$> e
     return $ b <@ e
+
+{-----------------------------------------------------------------------------
+    Regression tests
+------------------------------------------------------------------------------}
+issue79 :: Event Dummy -> Event String
+issue79 inputEvent = outputEvent
+    where
+    appliedEvent  = (\_ _ -> 1) <$> lastValue <@> inputEvent
+    filteredEvent = filterE (const True) appliedEvent
+    fmappedEvent  = fmap id (filteredEvent)
+    lastValue     = stepper 1 $ fmappedEvent
+
+    outputEvent = unionWith (++)
+        (const "filtered event" <$> filteredEvent)
+        (((" and " ++) . show) <$> unionWith (+) appliedEvent fmappedEvent)
+
+
+
+
+
+
