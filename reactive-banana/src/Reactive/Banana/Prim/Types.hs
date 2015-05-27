@@ -14,6 +14,7 @@ import           Data.Monoid
 import qualified Data.Vault.Lazy                    as Lazy
 import           Reactive.Banana.Prim.Util
 import           System.Mem.Weak
+import           System.IO.Unsafe
 
 {-----------------------------------------------------------------------------
     Network
