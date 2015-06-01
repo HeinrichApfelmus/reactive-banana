@@ -114,7 +114,7 @@ runBuildIO :: Time -> BuildIO a -> IO (a, Action, [Output])
 runBuildIO time m = {-# SCC runBuild #-} do
     (a,(topologyUpdates,liftIOLaters,os)) <- RW.runReaderWriterIOT m time
     doit $ liftIOLaters          -- execute late IOs
-    return (a,topologyUpdates,os)
+    return (a,Action $ Deps.buildDependencies topologyUpdates,os)
 
 liftBuild :: Build a -> BuildIO a
 liftBuild = id
@@ -136,11 +136,11 @@ keepAlive child parent = liftIO $ mkWeakRefValue child parent >> return ()
 
 addChild :: SomeNode -> SomeNode -> Build ()
 addChild parent child =
-    RW.tell (Action $ Deps.addChild parent child,mempty,mempty)
+    RW.tell (Deps.addChild parent child,mempty,mempty)
 
 changeParent :: Pulse child -> Pulse parent -> Build ()
 changeParent node parent =
-    RW.tell (Action $ Deps.changeParent node parent,mempty,mempty)
+    RW.tell (Deps.changeParent node parent,mempty,mempty)
 
 liftIOLater :: IO () -> Build ()
 liftIOLater x = RW.tell (mempty, Action x, mempty)

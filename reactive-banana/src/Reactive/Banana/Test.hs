@@ -225,8 +225,3 @@ issue79 inputEvent = outputEvent
         (const "filtered event" <$> filteredEvent)
         (((" and " ++) . show) <$> unionWith (+) appliedEvent fmappedEvent)
 
-
-
-
-
-

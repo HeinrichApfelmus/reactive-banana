@@ -4,19 +4,40 @@
 {-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
 module Reactive.Banana.Prim.Dependencies (
     -- | Utilities for operating on node dependencies.
-    addChild, changeParent,
+    addChild, changeParent, buildDependencies,
     ) where
 
 import           Control.Monad
-import qualified Data.HashSet        as Set
-import           Data.Hashable
 import           Data.Functor
+import           Data.Monoid
+import qualified Reactive.Banana.Prim.Graph as Graph
 import           Reactive.Banana.Prim.Types
 import           Reactive.Banana.Prim.Util
 import           System.Mem.Weak
 
 {-----------------------------------------------------------------------------
-    Dependencies
+    Accumulate dependency information for nodes
+------------------------------------------------------------------------------}
+-- | Add a new child node to a parent node.
+addChild :: SomeNode -> SomeNode -> DependencyBuilder
+addChild parent child = (Endo $ Graph.insertEdge (parent,child), mempty)
+
+-- | Assign a new parent to a child node.
+-- INVARIANT: The child may have only one parent node.
+changeParent :: Pulse a -> Pulse b -> DependencyBuilder
+changeParent child parent = (mempty, [(P child, P parent)])
+
+-- | Execute the information in the dependency builder
+-- to change network topology.
+buildDependencies :: DependencyBuilder -> IO ()
+buildDependencies (Endo f, parents) = do
+    sequence_ [x `doAddChild` y | x <- Graph.listParents gr, y <- Graph.getChildren gr x]
+    sequence_ [x `doChangeParent` y | (P x, P y) <- parents]
+    where
+    gr = f Graph.emptyGraph
+
+{-----------------------------------------------------------------------------
+    Set dependencies of individual notes
 ------------------------------------------------------------------------------}
 -- | Add a child node to the children of a parent 'Pulse'.
 connectChild
@@ -30,14 +51,14 @@ connectChild parent child = do
     mkWeakNodeValue child (P parent)        -- child keeps parent alive
 
 -- | Add a child node to a parent node and update evaluation order.
-addChild :: SomeNode -> SomeNode -> IO ()
-addChild (P parent) (P child) = do
+doAddChild :: SomeNode -> SomeNode -> IO ()
+doAddChild (P parent) (P child) = do
     level1 <- _levelP <$> readRef child
     level2 <- _levelP <$> readRef parent
     let level = level1 `max` (level2 + 1)
     w <- parent `connectChild` (P child)
     modify' child $ set levelP level . update parentsP (w:)
-addChild (P parent) node = void $ parent `connectChild` node
+doAddChild (P parent) node = void $ parent `connectChild` node
 
 -- | Remove a node from its parents and all parents from this node.
 removeParents :: Pulse a -> IO ()
@@ -54,8 +75,8 @@ removeParents child = do
     put child $ c{_parentsP = []}
 
 -- | Set the parent of a pulse to a different pulse.
-changeParent :: Pulse a -> Pulse b -> IO ()
-changeParent child parent = do
+doChangeParent :: Pulse a -> Pulse b -> IO ()
+doChangeParent child parent = do
     -- remove all previous parents and connect to new parent
     removeParents child
     w <- parent `connectChild` (P child)
@@ -69,26 +90,9 @@ changeParent child parent = do
 
     -- lower all parents of the node if the parent was higher than the node
     when (d > 0) $ do
-        parents <- dfs (P parent) getParents
+        parents <- Graph.dfs (P parent) getParents
         forM_ parents $ \(P node) -> do
             modify' node $ update levelP (subtract d)
-
-{-----------------------------------------------------------------------------
-    Graph traversal
-------------------------------------------------------------------------------}
--- | Graph represented as map of successors.
-type Graph m a = a -> m [a]
-
--- | Depth-first search. List all transitive successors of a node.
-dfs :: (Eq a, Hashable a, Monad m) => a -> Graph m a -> m [a]
-dfs x succs = go [x] [] Set.empty
-    where
-    go []     ys _               = return $ reverse ys
-    go (x:xs) ys seen
-        | x `Set.member` seen    = go xs ys seen
-        | otherwise              = do
-            xs' <- succs x
-            go (xs' ++ xs) (x:ys) (Set.insert x seen)
 
 {-----------------------------------------------------------------------------
     Helper functions

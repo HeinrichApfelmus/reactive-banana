@@ -12,6 +12,7 @@ import           Data.Functor
 import           Data.Hashable
 import           Data.Monoid
 import qualified Data.Vault.Lazy                    as Lazy
+import           Reactive.Banana.Prim.Graph                 (Graph)
 import           Reactive.Banana.Prim.Util
 import           System.Mem.Weak
 import           System.IO.Unsafe
@@ -38,12 +39,14 @@ emptyNetwork = Network
 
 type Build  = ReaderWriterIOT BuildR BuildW IO
 type BuildR = Time
-type BuildW = (Action, Action, [Output])
+type BuildW = (DependencyBuilder, Action, [Output])
     -- reader : current timestamp
     -- writer : (actions that change the network topology
     --          ,late IO actions
     --          ,outputs to be added to the network)
 type BuildIO = Build
+
+type DependencyBuilder = (Endo (Graph SomeNode), [(SomeNode, SomeNode)])
 
 {-----------------------------------------------------------------------------
     Synonyms

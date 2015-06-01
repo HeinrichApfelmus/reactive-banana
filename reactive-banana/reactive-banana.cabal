@@ -83,6 +83,7 @@ Library
                         Reactive.Banana.Prim.Dated,
                         Reactive.Banana.Prim.Dependencies,
                         Reactive.Banana.Prim.Evaluation,
+                        Reactive.Banana.Prim.Graph,
                         Reactive.Banana.Prim.IO,
                         Reactive.Banana.Prim.Plumbing,
                         Reactive.Banana.Prim.Test,
