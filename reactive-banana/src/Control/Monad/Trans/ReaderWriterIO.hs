@@ -4,7 +4,7 @@ module Control.Monad.Trans.ReaderWriterIO (
     -- using an 'IORef' for the writer.
     
     -- * Documentation
-    ReaderWriterIOT, readerWriterIOT, runReaderWriterIOT, tell, ask, local,
+    ReaderWriterIOT, readerWriterIOT, runReaderWriterIOT, tell, listen, ask, local,
     ) where
 
 import Control.Applicative
@@ -70,6 +70,12 @@ runReaderWriterIOT m r = do
 
 tell :: (MonadIO m, Monoid w) => w -> ReaderWriterIOT r w m ()
 tell w = ReaderWriterIOT $ \_ ref -> liftIO $ modifyIORef ref (`mappend` w)
+
+listen :: (MonadIO m, Monoid w) => ReaderWriterIOT r w m a -> ReaderWriterIOT r w m (a, w)
+listen m = ReaderWriterIOT $ \r ref -> do
+    a <- run m r ref
+    w <- liftIO $ readIORef ref
+    return (a,w)
 
 local :: MonadIO m => (r -> r) -> ReaderWriterIOT r w m a -> ReaderWriterIOT r w m a
 local f m = ReaderWriterIOT $ \r ref -> run m (f r) ref

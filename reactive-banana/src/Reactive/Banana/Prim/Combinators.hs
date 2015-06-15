@@ -14,6 +14,7 @@ import Reactive.Banana.Prim.Plumbing
     , getValueL
     , readPulseP, readLatchP, readLatchFutureP, liftBuildP,
     )
+import qualified Reactive.Banana.Prim.Plumbing (pureL)
 import Reactive.Banana.Prim.Types (Latch, Future, Pulse, Build)
 
 import Debug.Trace
@@ -78,7 +79,7 @@ applyP f x = do
     return p
 
 pureL :: a -> Latch a
-pureL a = cachedLatch $ return a
+pureL = Reactive.Banana.Prim.Plumbing.pureL
 
 -- specialization of   mapL f = applyL (pureL f)
 mapL :: (a -> b) -> Latch a -> Latch b

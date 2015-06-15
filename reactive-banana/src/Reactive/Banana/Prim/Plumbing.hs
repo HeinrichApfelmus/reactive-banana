@@ -65,13 +65,24 @@ neverP = liftIO $ do
 alwaysP :: Build (Pulse ())
 alwaysP = error "FIXME: alwaysP not implemented"
 
+-- | Return a 'Latch' that has a constant value
+pureL :: a -> Latch a
+pureL a = unsafePerformIO $ newRef $ Latch
+    { _seenL  = beginning
+    , _valueL = a
+    , _evalL  = return a
+    }
+
 -- | Make new 'Latch' that can be updated by a 'Pulse'
 newLatch :: a -> Build (Pulse a -> Build (), Latch a)
 newLatch a = mdo
     latch <- liftIO $ newRef $ Latch
-        { _seenL  = agesAgo
+        { _seenL  = beginning
         , _valueL = a
-        , _evalL  = _valueL <$> readRef latch
+        , _evalL  = do
+            Latch {..} <- readRef latch
+            RW.tell _seenL  -- indicate timestamp
+            return _valueL  -- indicate value
         }
     let
         err        = error "incorrect Latch write"
@@ -89,11 +100,23 @@ newLatch a = mdo
 
 -- | Make a new 'Latch' that caches a previous computation.
 cachedLatch :: EvalL a -> Latch a
-cachedLatch eval = unsafePerformIO $ newRef $ Latch
-    { _seenL  = agesAgo
-    , _valueL = undefined
-    , _evalL  = eval        -- TODO: Cache computation!
-    }
+cachedLatch eval = unsafePerformIO $ mdo
+    latch <- newRef $ Latch
+        { _seenL  = agesAgo
+        , _valueL = error "Undefined value of a cached latch."
+        , _evalL  = do
+            Latch{..} <- liftIO $ readRef latch
+            -- calculate current value (lazy!) with timestamp
+            (a,time)  <- RW.listen eval
+            liftIO $ if time <= _seenL
+                then return _valueL     -- return old value
+                else do                 -- update value
+                    let _seenL  = time
+                    let _valueL = a
+                    a `seq` put latch (Latch {..})
+                    return a
+        }
+    return latch
 
 -- | Add a new output that depends on a 'Pulse'.
 --
@@ -124,9 +147,8 @@ getTimeB = RW.ask
 
 readLatchB :: Latch a -> Build a
 readLatchB latch = do
-    time      <- RW.ask
     Latch{..} <- readRef latch
-    liftIO $ Reader.runReaderT _evalL time
+    liftIO $ fst <$> RW.runReaderWriterIOT _evalL ()
 
 dependOn :: Pulse child -> Pulse parent -> Build ()
 dependOn child parent = (P parent) `addChild` (P child)

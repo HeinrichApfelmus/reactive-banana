@@ -33,7 +33,7 @@ type EvalNetwork a = Network -> IO (a, Network)
 type Step          = EvalNetwork (IO ())
 
 emptyNetwork = Network
-    { nTime    = 0
+    { nTime    = next beginning
     , nOutputs = []
     }
 
@@ -51,18 +51,10 @@ type DependencyBuilder = (Endo (Graph SomeNode), [(SomeNode, SomeNode)])
 {-----------------------------------------------------------------------------
     Synonyms
 ------------------------------------------------------------------------------}
--- | Timestamp used to determine cache validity.
-type Time  = Int
 -- | Priority used to keep track of declaration order for outputs.
 type Position = Int
 -- | Priority used to determine evaluation order for pulses.
 type Level = Int
-
-next :: Time -> Time
-next = (+1)
-
-agesAgo :: Time
-agesAgo = 0
 
 ground :: Level
 ground = 0
@@ -144,6 +136,10 @@ levelP = Lens _levelP (\a s -> s { _levelP = a })
 
 -- | Evaluation monads.
 type EvalPW   = (EvalLW, [(Position, EvalO)])
+type EvalLW   = Action
+
+type EvalO    = Future (IO ())
+type Future   = IO
 
 -- Note: For efficiency reasons, we unroll the monad transformer stack.
 -- type EvalP = RWST () Lazy.Vault EvalPW Build
@@ -151,10 +147,8 @@ type EvalP    = RWSIOT BuildR (EvalPW,BuildW) Lazy.Vault IO
     -- writer : (latch updates, IO action)
     -- state  : current pulse values
 
-type EvalL    = ReaderT Time IO
-type EvalO    = Future (IO ())
-type Future   = IO
-type EvalLW   = Action
+-- Computation with a timestamp that indicates the last time it was performed.
+type EvalL    = ReaderWriterIOT () Time IO
 
 {-----------------------------------------------------------------------------
     Show functions for debugging
@@ -165,15 +159,45 @@ printNode (L l) = return "L"
 printNode (O o) = return "O"
 
 {-----------------------------------------------------------------------------
+    Time monoid
+------------------------------------------------------------------------------}
+-- | A timestamp local to this program run.
+--
+-- Useful e.g. for controlling cache validity.
+newtype Time = T Integer deriving (Eq, Ord, Show, Read)
+
+-- | Before the beginning of time. See Note [TimeStamp]
+agesAgo :: Time
+agesAgo = T (-1)
+
+beginning :: Time
+beginning = T 0
+
+next :: Time -> Time
+next (T n) = T (n+1)
+
+instance Monoid Time where
+    mappend (T x) (T y) = T (max x y)
+    mempty              = beginning
+
+{-----------------------------------------------------------------------------
     Notes
 ------------------------------------------------------------------------------}
 {- Note [Timestamp]
 
 The time stamp indicates how recent the current value is.
 
+For Pulse:
 During pulse evaluation, a time stamp equal to the current
 time indicates that the pulse has already been evaluated in this phase.
-For Latches, however, a time stamp equal to the current time indicates
-that the latch needs to be updated after all pulses have been evaluated.
+
+For Latch:
+The timestamp indicates the last time at which the latch has been written to.
+
+    agesAgo   = The latch has never been written to.
+    beginning = The latch has been written to before everything starts.
+
+The second description is ensured by the fact that the network
+writes timestamps that begin at time `next beginning`.
 
 -}
