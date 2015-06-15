@@ -146,9 +146,7 @@ getTimeB :: Build Time
 getTimeB = RW.ask
 
 readLatchB :: Latch a -> Build a
-readLatchB latch = do
-    Latch{..} <- readRef latch
-    liftIO $ fst <$> RW.runReaderWriterIOT _evalL ()
+readLatchB = liftIO . readLatchIO
 
 dependOn :: Pulse child -> Pulse parent -> Build ()
 dependOn child parent = (P parent) `addChild` (P child)
@@ -168,13 +166,23 @@ liftIOLater :: IO () -> Build ()
 liftIOLater x = RW.tell (mempty, Action x, mempty)
 
 {-----------------------------------------------------------------------------
-    EvalP monad
+    EvalL monad
 ------------------------------------------------------------------------------}
+-- | Evaluate a latch (-computation) at the latest time,
+-- but discard timestamp information.
+readLatchIO :: Latch a -> IO a
+readLatchIO latch = do
+    Latch{..} <- readRef latch
+    liftIO $ fst <$> RW.runReaderWriterIOT _evalL ()
+
 getValueL :: Latch a -> EvalL a
-getValueL l = do
-    Latch{..} <- readRef l
+getValueL latch = do
+    Latch{..} <- readRef latch
     _evalL
 
+{-----------------------------------------------------------------------------
+    EvalP monad
+------------------------------------------------------------------------------}
 runEvalP :: Lazy.Vault -> EvalP a -> Build (a, EvalLW, EvalO)
 runEvalP s1 m = RW.readerWriterIOT $ \r2 -> do
     (a,_,((wl,wo),w2)) <- RWS.runRWSIOT m r2 s1
@@ -205,7 +213,7 @@ writeLatchP key a = do
     RWS.put $ Lazy.insert key a s
 
 readLatchFutureP :: Latch a -> EvalP (Future a)
-readLatchFutureP latch = error "FIXME: readLatchFutureP not implemented."
+readLatchFutureP = return . readLatchIO
 
 rememberLatchUpdate :: IO () -> EvalP ()
 rememberLatchUpdate x = RWS.tell ((Action x,mempty),mempty)

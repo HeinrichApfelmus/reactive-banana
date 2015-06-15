@@ -1,8 +1,6 @@
 FIXME
 -----
 
-* Implement `readFutureLatchP`.
-
 * Implement `alwaysP` so that `fromPoll` works again.
 
 * Try more test cases to find bugs.
