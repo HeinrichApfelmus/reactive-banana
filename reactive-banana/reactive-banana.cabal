@@ -80,7 +80,6 @@ Library
                         Reactive.Banana.Internal.Phantom,
                         Reactive.Banana.Prim.Combinators,
                         Reactive.Banana.Prim.Compile,
-                        Reactive.Banana.Prim.Dated,
                         Reactive.Banana.Prim.Dependencies,
                         Reactive.Banana.Prim.Evaluation,
                         Reactive.Banana.Prim.Graph,
