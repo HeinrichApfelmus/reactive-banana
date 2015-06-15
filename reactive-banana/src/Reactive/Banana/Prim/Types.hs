@@ -24,6 +24,7 @@ import           System.IO.Unsafe
 data Network = Network
     { nTime    :: !Time         -- Current time.
     , nOutputs :: ![Output]     -- Remember outputs to prevent garbage collection.
+    , nAlwaysP :: Maybe (Pulse ()) -- Pulse that always fires.
     }
 
 instance Show Network where show = error "instance Show Network not implemented."
@@ -35,10 +36,12 @@ type Step          = EvalNetwork (IO ())
 emptyNetwork = Network
     { nTime    = next beginning
     , nOutputs = []
+    , nAlwaysP = Nothing
     }
 
 type Build  = ReaderWriterIOT BuildR BuildW IO
-type BuildR = Time
+type BuildR = (Time, Pulse ())
+    -- (current time, pulse that always fires)
 type BuildW = (DependencyBuilder, Action, [Output])
     -- reader : current timestamp
     -- writer : (actions that change the network topology

@@ -23,10 +23,20 @@ compile m state1 = do
     let time1    = nTime state1
         outputs1 = nOutputs state1
 
-    (a, topology, os) <- runBuildIO (nTime state1) m
+    theAlwaysP <- case nAlwaysP state1 of
+        Just x   -> return x
+        Nothing  -> do
+            (x,_,_) <- runBuildIO undefined $ newPulse "alwaysP" (return $ Just ())
+            return x
+
+    (a, topology, os) <- runBuildIO (nTime state1, theAlwaysP) m
     doit topology
 
-    let state2 = Network { nTime = next time1, nOutputs = os ++ outputs1 }
+    let state2 = Network
+            { nTime    = next time1
+            , nOutputs = os ++ outputs1
+            , nAlwaysP = Just theAlwaysP
+            }
     return (a,state2)
 
 {-----------------------------------------------------------------------------

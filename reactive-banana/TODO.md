@@ -1,7 +1,8 @@
 FIXME
 -----
 
-* Implement `alwaysP` so that `fromPoll` works again.
+* Implement optimzation that latches check their timestamp against
+  the current time first before chasing dependencies.
 
 * Try more test cases to find bugs.
 

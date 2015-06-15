@@ -26,8 +26,9 @@ debug s = id
 -- pulses as with standard callback-based events.
 newInput :: Build (Pulse a, a -> Step)
 newInput = mdo
-    key   <- liftIO $ Lazy.newKey
-    pulse <- liftIO $ newRef $ Pulse
+    always <- alwaysP
+    key    <- liftIO $ Lazy.newKey
+    pulse  <- liftIO $ newRef $ Pulse
         { _keyP      = key
         , _seenP     = agesAgo
         , _evalP     = readPulseP pulse    -- get its own value
@@ -36,7 +37,8 @@ newInput = mdo
         , _levelP    = ground
         , _nameP     = "newInput"
         }
-    let run a = step ([P pulse], Lazy.insert key (Just a) Lazy.empty)
+    -- Also add the  alwaysP  pulse to the inputs.
+    let run a = step ([P pulse, P always], Lazy.insert key (Just a) Lazy.empty)
     return (pulse, run)
 
 -- | Register a handler to be executed whenever a pulse occurs.

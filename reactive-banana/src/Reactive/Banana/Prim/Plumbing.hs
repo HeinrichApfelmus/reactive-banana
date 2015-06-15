@@ -62,9 +62,6 @@ neverP = liftIO $ do
         , _nameP     = "neverP"
         }
 
-alwaysP :: Build (Pulse ())
-alwaysP = error "FIXME: alwaysP not implemented"
-
 -- | Return a 'Latch' that has a constant value
 pureL :: a -> Latch a
 pureL a = unsafePerformIO $ newRef $ Latch
@@ -133,9 +130,9 @@ addOutput p = do
 {-----------------------------------------------------------------------------
     Build monad
 ------------------------------------------------------------------------------}
-runBuildIO :: Time -> BuildIO a -> IO (a, Action, [Output])
-runBuildIO time m = {-# SCC runBuild #-} do
-    (a,(topologyUpdates,liftIOLaters,os)) <- RW.runReaderWriterIOT m time
+runBuildIO :: BuildR -> BuildIO a -> IO (a, Action, [Output])
+runBuildIO i m = {-# SCC runBuild #-} do
+    (a,(topologyUpdates,liftIOLaters,os)) <- RW.runReaderWriterIOT m i
     doit $ liftIOLaters          -- execute late IOs
     return (a,Action $ Deps.buildDependencies topologyUpdates,os)
 
@@ -143,7 +140,10 @@ liftBuild :: Build a -> BuildIO a
 liftBuild = id
 
 getTimeB :: Build Time
-getTimeB = RW.ask
+getTimeB = fst <$> RW.ask
+
+alwaysP :: Build (Pulse ())
+alwaysP = snd <$> RW.ask
 
 readLatchB :: Latch a -> Build a
 readLatchB = liftIO . readLatchIO
@@ -197,7 +197,7 @@ liftBuildP m = RWS.rwsT $ \r2 s -> do
     return (a,s,(mempty,w2))
 
 askTime :: EvalP Time
-askTime = RWS.ask
+askTime = fst <$> RWS.ask
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP p = do
