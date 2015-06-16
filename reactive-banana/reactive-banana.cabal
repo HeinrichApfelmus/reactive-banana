@@ -84,6 +84,7 @@ Library
                         Reactive.Banana.Prim.Evaluation,
                         Reactive.Banana.Prim.Graph,
                         Reactive.Banana.Prim.IO,
+                        Reactive.Banana.Prim.OrderedBag,
                         Reactive.Banana.Prim.Plumbing,
                         Reactive.Banana.Prim.Test,
                         Reactive.Banana.Prim.Types,

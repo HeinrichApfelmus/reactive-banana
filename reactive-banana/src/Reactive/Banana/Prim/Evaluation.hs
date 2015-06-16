@@ -18,6 +18,7 @@ import qualified Data.PQueue.Prio.Min   as Q
 import qualified Data.Vault.Lazy as Lazy
 import           System.Mem.Weak
 
+import qualified Reactive.Banana.Prim.OrderedBag as OB
 import           Reactive.Banana.Prim.Plumbing
 import           Reactive.Banana.Prim.Types
 import           Reactive.Banana.Prim.Util
@@ -36,20 +37,23 @@ step (inputs,pulses) Network{..} = {-# SCC step #-} do
     let Just alwaysP = nAlwaysP -- we assume that this pulse has been built already
 
     -- evaluate pulses
-    ((_, latchUpdates, output), topologyUpdates, os)
-            <- runBuildIO (time1,alwaysP)
+    ((_, (latchUpdates, outputs)), topologyUpdates, os)
+            <- runBuildIO (time1, alwaysP)
             $  runEvalP pulses
             $  evaluatePulses inputs
     
-    doit latchUpdates           -- update latch values from pulses
-    doit topologyUpdates        -- rearrange graph topology
-    let actions = join output   -- output IO actions
+    doit latchUpdates                           -- update latch values from pulses
+    doit topologyUpdates                        -- rearrange graph topology
+    let actions = OB.inOrder outputs outputs1   -- EvalO actions in proper order
         state2  = Network
             { nTime    = next time1
-            , nOutputs = os ++ outputs1
+            , nOutputs = foldr OB.insert outputs1 os
             , nAlwaysP = Just alwaysP
             }
-    return (actions, state2)
+    return (runEvalOs $ map snd actions, state2)
+
+runEvalOs :: [EvalO] -> IO ()
+runEvalOs os = join $ sequence_ <$> sequence os
 
 {-----------------------------------------------------------------------------
     Traversal in dependency order
@@ -94,7 +98,7 @@ evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
     debug "evaluateNode O"
     Output{..} <- readRef o
     m          <- _evalO                    -- calculate output action
-    rememberOutput $ (_positionO, m)
+    rememberOutput $ (o,m)
     return []
 
 -- | Insert nodes into the queue

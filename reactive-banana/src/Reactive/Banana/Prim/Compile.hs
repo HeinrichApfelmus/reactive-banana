@@ -8,10 +8,12 @@ import Control.Monad (void)
 import Control.Exception                (evaluate)
 import Data.Functor
 import Data.IORef
+
 import Reactive.Banana.Prim.Combinators
 import Reactive.Banana.Prim.IO
 import Reactive.Banana.Prim.Plumbing
 import Reactive.Banana.Prim.Types
+import qualified Reactive.Banana.Prim.OrderedBag as OB
 
 {-----------------------------------------------------------------------------
    Compilation
@@ -34,7 +36,7 @@ compile m state1 = do
 
     let state2 = Network
             { nTime    = next time1
-            , nOutputs = os ++ outputs1
+            , nOutputs = foldr OB.insert outputs1 os
             , nAlwaysP = Just theAlwaysP
             }
     return (a,state2)

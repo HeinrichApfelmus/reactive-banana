@@ -122,7 +122,6 @@ addOutput :: Pulse EvalO -> Build ()
 addOutput p = do
     o <- liftIO $ newRef $ Output
         { _evalO     = maybe (return $ debug "nop") id <$> readPulseP p
-        , _positionO = 1 -- FIXME: Update position with global state!
         }
     (P p) `addChild` (O o)
     RW.tell (mempty,mempty,[o])
@@ -140,10 +139,10 @@ liftBuild :: Build a -> BuildIO a
 liftBuild = id
 
 getTimeB :: Build Time
-getTimeB = fst <$> RW.ask
+getTimeB = (\(x,_) -> x) <$> RW.ask
 
 alwaysP :: Build (Pulse ())
-alwaysP = snd <$> RW.ask
+alwaysP = (\(_,x) -> x) <$> RW.ask
 
 readLatchB :: Latch a -> Build a
 readLatchB = liftIO . readLatchIO
@@ -183,13 +182,10 @@ getValueL latch = do
 {-----------------------------------------------------------------------------
     EvalP monad
 ------------------------------------------------------------------------------}
-runEvalP :: Lazy.Vault -> EvalP a -> Build (a, EvalLW, EvalO)
+runEvalP :: Lazy.Vault -> EvalP a -> Build (a, EvalPW)
 runEvalP s1 m = RW.readerWriterIOT $ \r2 -> do
-    (a,_,((wl,wo),w2)) <- RWS.runRWSIOT m r2 s1
-    return ((a,wl, sequence_ <$> sequence (sortOutputs wo)), w2)
-
-sortOutputs :: Ord k => [(k,a)] -> [a]
-sortOutputs = map snd . sortBy (compare `on` fst)
+    (a,_,(w1,w2)) <- RWS.runRWSIOT m r2 s1
+    return ((a,w1), w2)
 
 liftBuildP :: Build a -> EvalP a
 liftBuildP m = RWS.rwsT $ \r2 s -> do
@@ -218,7 +214,7 @@ readLatchFutureP = return . readLatchIO
 rememberLatchUpdate :: IO () -> EvalP ()
 rememberLatchUpdate x = RWS.tell ((Action x,mempty),mempty)
 
-rememberOutput :: (Position, EvalO) -> EvalP ()
+rememberOutput :: (Output, EvalO) -> EvalP ()
 rememberOutput x = RWS.tell ((mempty,[x]),mempty)
 
 -- worker wrapper to break sharing and support better inlining

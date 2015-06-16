@@ -13,6 +13,7 @@ import           Data.Hashable
 import           Data.Monoid
 import qualified Data.Vault.Lazy                    as Lazy
 import           Reactive.Banana.Prim.Graph                 (Graph)
+import           Reactive.Banana.Prim.OrderedBag    as OB   (OrderedBag, empty)
 import           Reactive.Banana.Prim.Util
 import           System.Mem.Weak
 import           System.IO.Unsafe
@@ -22,9 +23,9 @@ import           System.IO.Unsafe
 ------------------------------------------------------------------------------}
 -- | A 'Network' represents the state of a pulse/latch network,
 data Network = Network
-    { nTime    :: !Time         -- Current time.
-    , nOutputs :: ![Output]     -- Remember outputs to prevent garbage collection.
-    , nAlwaysP :: Maybe (Pulse ()) -- Pulse that always fires.
+    { nTime           :: !Time              -- Current time.
+    , nOutputs        :: OrderedBag Output  -- Remember outputs to prevent garbage collection.
+    , nAlwaysP        :: Maybe (Pulse ())   -- Pulse that always fires.
     }
 
 instance Show Network where show = error "instance Show Network not implemented."
@@ -35,18 +36,19 @@ type Step          = EvalNetwork (IO ())
 
 emptyNetwork = Network
     { nTime    = next beginning
-    , nOutputs = []
+    , nOutputs = OB.empty
     , nAlwaysP = Nothing
     }
 
 type Build  = ReaderWriterIOT BuildR BuildW IO
 type BuildR = (Time, Pulse ())
-    -- (current time, pulse that always fires)
+    -- ( current time
+    -- , pulse that always fires)
 type BuildW = (DependencyBuilder, Action, [Output])
     -- reader : current timestamp
-    -- writer : (actions that change the network topology
-    --          ,late IO actions
-    --          ,outputs to be added to the network)
+    -- writer : ( actions that change the network topology
+    --          , late IO actions
+    --          , outputs to be added to the network)
 type BuildIO = Build
 
 type DependencyBuilder = (Endo (Graph SomeNode), [(SomeNode, SomeNode)])
@@ -54,8 +56,6 @@ type DependencyBuilder = (Endo (Graph SomeNode), [(SomeNode, SomeNode)])
 {-----------------------------------------------------------------------------
     Synonyms
 ------------------------------------------------------------------------------}
--- | Priority used to keep track of declaration order for outputs.
-type Position = Int
 -- | Priority used to determine evaluation order for pulses.
 type Level = Int
 
@@ -104,9 +104,9 @@ data LatchWrite' = forall a. LatchWrite
 
 type Output  = Ref Output'
 data Output' = Output
-    { _positionO :: !Position
-    , _evalO     :: EvalP EvalO
+    { _evalO     :: EvalP EvalO
     }
+instance Eq Output where (==) = equalRef
 
 data SomeNode
     = forall a. P (Pulse a)
@@ -138,7 +138,7 @@ childrenP = Lens _childrenP (\a s -> s { _childrenP = a })
 levelP = Lens _levelP (\a s -> s { _levelP = a })
 
 -- | Evaluation monads.
-type EvalPW   = (EvalLW, [(Position, EvalO)])
+type EvalPW   = (EvalLW, [(Output, EvalO)])
 type EvalLW   = Action
 
 type EvalO    = Future (IO ())
