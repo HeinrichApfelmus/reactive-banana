@@ -4,16 +4,16 @@
 {-# LANGUAGE BangPatterns #-}
 module Reactive.Banana.Prim.Compile where
 
-import Control.Monad (void)
-import Control.Exception                (evaluate)
+import Control.Exception (evaluate)
+import Control.Monad     (void)
 import Data.Functor
 import Data.IORef
 
-import Reactive.Banana.Prim.Combinators
-import Reactive.Banana.Prim.IO
-import Reactive.Banana.Prim.Plumbing
-import Reactive.Banana.Prim.Types
-import qualified Reactive.Banana.Prim.OrderedBag as OB
+import           Reactive.Banana.Prim.Combinators
+import           Reactive.Banana.Prim.IO
+import qualified Reactive.Banana.Prim.OrderedBag  as OB
+import           Reactive.Banana.Prim.Plumbing
+import           Reactive.Banana.Prim.Types
 
 {-----------------------------------------------------------------------------
    Compilation

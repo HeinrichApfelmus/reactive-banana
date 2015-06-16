@@ -7,13 +7,14 @@ module Reactive.Banana.Prim.Dependencies (
     addChild, changeParent, buildDependencies,
     ) where
 
-import           Control.Monad
-import           Data.Functor
-import           Data.Monoid
+import Control.Monad
+import Data.Functor
+import Data.Monoid
+import System.Mem.Weak
+
 import qualified Reactive.Banana.Prim.Graph as Graph
 import           Reactive.Banana.Prim.Types
 import           Reactive.Banana.Prim.Util
-import           System.Mem.Weak
 
 {-----------------------------------------------------------------------------
     Accumulate dependency information for nodes

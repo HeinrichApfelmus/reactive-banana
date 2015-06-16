@@ -4,22 +4,22 @@
 {-# LANGUAGE RecordWildCards, RecursiveDo, BangPatterns #-}
 module Reactive.Banana.Prim.Plumbing where
 
-import           Control.Monad (join)
+import           Control.Monad                                (join)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
-import qualified Control.Monad.Trans.Reader as Reader
+import qualified Control.Monad.Trans.RWSIO          as RWS
+import qualified Control.Monad.Trans.Reader         as Reader
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
-import qualified Control.Monad.Trans.RWSIO as RWS
-import           Data.Function                        (on)
+import           Data.Function                                (on)
 import           Data.Functor
-import           Data.List                            (sortBy)
+import           Data.List                                    (sortBy)
 import           Data.Monoid
-import qualified Data.Vault.Lazy as Lazy
+import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
 
 import qualified Reactive.Banana.Prim.Dependencies as Deps
-import Reactive.Banana.Prim.Types
-import Reactive.Banana.Prim.Util
+import           Reactive.Banana.Prim.Types
+import           Reactive.Banana.Prim.Util
 
 {-----------------------------------------------------------------------------
     Build primitive pulses and latches

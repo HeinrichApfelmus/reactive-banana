@@ -12,11 +12,12 @@ import           Data.Functor
 import           Data.Hashable
 import           Data.Monoid
 import qualified Data.Vault.Lazy                    as Lazy
-import           Reactive.Banana.Prim.Graph                 (Graph)
-import           Reactive.Banana.Prim.OrderedBag    as OB   (OrderedBag, empty)
-import           Reactive.Banana.Prim.Util
-import           System.Mem.Weak
 import           System.IO.Unsafe
+import           System.Mem.Weak
+
+import Reactive.Banana.Prim.Graph            (Graph)
+import Reactive.Banana.Prim.OrderedBag as OB (OrderedBag, empty)
+import Reactive.Banana.Prim.Util
 
 {-----------------------------------------------------------------------------
     Network

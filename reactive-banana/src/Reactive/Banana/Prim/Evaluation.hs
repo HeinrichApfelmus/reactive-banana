@@ -6,16 +6,16 @@ module Reactive.Banana.Prim.Evaluation (
     step
     ) where
 
-import qualified Control.Exception      as Strict (evaluate)
-import           Control.Monad                    (foldM)
-import           Control.Monad                    (join)
+import qualified Control.Exception                  as Strict (evaluate)
+import           Control.Monad                                (foldM)
+import           Control.Monad                                (join)
 import           Control.Monad.IO.Class
+import qualified Control.Monad.Trans.RWSIO          as RWS
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
-import qualified Control.Monad.Trans.RWSIO as RWS
-import           Data.Maybe
 import           Data.Functor
-import qualified Data.PQueue.Prio.Min   as Q
-import qualified Data.Vault.Lazy as Lazy
+import           Data.Maybe
+import qualified Data.PQueue.Prio.Min               as Q
+import qualified Data.Vault.Lazy                    as Lazy
 import           System.Mem.Weak
 
 import qualified Reactive.Banana.Prim.OrderedBag as OB

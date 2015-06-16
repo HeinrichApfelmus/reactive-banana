@@ -15,7 +15,7 @@ import Reactive.Banana.Prim.Plumbing
     , readPulseP, readLatchP, readLatchFutureP, liftBuildP,
     )
 import qualified Reactive.Banana.Prim.Plumbing (pureL)
-import Reactive.Banana.Prim.Types (Latch, Future, Pulse, Build)
+import           Reactive.Banana.Prim.Types    (Latch, Future, Pulse, Build)
 
 import Debug.Trace
 -- debug s = trace s
