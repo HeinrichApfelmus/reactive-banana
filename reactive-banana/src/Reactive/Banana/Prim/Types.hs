@@ -24,9 +24,9 @@ import Reactive.Banana.Prim.Util
 ------------------------------------------------------------------------------}
 -- | A 'Network' represents the state of a pulse/latch network,
 data Network = Network
-    { nTime           :: !Time              -- Current time.
-    , nOutputs        :: OrderedBag Output  -- Remember outputs to prevent garbage collection.
-    , nAlwaysP        :: Maybe (Pulse ())   -- Pulse that always fires.
+    { nTime           :: !Time                 -- Current time.
+    , nOutputs        :: !(OrderedBag Output)  -- Remember outputs to prevent garbage collection.
+    , nAlwaysP        :: Maybe (Pulse ())      -- Pulse that always fires.
     }
 
 instance Show Network where show = error "instance Show Network not implemented."

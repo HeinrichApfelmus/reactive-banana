@@ -18,7 +18,7 @@ import           Data.Ord
 ------------------------------------------------------------------------------}
 type Position = Integer
 
-data OrderedBag a = OB (Map.HashMap a Position) !Position
+data OrderedBag a = OB !(Map.HashMap a Position) !Position
 
 empty :: OrderedBag a
 empty = OB Map.empty 0
