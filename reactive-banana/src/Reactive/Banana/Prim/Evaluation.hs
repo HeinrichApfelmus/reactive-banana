@@ -77,7 +77,7 @@ evaluateNode :: SomeNode -> EvalP [SomeNode]
 evaluateNode (P p) = {-# SCC evaluateNodeP #-} do
     Pulse{..} <- readRef p
     ma        <- _evalP
-    writeLatchP _keyP ma
+    writePulseP _keyP ma
     case ma of
         Nothing -> return []
         Just _  -> liftIO $ deRefWeaks _childrenP

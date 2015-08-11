@@ -213,13 +213,13 @@ readPulseP p = do
     Pulse{..} <- readRef p
     join . Lazy.lookup _keyP <$> RWS.get
 
-readLatchP :: Latch a -> EvalP a
-readLatchP = liftBuildP . readLatchB
-
-writeLatchP :: Lazy.Key (Maybe a) -> Maybe a -> EvalP ()
-writeLatchP key a = do
+writePulseP :: Lazy.Key (Maybe a) -> Maybe a -> EvalP ()
+writePulseP key a = do
     s <- RWS.get
     RWS.put $ Lazy.insert key a s
+
+readLatchP :: Latch a -> EvalP a
+readLatchP = liftBuildP . readLatchB
 
 readLatchFutureP :: Latch a -> EvalP (Future a)
 readLatchFutureP = return . readLatchIO
