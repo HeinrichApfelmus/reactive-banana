@@ -45,11 +45,18 @@ type Build  = ReaderWriterIOT BuildR BuildW IO
 type BuildR = (Time, Pulse ())
     -- ( current time
     -- , pulse that always fires)
-type BuildW = (DependencyBuilder, Action, [Output])
+newtype BuildW = BuildW (DependencyBuilder, [Output], Action, Maybe (Build ()))
     -- reader : current timestamp
     -- writer : ( actions that change the network topology
+    --          , outputs to be added to the network
     --          , late IO actions
-    --          , outputs to be added to the network)
+    --          , late build actions
+    --          )
+
+instance Monoid BuildW where
+    mempty                          = BuildW mempty
+    (BuildW x) `mappend` (BuildW y) = BuildW (x `mappend` y)
+
 type BuildIO = Build
 
 type DependencyBuilder = (Endo (Graph SomeNode), [(SomeNode, SomeNode)])

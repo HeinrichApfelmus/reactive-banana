@@ -121,19 +121,32 @@ cachedLatch eval = unsafePerformIO $ mdo
 addOutput :: Pulse EvalO -> Build ()
 addOutput p = do
     o <- liftIO $ newRef $ Output
-        { _evalO     = maybe (return $ debug "nop") id <$> readPulseP p
+        { _evalO = maybe (return $ debug "nop") id <$> readPulseP p
         }
     (P p) `addChild` (O o)
-    RW.tell (mempty,mempty,[o])
+    RW.tell $ BuildW (mempty, [o], mempty, mempty)
 
 {-----------------------------------------------------------------------------
     Build monad
 ------------------------------------------------------------------------------}
 runBuildIO :: BuildR -> BuildIO a -> IO (a, Action, [Output])
 runBuildIO i m = {-# SCC runBuild #-} do
-    (a,(topologyUpdates,liftIOLaters,os)) <- RW.runReaderWriterIOT m i
-    doit $ liftIOLaters          -- execute late IOs
-    return (a,Action $ Deps.buildDependencies topologyUpdates,os)
+        (a, BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold mempty m
+        doit $ liftIOLaters          -- execute late IOs
+        return (a,Action $ Deps.buildDependencies topologyUpdates,os)
+    where
+    -- Recursively execute the  buildLater  calls.
+    unfold :: BuildW -> BuildIO a -> IO (a, BuildW)
+    unfold w m = do
+        (a, BuildW (w1, w2, w3, later)) <- RW.runReaderWriterIOT m i
+        let w' = w <> BuildW (w1,w2,w3,mempty)
+        w'' <- case later of
+            Just m  -> snd <$> unfold w' m
+            Nothing -> return w'
+        return (a,w'')
+
+buildLater :: Build () -> Build ()
+buildLater x = RW.tell $ BuildW (mempty, mempty, mempty, Just x)
 
 liftBuild :: Build a -> BuildIO a
 liftBuild = id
@@ -155,14 +168,14 @@ keepAlive child parent = liftIO $ mkWeakRefValue child parent >> return ()
 
 addChild :: SomeNode -> SomeNode -> Build ()
 addChild parent child =
-    RW.tell (Deps.addChild parent child,mempty,mempty)
+    RW.tell $ BuildW (Deps.addChild parent child, mempty, mempty, mempty)
 
 changeParent :: Pulse child -> Pulse parent -> Build ()
 changeParent node parent =
-    RW.tell (Deps.changeParent node parent,mempty,mempty)
+    RW.tell $ BuildW (Deps.changeParent node parent, mempty, mempty, mempty)
 
 liftIOLater :: IO () -> Build ()
-liftIOLater x = RW.tell (mempty, Action x, mempty)
+liftIOLater x = RW.tell $ BuildW (mempty, mempty, Action x, mempty)
 
 {-----------------------------------------------------------------------------
     EvalL monad

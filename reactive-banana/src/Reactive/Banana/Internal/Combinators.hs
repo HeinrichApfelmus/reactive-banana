@@ -88,8 +88,12 @@ fromAddHandler addHandler = do
 
 addReactimate :: Event (Future (IO ())) -> Moment ()
 addReactimate e = do
-    p <- runCached e
-    liftBuild $ Prim.addHandler p id
+    network   <- ask
+    liftBuild $ Prim.buildLater $ do
+        -- run cached computation later to allow for more recursion
+        -- in the  Moment  monad.
+        p <- runReaderT (runCached e) network
+        Prim.addHandler p id
 
 fromPoll :: IO a -> Moment (Behavior a)
 fromPoll poll = do
