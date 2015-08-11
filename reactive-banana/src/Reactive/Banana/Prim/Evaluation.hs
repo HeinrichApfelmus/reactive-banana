@@ -31,17 +31,19 @@ type Queue = Q.MinPQueue Level
 -- | Evaluate all the pulses in the graph,
 -- Rebuild the graph as necessary and update the latch values.
 step :: Inputs -> Step
-step (inputs,pulses) Network{..} = {-# SCC step #-} do
-    let time1        = nTime
-    let outputs1     = nOutputs
-    let Just alwaysP = nAlwaysP -- we assume that this pulse has been built already
+step (inputs,pulses)
+        Network{ nTime = time1
+        , nOutputs = outputs1
+        , nAlwaysP = Just alwaysP   -- we assume that this has been built already
+        }
+    = {-# SCC step #-} do
 
     -- evaluate pulses
     ((_, (latchUpdates, outputs)), topologyUpdates, os)
             <- runBuildIO (time1, alwaysP)
             $  runEvalP pulses
             $  evaluatePulses inputs
-    
+
     doit latchUpdates                           -- update latch values from pulses
     doit topologyUpdates                        -- rearrange graph topology
     let actions = OB.inOrder outputs outputs1   -- EvalO actions in proper order

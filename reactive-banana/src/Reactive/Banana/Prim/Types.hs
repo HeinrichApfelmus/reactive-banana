@@ -26,7 +26,7 @@ import Reactive.Banana.Prim.Util
 data Network = Network
     { nTime           :: !Time                 -- Current time.
     , nOutputs        :: !(OrderedBag Output)  -- Remember outputs to prevent garbage collection.
-    , nAlwaysP        :: Maybe (Pulse ())      -- Pulse that always fires.
+    , nAlwaysP        :: !(Maybe (Pulse ()))   -- Pulse that always fires.
     }
 
 instance Show Network where show = error "instance Show Network not implemented."
