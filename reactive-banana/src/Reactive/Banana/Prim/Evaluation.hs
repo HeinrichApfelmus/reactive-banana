@@ -55,7 +55,7 @@ step (inputs,pulses)
     return (runEvalOs $ map snd actions, state2)
 
 runEvalOs :: [EvalO] -> IO ()
-runEvalOs os = join $ sequence_ <$> sequence os
+runEvalOs = sequence_ . map join
 
 {-----------------------------------------------------------------------------
     Traversal in dependency order
