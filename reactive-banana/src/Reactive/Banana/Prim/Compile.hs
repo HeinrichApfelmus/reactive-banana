@@ -77,15 +77,20 @@ interpret f xs = do
 -- Make sure that outputs are evaluated, but don't display their values.
 -- 
 -- Mainly useful for testing whether there are space leaks. 
-runSpaceProfile :: (Pulse a -> BuildIO (Pulse void)) -> [a] -> IO ()
+runSpaceProfile :: Show b => (Pulse a -> BuildIO (Pulse b)) -> [a] -> IO ()
 runSpaceProfile f xs = do
     let g = do
         (p1, fire) <- liftBuild $ newInput
         p2 <- f p1
-        p3 <- mapP return p2
-        addHandler p3 (void . evaluate)
+        p3 <- mapP return p2                -- wrap into Future
+        addHandler p3 (\b -> void $ evaluate b)
         return fire
-    (fire,network) <- compile g emptyNetwork
+    (step,network) <- compile g emptyNetwork
+
+    let fire x s1 = do
+            (outputs, s2) <- step x s1
+            outputs                     -- don't forget to execute outputs
+            return ((), s2)
     
     mapAccumM_ fire network xs
 
