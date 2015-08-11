@@ -1,6 +1,13 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 0.9.0.0**
+
+* Implement garbage collection for dynamically switched events.
+* Fix issue [#79][] where recursive declarations would sometimes result in dropped events.
+
+  [#79]: https://github.com/HeinrichApfelmus/reactive-banana/issues/79
+
 **version 0.8.1.2**
 
 * Depend on the [psqueues][] package instead of the [pqueue][] package for the priority queue.
