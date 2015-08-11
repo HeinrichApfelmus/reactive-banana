@@ -1,7 +1,7 @@
 .PHONY: all SpaceLeaks space profile core
 
 OBJ=dist/build
-COMPILE=ghc --make -outputdir $(OBJ) -i$(OBJ) -L$(OBJ) -isrc
+COMPILE=ghc -no-user-package-db -package-db .cabal-sandbox/*-packages.conf.d --make -outputdir $(OBJ) -i$(OBJ) -L$(OBJ) -isrc
 
 all : SpaceLeaks
 
