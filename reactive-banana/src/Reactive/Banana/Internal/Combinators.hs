@@ -90,8 +90,7 @@ addReactimate :: Event (Future (IO ())) -> Moment ()
 addReactimate e = do
     network   <- ask
     liftBuild $ Prim.buildLater $ do
-        -- run cached computation later to allow for more recursion
-        -- in the  Moment  monad.
+        -- Run cached computation later to allow more recursion with `Moment`
         p <- runReaderT (runCached e) network
         Prim.addHandler p id
 
@@ -172,18 +171,19 @@ trimB b = do
 
 executeP :: Pulse (Moment a) -> Moment (Pulse a)
 executeP p1 = do
-    p2 <- liftBuild $ Prim.mapP runReaderT p1
     r <- ask
-    liftBuild $ Prim.executeP p2 r
+    liftBuild $ do
+        p2 <- Prim.mapP runReaderT p1
+        Prim.executeP p2 r
 
 observeE :: Event (Moment a) -> Event a 
 observeE = liftCached1 $ executeP
 
 executeE :: Event (Moment a) -> Moment (Event a)
 executeE e = do
-    p      <- runCached e
-    result <- executeP p
-    return $ fromPure result
+    -- Run cached computation later to allow more recursion with `Moment`
+    p <-  momentLaterReadNow $ executeP =<< runCached e
+    return $ fromPure p
 
 switchE :: Event (Moment (Event a)) -> Event a
 switchE = liftCached1 $ \p1 -> do
