@@ -190,8 +190,13 @@ fromChanges initial changes = stepper initial <$> fromAddHandler changes
 
 -- | Output,
 -- observe the initial value contained in a 'Behavior'.
+--
+-- NOTE: To allow for more recursion, the value is returned /lazily/
+-- and not available for pattern matching immediately.
+--
+-- If that doesn't work for you, please use 'valueB' instead.
 initial :: Behavior t a -> Moment t a
-initial = M . Prim.initialB . unB
+initial = M . Prim.initialBLater . unB
 
 -- | Output,
 -- observe when a 'Behavior' changes.

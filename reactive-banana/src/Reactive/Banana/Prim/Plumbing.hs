@@ -12,6 +12,7 @@ import qualified Control.Monad.Trans.Reader         as Reader
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
 import           Data.Function                                (on)
 import           Data.Functor
+import           Data.IORef
 import           Data.List                                    (sortBy)
 import           Data.Monoid
 import qualified Data.Vault.Lazy                    as Lazy
@@ -147,6 +148,19 @@ runBuildIO i m = {-# SCC runBuild #-} do
 
 buildLater :: Build () -> Build ()
 buildLater x = RW.tell $ BuildW (mempty, mempty, mempty, Just x)
+
+-- | Pretend to return a value right now,
+-- but do not actually calculate it until later.
+--
+-- NOTE: Accessing the value before it's written leads to an error.
+--
+-- FIXME: Is there a way to have the value calculate on demand?
+buildLaterReadNow :: Build a -> Build a
+buildLaterReadNow m = do
+    ref <- liftIO $ newIORef $
+        error "buildLaterReadNow: Trying to read before it is written."
+    buildLater $ m >>= liftIO . writeIORef ref
+    liftIO $ unsafeInterleaveIO $ readIORef ref
 
 liftBuild :: Build a -> BuildIO a
 liftBuild = id

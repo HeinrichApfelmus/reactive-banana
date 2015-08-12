@@ -3,6 +3,8 @@ Changelog for the `reactive-banana` package
 
 **version 0.9.0.0**
 
+* Limit value recursion in the `Moment` monad slightly.
+* Change `initial` and `valueB` to behave subtly different when it comes to value recursion in the `Moment` monad.
 * Implement garbage collection for dynamically switched events.
 * Fix issue [#79][] where recursive declarations would sometimes result in dropped events.
 

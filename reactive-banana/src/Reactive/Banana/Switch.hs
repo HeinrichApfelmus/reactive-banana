@@ -88,8 +88,14 @@ observeE = E . Prim.observeE
     . Prim.mapE (sequence . map (fmap getIdentity . unM . now)) . unE
 
 -- | Obtain the value of the 'Behavior' at moment @t@.
+--
+-- NOTE: The value is immediately available for pattern matching.
+-- Unfortunately, this means that @valueB@ is unsuitable for use
+-- with value recursion in the 'Moment' monad.
+--
+-- If you need recursion, please use 'initial' instead.
 valueB :: Behavior t a -> Moment t a
-valueB = M . Prim.initialB . unB
+valueB = M . Prim.valueB . unB
 
 -- | Dynamically switch between 'Event'.
 switchE

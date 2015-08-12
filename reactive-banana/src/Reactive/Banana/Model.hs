@@ -17,7 +17,7 @@ module Reactive.Banana.Model (
     stepperB, pureB, applyB, mapB,
     -- ** Dynamic event switching
     Moment,
-    initialB, trimE, trimB, observeE, switchE, switchB,
+    valueB, trimE, trimB, observeE, switchE, switchB,
         
     -- * Interpretation
     interpret,
@@ -111,8 +111,8 @@ instance Monad Moment where
     m >>= g = \time -> g (m time) time
 -}
 
-initialB :: Behavior a -> Moment a
-initialB (StepperB x _) = return x
+valueB :: Behavior a -> Moment a
+valueB (StepperB x _) = return x
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = \now -> \later -> drop (later - now) e

@@ -13,7 +13,7 @@ module Reactive.Banana.Prim (
     Step, Network, emptyNetwork,
     
     -- * Build FRP networks
-    Build, liftIOLater, BuildIO, liftBuild, buildLater, compile,
+    Build, liftIOLater, BuildIO, liftBuild, buildLater, buildLaterReadNow, compile,
     module Control.Monad.IO.Class,
     
     -- * Caching
@@ -46,7 +46,7 @@ import Reactive.Banana.Prim.Cached
 import Reactive.Banana.Prim.Combinators
 import Reactive.Banana.Prim.Compile
 import Reactive.Banana.Prim.IO
-import Reactive.Banana.Prim.Plumbing (neverP, alwaysP, liftBuild, buildLater, liftIOLater)
+import Reactive.Banana.Prim.Plumbing (neverP, alwaysP, liftBuild, buildLater, buildLaterReadNow, liftIOLater)
 import Reactive.Banana.Prim.Types
 
 {-----------------------------------------------------------------------------

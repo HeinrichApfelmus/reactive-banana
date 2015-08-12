@@ -177,7 +177,7 @@ accumBvsE e = merge e1 e2
 observeE_id = observeE . fmap return -- = id
 
 initialB_immediate e = do
-    x <- initialB (stepper 0 e)
+    x <- valueB (stepper 0 e)
     return $ x <$ e
 
 {-- The following tests can no longer work with 'Build'
@@ -198,8 +198,9 @@ initialB_recursive2 e1 = mdo
 
 dynamic_apply e = do
     mb <- trimB $ stepper 0 e
-    return $ observeE $ (initialB =<< mb) <$ e
+    return $ observeE $ (valueB =<< mb) <$ e
     -- = stepper 0 e <@ e
+
 switchE1 e = do
     me <- trimE e
     return $ switchE $ me <$ e

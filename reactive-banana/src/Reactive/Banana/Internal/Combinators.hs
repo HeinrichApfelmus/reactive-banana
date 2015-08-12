@@ -144,10 +144,18 @@ mapB f  = applyB (pureB f)
 {-----------------------------------------------------------------------------
     Combinators - dynamic event switching
 ------------------------------------------------------------------------------}
-initialB :: Behavior a -> Moment a
-initialB b = do
+momentLaterReadNow :: Moment a -> Moment a
+momentLaterReadNow m = do
+    r <- ask
+    liftBuild $ Prim.buildLaterReadNow $ runReaderT m r
+
+valueB :: Behavior a -> Moment a
+valueB b = do
     ~(l,_) <- runCached b
     liftBuild $ Prim.readLatch l
+
+initialBLater :: Behavior a -> Moment a
+initialBLater = momentLaterReadNow . valueB
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = do
