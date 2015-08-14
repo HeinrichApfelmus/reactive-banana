@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 module Control.Monad.Trans.ReaderWriterIO (
     -- * Synopsis
     -- | An implementation of the reader/writer monad transformer
@@ -35,7 +35,7 @@ instance MonadFix m => MonadFix (ReaderWriterIOT r w m) where mfix = mfixR
 instance MonadIO m => MonadIO (ReaderWriterIOT r w m)   where liftIO = liftIOR
 instance MonadTrans (ReaderWriterIOT r w)               where lift = liftR
 
-instance Monad m => Monoid (ReaderWriterIOT r w m ()) where
+instance (Monad m, a ~ ()) => Monoid (ReaderWriterIOT r w m a) where
     mempty          = return ()
     mx `mappend` my = mx >> my
 
