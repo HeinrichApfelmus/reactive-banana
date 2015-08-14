@@ -2,7 +2,7 @@
 
 ## What is reactive-banana?
 
-<div style="float:left;"><img src="https://github.com/HeinrichApfelmus/reactive-banana/raw/develop/banana.png" /></div>
+<div style="float:left;"><img src="https://github.com/HeinrichApfelmus/reactive-banana/raw/master/banana.png" /></div>
 
 Reactive-banana is a library for [Functional Reactive Programming (FRP)][frp], written in Haskell.
 
@@ -50,8 +50,8 @@ The reactive-banana library actually contains *two* FRP implementations:
 1. [Reactive.Banana.Model][model] - A model implementation for testing and understanding the semantics. You are encouraged to look at the source code.
 2. [Reactive.Banana.Prim][push] - The efficient push-driven implementation used for production code. Contains hard to understand trade secrets. ;-)
 
-  [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/develop/reactive-banana/src/Reactive/Banana/Model.hs
-  [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/develop/reactive-banana/src/Reactive/Banana/Prim.hs
+  [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Model.hs
+  [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Prim.hs
 
 ## Contribute
 
