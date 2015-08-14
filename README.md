@@ -63,6 +63,7 @@ With contributions from
 * *Alexander Berntsen*
 * Vincent Berthoux
 * Kevin Cantu
+* *Oliver Charles*
 * Gregory Crosswhite
 * Peter Hillerström
 * Joseph Heinemeyer
