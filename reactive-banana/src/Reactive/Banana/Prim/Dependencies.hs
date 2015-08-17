@@ -57,14 +57,13 @@ empty = Deps
 
 -- | Add a new dependency.
 addChild :: (Eq a, Hashable a) => a -> a -> Deps a -> Deps a
-addChild parent child deps1@(Deps{..}) = deps2
+addChild parent child (Deps{..}) = deps2
     where
     deps2 = Deps
         { dChildren = Map.insertWith (++) parent [child] dChildren
         , dParents  = Map.insertWith (++) child [parent] dParents
         , dOrder    = ensureAbove child parent dOrder
         }
-    when b f = if b then f else id
 
 -- | Change the parent of the first argument to be the second one.
 changeParent :: (Eq a, Hashable a) => a -> a -> Deps a -> Deps a
