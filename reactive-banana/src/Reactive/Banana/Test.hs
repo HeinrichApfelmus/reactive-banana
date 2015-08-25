@@ -46,6 +46,7 @@ main = defaultMain
         , testModelMatchM "initialB_immediate"  initialB_immediate
         -- , testModelMatchM "initialB_recursive1" initialB_recursive1
         -- , testModelMatchM "initialB_recursive2" initialB_recursive2
+        , testModelMatchM "trimB_recursive"     trimB_recursive
         , testModelMatchM "dynamic_apply"       dynamic_apply
         , testModelMatchM "switchE1"            switchE1
         , testModelMatchM "switchB_two"         switchB_two
@@ -200,6 +201,11 @@ dynamic_apply e = do
     mb <- trimB $ stepper 0 e
     return $ observeE $ (valueB =<< mb) <$ e
     -- = stepper 0 e <@ e
+
+trimB_recursive e = mdo
+    let e2 = observeE $ (valueB =<< mb) <$ e
+    mb <- trimB $ stepper 0 e
+    return e2
 
 switchE1 e = do
     me <- trimE e

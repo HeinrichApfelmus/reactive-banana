@@ -143,10 +143,10 @@ mapB f  = applyB (pureB f)
 {-----------------------------------------------------------------------------
     Combinators - dynamic event switching
 ------------------------------------------------------------------------------}
-momentLaterReadNow :: Moment a -> Moment a
-momentLaterReadNow m = do
+liftBuildFun :: (Build a -> Build b) -> Moment a -> Moment b
+liftBuildFun f m = do
     r <- ask
-    liftBuild $ Prim.buildLaterReadNow $ runReaderT m r
+    liftBuild $ f $ runReaderT m r
 
 valueB :: Behavior a -> Moment a
 valueB b = do
@@ -154,20 +154,19 @@ valueB b = do
     liftBuild $ Prim.readLatch l
 
 initialBLater :: Behavior a -> Moment a
-initialBLater = momentLaterReadNow . valueB
+initialBLater = liftBuildFun Prim.buildLaterReadNow . valueB
 
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = do
-    p <- runCached e                   -- add pulse to network
-    -- NOTE: if the pulse is not connected to an input node,
-    -- it will be garbage collected right away.
-    -- TODO: Do we need to check for this?
-    return $ return $ fromPure p       -- remember it henceforth
+    -- make sure that the event is added to the network eventually
+    liftBuildFun Prim.buildLater $ void $ runCached e
+    return $ return $ e
 
 trimB :: Behavior a -> Moment (Moment (Behavior a))
 trimB b = do
-    ~(l,p) <- runCached b               -- add behavior to network
-    return $ return $ fromPure (l,p)    -- remember it henceforth
+    -- make sure that the behavior is added to the network eventually
+    liftBuildFun Prim.buildLater $ void $ runCached b
+    return $ return $ b
 
 executeP :: Pulse (Moment a) -> Moment (Pulse a)
 executeP p1 = do
@@ -182,7 +181,7 @@ observeE = liftCached1 $ executeP
 executeE :: Event (Moment a) -> Moment (Event a)
 executeE e = do
     -- Run cached computation later to allow more recursion with `Moment`
-    p <-  momentLaterReadNow $ executeP =<< runCached e
+    p <- liftBuildFun Prim.buildLaterReadNow $ executeP =<< runCached e
     return $ fromPure p
 
 switchE :: Event (Moment (Event a)) -> Event a
