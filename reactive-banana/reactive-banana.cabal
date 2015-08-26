@@ -1,5 +1,5 @@
 Name:                reactive-banana
-Version:             0.8.1.2
+Version:             0.9.0.0
 Synopsis:            Library for functional reactive programming (FRP).
 Description:
     Reactive-banana is a library for Functional Reactive Programming (FRP).
@@ -50,24 +50,15 @@ flag UseExtensions
 
 Library
     hs-source-dirs:     src
-    
-    extensions:         RecursiveDo,
-                        Rank2Types, ScopedTypeVariables,
-                        ExistentialQuantification,
-                        TypeSynonymInstances, FlexibleInstances,
-                        NoMonomorphismRestriction
-    
+
     build-depends:      base >= 4.2 && < 5,
                         containers >= 0.5 && < 0.6,
                         transformers >= 0.2 && < 0.5,
-                        vault == 0.3.*
-
-    extensions:         EmptyDataDecls,
-                        BangPatterns
-
-    build-depends:      unordered-containers >= 0.2.1.0 && < 0.3,
+                        vault == 0.3.*,
+                        unordered-containers >= 0.2.1.0 && < 0.3,
                         hashable >= 1.1 && < 1.3,
-                        psqueues >= 0.2 && < 0.3
+                        psqueues >= 0.2 && < 0.3,
+                        pqueue >= 1.0 && < 1.3
 
 --      CPP-options:    -DUseExtensions
         
@@ -83,18 +74,21 @@ Library
                         Reactive.Banana.Switch
     
     other-modules:
+                        Control.Monad.Trans.ReaderWriterIO,
+                        Control.Monad.Trans.RWSIO,
                         Reactive.Banana.Internal.Combinators,
                         Reactive.Banana.Internal.Phantom,
                         Reactive.Banana.Prim.Combinators,
                         Reactive.Banana.Prim.Compile,
-                        Reactive.Banana.Prim.Dated,
                         Reactive.Banana.Prim.Dependencies,
                         Reactive.Banana.Prim.Evaluation,
+                        Reactive.Banana.Prim.Graph,
                         Reactive.Banana.Prim.IO,
-                        Reactive.Banana.Prim.Order,
+                        Reactive.Banana.Prim.OrderedBag,
                         Reactive.Banana.Prim.Plumbing,
                         Reactive.Banana.Prim.Test,
                         Reactive.Banana.Prim.Types,
+                        Reactive.Banana.Prim.Util,
                         Reactive.Banana.Types
 
 Test-Suite tests
@@ -106,4 +100,4 @@ Test-Suite tests
                         test-framework >= 0.6 && < 0.9,
                         test-framework-hunit >= 0.2 && < 0.4,
                         reactive-banana, vault, containers, transformers,
-                        unordered-containers, hashable, psqueues
+                        unordered-containers, hashable, psqueues, pqueue

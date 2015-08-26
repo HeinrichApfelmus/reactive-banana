@@ -6,8 +6,6 @@
 
 Reactive-banana is a library for [Functional Reactive Programming (FRP)][frp], written in Haskell.
 
-Support the project with a small donation: [![Flattr this](http://api.flattr.com/button/flattr-badge-large.png)](http://flattr.com/thing/384682/reactive-banana)
-
 See the **[project homepage][homepage]** for **documentation**, **examples** and so on.
 
   [homepage]: http://wiki.haskell.org/Reactive-banana
@@ -57,21 +55,8 @@ The reactive-banana library actually contains *two* FRP implementations:
 
 Send me your examples, bindings, problems, suggestions, etc!
 
-With contributions from
+Many thanks to
 
-* Abu Alam
-* *Alexander Berntsen*
-* Vincent Berthoux
-* Kevin Cantu
-* Gregory Crosswhite
-* Peter Hillerström
-* Joseph Heinemeyer
-* Elliott Hird
-* Matt Kraai
-* John Lato
-* Vladimir Lopatin
-* *madjestic*
-* Peter Minten
-* Gideon Sireling
-* Henning Thielemann
-* Daniel Werner
+Alexander Berntsen, Oliver Charles, Samuel Gélineau, madjestic, *and also* Abu Alam, Vincent Berthoux, Kevin Cantu, Gregory Crosswhite, Peter Hillerström, Joseph Heinemeyer, Elliott Hird, Matt Kraai, John Lato, Vladimir Lopatin, Peter Minten, Gideon Sireling, Henning Thielemann, Daniel Werner
+
+for their contributions!

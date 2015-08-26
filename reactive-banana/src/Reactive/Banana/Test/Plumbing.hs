@@ -81,7 +81,7 @@ trimB (B x y) = M
     (fmap (fmap bx . mx) $ X.trimB x)
     (fmap (fmap by . my) $ Y.trimB y)
 
-initialB ~(B x y) = M (X.initialB x) (Y.initialB y)
+valueB ~(B x y) = M (X.valueB x) (Y.valueB y)
 
 observeE :: Event (Moment a) -> Event a
 observeE (E x y) = E (X.observeE $ X.mapE fstM x) (Y.observeE $ Y.mapE sndM y)

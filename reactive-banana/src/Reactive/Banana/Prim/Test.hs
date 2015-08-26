@@ -28,6 +28,8 @@ test_recursion1 p1 = liftBuild $ mdo
     let l2  =  mapL const l1
     return p2
 
+-- test garbage collection
+
 {-----------------------------------------------------------------------------
     Space leak tests
 ------------------------------------------------------------------------------}

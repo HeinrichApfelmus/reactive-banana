@@ -1,172 +1,107 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
 module Reactive.Banana.Prim.Dependencies (
-    -- | Utilities for operating with dependency graphs.
-    Deps, dOrder, empty, allChildren, children, parents,
-    addChild, changeParent,
-    
-    Continue(..), maybeContinue, traverseDependencies,
-    
-    DepsQueue, emptyQ, insert, minView,
+    -- | Utilities for operating on node dependencies.
+    addChild, changeParent, buildDependencies,
     ) where
 
-import           Control.Monad.Trans.Writer
-import qualified Data.HashMap.Strict        as Map
-import qualified Data.HashSet               as Set
-import           Data.Hashable
-import qualified Data.IntPSQ                as Q
+import Control.Monad
+import Data.Functor
+import Data.Monoid
+import System.Mem.Weak
 
-import           Reactive.Banana.Prim.Order
-import qualified Reactive.Banana.Prim.Order as Order
-
-type Map = Map.HashMap
-type Set = Set.HashSet
+import qualified Reactive.Banana.Prim.Graph as Graph
+import           Reactive.Banana.Prim.Types
+import           Reactive.Banana.Prim.Util
 
 {-----------------------------------------------------------------------------
-    Dependency graph
+    Accumulate dependency information for nodes
 ------------------------------------------------------------------------------}
--- | A dependency graph.
-data Deps a = Deps
-    { dChildren :: Map a [a]     -- children depend on their parents
-    , dParents  :: Map a [a]
-    , dOrder    :: Order a
-    } deriving (Show)
+-- | Add a new child node to a parent node.
+addChild :: SomeNode -> SomeNode -> DependencyBuilder
+addChild parent child = (Endo $ Graph.insertEdge (parent,child), mempty)
 
--- | Representation of the depencencies as an association list of nodes
--- to children.
-allChildren :: Deps a -> [(a, [a])]
-allChildren = Map.toList . dChildren
+-- | Assign a new parent to a child node.
+-- INVARIANT: The child may have only one parent node.
+changeParent :: Pulse a -> Pulse b -> DependencyBuilder
+changeParent child parent = (mempty, [(P child, P parent)])
 
--- | Children of a node.
-children deps x =
-    {-# SCC children #-} maybe [] id . Map.lookup x $ dChildren deps
-
--- | Parents of a node.
-parents  deps x = maybe [] id . Map.lookup x $ dParents  deps
-
--- | The empty dependency graph.
-empty :: Hashable a => Deps a
-empty = Deps
-    { dChildren = Map.empty
-    , dParents  = Map.empty
-    , dOrder    = Order.flat
-    }
-
--- | Add a new dependency.
-addChild :: (Eq a, Hashable a) => a -> a -> Deps a -> Deps a
-addChild parent child deps1@(Deps{..}) = deps2
+-- | Execute the information in the dependency builder
+-- to change network topology.
+buildDependencies :: DependencyBuilder -> IO ()
+buildDependencies (Endo f, parents) = do
+    sequence_ [x `doAddChild` y | x <- Graph.listParents gr, y <- Graph.getChildren gr x]
+    sequence_ [x `doChangeParent` y | (P x, P y) <- parents]
     where
-    deps2 = Deps
-        { dChildren = Map.insertWith (++) parent [child] dChildren
-        , dParents  = Map.insertWith (++) child [parent] dParents
-        , dOrder    = ensureAbove child parent dOrder
-        }
-    when b f = if b then f else id
-
--- | Change the parent of the first argument to be the second one.
-changeParent :: (Eq a, Hashable a) => a -> a -> Deps a -> Deps a
-changeParent child parent deps1@(Deps{..}) = deps2
-    where
-    deps2 = Deps
-        { dChildren = Map.insertWith (++) parent [child]
-                    $ removeChild parentsOld dChildren
-        , dParents  = Map.insert child [parent] dParents
-        , dOrder    = recalculateParent child parent (parents deps2) dOrder
-        }
-    parentsOld   = parents deps1 child
-    removeChild1 = Map.adjust (filter (/= child))
-    removeChild  = concatenate . map removeChild1
-    concatenate  = foldr (.) id
+    gr = f Graph.emptyGraph
 
 {-----------------------------------------------------------------------------
-    Traversal
+    Set dependencies of individual notes
 ------------------------------------------------------------------------------}
--- | Data type for signaling whether to continue a traversal or not.
-data Continue = Children | Done
-    deriving (Eq, Ord, Show, Read)
+-- | Add a child node to the children of a parent 'Pulse'.
+connectChild
+    :: Pulse a  -- ^ Parent node whose '_childP' field is to be updated.
+    -> SomeNode -- ^ Child node to add.
+    -> IO (Weak SomeNode)
+                -- ^ Weak reference with the child as key and the parent as value.
+connectChild parent child = do
+    w <- mkWeakNodeValue child child
+    modify' parent $ update childrenP (w:)
+    mkWeakNodeValue child (P parent)        -- child keeps parent alive
 
--- | Convert a 'Maybe' value into a 'Continue' decision.
-maybeContinue :: Maybe a -> Continue
-maybeContinue Nothing  = Done
-maybeContinue (Just _) = Children
+-- | Add a child node to a parent node and update evaluation order.
+doAddChild :: SomeNode -> SomeNode -> IO ()
+doAddChild (P parent) (P child) = do
+    level1 <- _levelP <$> readRef child
+    level2 <- _levelP <$> readRef parent
+    let level = level1 `max` (level2 + 1)
+    w <- parent `connectChild` (P child)
+    modify' child $ set levelP level . update parentsP (w:)
+doAddChild (P parent) node = void $ parent `connectChild` node
 
--- | Starting with a set of root nodes, peform a monadic action
--- for each node. If the action returns 'Children', its children will also
--- be traversed at some point.
--- However, all nodes are traversed in dependency order:
--- A child node is only traversed when all its parent nodes have been traversed.
-traverseDependencies :: forall a m. (Eq a, Hashable a, Monad m)
-    => (a -> m Continue) -> Deps a -> [a] -> m ()
-traverseDependencies f deps roots = go $ insertList roots emptyQ
-    where
-    order = dOrder deps
-    insertList xs q = foldr (\x -> insert (level x order) x) q xs
+-- | Remove a node from its parents and all parents from this node.
+removeParents :: Pulse a -> IO ()
+removeParents child = do
+    c@Pulse{_parentsP} <- readRef child
+    -- delete this child (and dead children) from all parent nodes
+    forM_ _parentsP $ \w -> do
+        Just (P parent) <- deRefWeak w  -- get parent node
+        finalize w                      -- severe connection in garbage collector
+        let isGoodChild w = not . maybe True (== P child) <$> deRefWeak w
+        new <- filterM isGoodChild . _childrenP =<< readRef parent
+        modify' parent $ set childrenP new
+    -- replace parents by empty list
+    put child $ c{_parentsP = []}
 
-    go q1 = case minView q1 of
-        Nothing      -> return ()
-        Just (a, q2) -> do
-            continue <- f a
-            case continue of
-                Done     -> go q2
-                Children -> go $ insertList (children deps a) q2
+-- | Set the parent of a pulse to a different pulse.
+doChangeParent :: Pulse a -> Pulse b -> IO ()
+doChangeParent child parent = do
+    -- remove all previous parents and connect to new parent
+    removeParents child
+    w <- parent `connectChild` (P child)
+    modify' child $ update parentsP (w:)
 
--- | Queue for traversing dependencies.
---
--- The 'Int' is a key supply for the priority search queue.
-data DepsQueue a = DQ !(Q.IntPSQ Level a) !(Set a) Int
+    -- calculate level difference between parent and node
+    levelParent <- _levelP <$> readRef parent
+    levelChild  <- _levelP <$> readRef child
+    let d = levelParent - levelChild + 1
+    -- level parent - d = level child - 1
 
-emptyQ :: DepsQueue a
-emptyQ = DQ Q.empty Set.empty 0
-
-insert :: (Eq a, Hashable a) => Level -> a -> DepsQueue a -> DepsQueue a
-insert k a q@(DQ queue seen n) = {-# SCC insert #-}
-    if a `Set.member` seen
-        then q
-        else DQ (Q.insert (n+1) k a queue) (Set.insert a seen) (n+1)
-
-minView :: DepsQueue a -> Maybe (a, DepsQueue a)
-minView (DQ queue seen n) = {-# SCC minView #-} case Q.minView queue of
-    Nothing                -> Nothing
-    Just (_, _, a, queue2) -> Just (a, DQ queue2 seen n)
+    -- lower all parents of the node if the parent was higher than the node
+    when (d > 0) $ do
+        parents <- Graph.dfs (P parent) getParents
+        forM_ parents $ \(P node) -> do
+            modify' node $ update levelP (subtract d)
 
 {-----------------------------------------------------------------------------
-    Small tests
+    Helper functions
 ------------------------------------------------------------------------------}
-test1 = id
-    . changeParent 'C' 'A'
-    . addChild 'C' 'D'
-    . addChild 'B' 'C'
-    . addChild 'B' 'D'
-    . addChild 'A' 'B'
-    . addChild 'a' 'B'
-    $ empty
+getChildren :: SomeNode -> IO [SomeNode]
+getChildren (P p) = deRefWeaks =<< fmap _childrenP (readRef p)
+getChildren _     = return []
 
-{- test2 =
-        a
-       / \
-      b   d   A
-      |   |   |
-      c   e   B
-       \ / \ /
-        f   g
-         \ /
-          h
-
--}
-test2 = id
-    . addChild 'g' 'h' . addChild 'e' 'g'
-    . addChild 'B' 'g' . addChild 'A' 'B'
-    . addChild 'f' 'h'
-    . addChild 'e' 'f' . addChild 'd' 'e' . addChild 'a' 'd'
-    . addChild 'c' 'f' . addChild 'b' 'c' . addChild 'a' 'b'
-    $ empty
-
-test3 = changeParent 'A' 'f' $ test2
-
-listChildren :: (Eq a, Hashable a) => Deps a -> a -> [a]
-listChildren deps x = snd $ runWriter $ traverseDependencies f deps [x]
-    where f x = tell [x] >> return Children
-    
+getParents :: SomeNode -> IO [SomeNode]
+getParents (P p) = deRefWeaks =<< fmap _parentsP (readRef p)
+getParents _     = return []

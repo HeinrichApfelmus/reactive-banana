@@ -14,36 +14,23 @@ import           Control.Monad.Trans.Reader
 import           Data.Functor
 import           Data.Functor.Identity
 import           Data.IORef
-import qualified Data.Vault.Lazy             as Lazy
 import qualified Reactive.Banana.Prim        as Prim
-import qualified Reactive.Banana.Prim.Cached as Prim
-import           Reactive.Banana.Prim.Cached         hiding (runCached)
+import           Reactive.Banana.Prim.Cached
 
 type Build   = Prim.Build
-type Latch   = Prim.Latch
-type Pulse   = Prim.Pulse
+type Latch a = Prim.Latch a
+type Pulse a = Prim.Pulse a
 type Future  = Prim.Future
 
 {-----------------------------------------------------------------------------
     Types
 ------------------------------------------------------------------------------}
-type Behavior a = Cached Moment' (Latch a, Pulse ())
-type Event a    = Cached Moment' (Pulse a)
+type Behavior a = Cached Moment (Latch a, Pulse ())
+type Event a    = Cached Moment (Pulse a)
+type Moment     = ReaderT EventNetwork Prim.Build
 
-type MomentT m  = ReaderT EventNetwork (Prim.BuildT m)
-type Moment     = MomentT IO
-type Moment'    = MomentT Identity
-
-instance (Monad m, MonadFix m, HasCache m)
-    => HasCache (ReaderT EventNetwork m) where
-        retrieve key = lift $ retrieve key
-        write key a  = lift $ write key a
-
-liftBuild :: Monad m => Build a -> MomentT m a
-liftBuild = lift . Prim.liftBuild
-
-runCached :: Monad m => Cached Moment' a -> MomentT m a
-runCached = mapReaderT Prim.liftBuild . Prim.runCached
+liftBuild :: Build a -> Moment a
+liftBuild = lift
 
 {-----------------------------------------------------------------------------
     Interpretation
@@ -94,16 +81,18 @@ compile setup = do
 
 fromAddHandler :: AddHandler a -> Moment (Event a)
 fromAddHandler addHandler = do
-    key       <- liftIO $ Lazy.newKey
-    (p, fire) <- liftBuild $ Prim.newInput key
+    (p, fire) <- liftBuild $ Prim.newInput
     network   <- ask
     liftIO $ register addHandler $ runStep network . fire
     return $ Prim.fromPure p
 
 addReactimate :: Event (Future (IO ())) -> Moment ()
 addReactimate e = do
-    p <- runCached e
-    liftBuild $ Prim.addHandler p id
+    network   <- ask
+    liftBuild $ Prim.buildLater $ do
+        -- Run cached computation later to allow more recursion with `Moment`
+        p <- runReaderT (runCached e) network
+        Prim.addHandler p id
 
 fromPoll :: IO a -> Moment (Behavior a)
 fromPoll poll = do
@@ -154,38 +143,46 @@ mapB f  = applyB (pureB f)
 {-----------------------------------------------------------------------------
     Combinators - dynamic event switching
 ------------------------------------------------------------------------------}
-initialB :: Behavior a -> Moment a
-initialB b = do
+liftBuildFun :: (Build a -> Build b) -> Moment a -> Moment b
+liftBuildFun f m = do
+    r <- ask
+    liftBuild $ f $ runReaderT m r
+
+valueB :: Behavior a -> Moment a
+valueB b = do
     ~(l,_) <- runCached b
     liftBuild $ Prim.readLatch l
 
+initialBLater :: Behavior a -> Moment a
+initialBLater = liftBuildFun Prim.buildLaterReadNow . valueB
+
 trimE :: Event a -> Moment (Moment (Event a))
 trimE e = do
-    p <- runCached e                   -- add pulse to network
-    -- NOTE: if the pulse is not connected to an input node,
-    -- it will be garbage collected right away.
-    -- TODO: Do we need to check for this?
-    return $ return $ fromPure p       -- remember it henceforth
+    -- make sure that the event is added to the network eventually
+    liftBuildFun Prim.buildLater $ void $ runCached e
+    return $ return $ e
 
 trimB :: Behavior a -> Moment (Moment (Behavior a))
 trimB b = do
-    ~(l,p) <- runCached b               -- add behavior to network
-    return $ return $ fromPure (l,p)    -- remember it henceforth
+    -- make sure that the behavior is added to the network eventually
+    liftBuildFun Prim.buildLater $ void $ runCached b
+    return $ return $ b
 
-executeP :: Monad m => Pulse (Moment a) -> MomentT m (Pulse a)
+executeP :: Pulse (Moment a) -> Moment (Pulse a)
 executeP p1 = do
-    p2 <- liftBuild $ Prim.mapP runReaderT p1
     r <- ask
-    liftBuild $ Prim.executeP p2 r
+    liftBuild $ do
+        p2 <- Prim.mapP runReaderT p1
+        Prim.executeP p2 r
 
 observeE :: Event (Moment a) -> Event a 
 observeE = liftCached1 $ executeP
 
 executeE :: Event (Moment a) -> Moment (Event a)
 executeE e = do
-    p      <- runCached e
-    result <- executeP p
-    return $ fromPure result
+    -- Run cached computation later to allow more recursion with `Moment`
+    p <- liftBuildFun Prim.buildLaterReadNow $ executeP =<< runCached e
+    return $ fromPure p
 
 switchE :: Event (Moment (Event a)) -> Event a
 switchE = liftCached1 $ \p1 -> do

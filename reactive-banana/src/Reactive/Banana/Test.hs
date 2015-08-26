@@ -33,6 +33,7 @@ main = defaultMain
         [ testModelMatch "counter"     counter
         , testModelMatch "double"      double
         , testModelMatch "sharing"     sharing
+        , testModelMatch "unionFilter" unionFilter
         , testModelMatch "recursive1"  recursive1
         , testModelMatch "recursive2"  recursive2
         , testModelMatch "recursive3"  recursive3
@@ -43,8 +44,9 @@ main = defaultMain
     , testGroup "Dynamic Event Switching"
         [ testModelMatch  "observeE_id"         observeE_id
         , testModelMatchM "initialB_immediate"  initialB_immediate
-        , testModelMatchM "initialB_recursive1" initialB_recursive1
-        , testModelMatchM "initialB_recursive2" initialB_recursive2
+        -- , testModelMatchM "initialB_recursive1" initialB_recursive1
+        -- , testModelMatchM "initialB_recursive2" initialB_recursive2
+        , testModelMatchM "trimB_recursive"     trimB_recursive
         , testModelMatchM "dynamic_apply"       dynamic_apply
         , testModelMatchM "switchE1"            switchE1
         , testModelMatchM "switchB_two"         switchB_two
@@ -108,10 +110,16 @@ counter e = applyE (pure const <*> bcounter) e
 
 merge e1 e2 = unionWith (++) (list e1) (list e2)
     where list = fmap (:[])
-    
+
 double e  = merge e e
 sharing e = merge e1 e1
     where e1 = filterE (< 3) e
+
+unionFilter e1 = unionWith (+) e2 e3
+    where
+    e3 = fmap (+1) $ filterE even e1
+    e2 = fmap (+1) $ filterE odd  e1
+
 recursive1 e1 = e2
     where
     e2 = applyE b e1
@@ -124,7 +132,7 @@ recursive2 e1 = e2
 
 type Dummy = Int
 
--- counter that can be decreased as long as it's >= 0
+-- Counter that can be decreased as long as it's >= 0 .
 recursive3 :: Event Dummy -> Event Int
 recursive3 edec = applyE (const <$> bcounter) ecandecrease
     where
@@ -160,38 +168,45 @@ recursive4b eInput = result <@ eInput
         eq     = filterApply ((==) <$> result) input
         neq    = filterApply ((/=) <$> result) input
 
--- test accumE vs accumB
+-- Test 'accumE' vs 'accumB'.
 accumBvsE :: Event Dummy -> Event [Int]
 accumBvsE e = merge e1 e2
     where
     e1 = accumE 0 ((+1) <$ e)
     e2 = let b = accumB 0 ((+1) <$ e) in applyE (const <$> b) e
 
-
 observeE_id = observeE . fmap return -- = id
 
 initialB_immediate e = do
-    x <- initialB (stepper 0 e)
+    x <- valueB (stepper 0 e)
     return $ x <$ e
+
+{-- The following tests can no longer work with 'Build'
+being a transformer of the 'IO' monad.
+See Note [Recursion].
+
 initialB_recursive1 e1 = mdo
     _ <- initialB b
     let b = stepper 0 e1
     return $ b <@ e1
-    
--- NOTE: This test case tries to reproduce a situation
--- where the value of a latch is used before the latch was created.
--- This was relevant for the CRUD example, but I can't find a way
--- to make it smaller right now. Oh well.
+
 initialB_recursive2 e1 = mdo
     x <- initialB b
     let bf = const x <$ stepper 0 e1 
     let b  = stepper 0 $ (bf <*> b) <@ e1
     return $ b <@ e1
+-}
 
 dynamic_apply e = do
     mb <- trimB $ stepper 0 e
-    return $ observeE $ (initialB =<< mb) <$ e
+    return $ observeE $ (valueB =<< mb) <$ e
     -- = stepper 0 e <@ e
+
+trimB_recursive e = mdo
+    let e2 = observeE $ (valueB =<< mb) <$ e
+    mb <- trimB $ stepper 0 e
+    return e2
+
 switchE1 e = do
     me <- trimE e
     return $ switchE $ me <$ e
@@ -216,9 +231,4 @@ issue79 inputEvent = outputEvent
     outputEvent = unionWith (++)
         (const "filtered event" <$> filteredEvent)
         (((" and " ++) . show) <$> unionWith (+) appliedEvent fmappedEvent)
-
-
-
-
-
 

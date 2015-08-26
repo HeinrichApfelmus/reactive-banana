@@ -1,7 +1,18 @@
 FIXME
 -----
 
-No items that need immediate fixing right now.
+* New name for  execute   and  observe ?
+
+* Implement optimzation that latches check their timestamp against
+  the current time first before chasing dependencies.
+
+* Garbage collection:
+
+  Does it make a difference whether we use  weak  pointers for the
+  _parentP field or not? What about dependencies via  readPulseP ?
+  the goal is tobe able to garbage collect whole chains at once,
+  otherwise it would take too much time.
+
 
 Implementation Notes
 --------------------
