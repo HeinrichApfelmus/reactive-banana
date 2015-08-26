@@ -1,10 +1,10 @@
 FIXME
 -----
 
+* New name for  execute   and  observe ?
+
 * Implement optimzation that latches check their timestamp against
   the current time first before chasing dependencies.
-
-* Try more test cases to find bugs.
 
 * Garbage collection:
 
