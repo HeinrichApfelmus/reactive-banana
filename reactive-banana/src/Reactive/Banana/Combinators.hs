@@ -76,7 +76,10 @@ model implementation. See "Reactive.Banana.Model" for more.
 -- Useful for testing.
 interpret :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
 interpret f xs =
-    map toList <$> Prim.interpret (return . unE . f . E) (map Just xs)
+    map toList <$> Prim.interpret (return . unE . f . E) (map wrap xs)
+    where
+    wrap [] = Nothing
+    wrap xs = Just xs
 
 toList :: Maybe [a] -> [a]
 toList Nothing   = []

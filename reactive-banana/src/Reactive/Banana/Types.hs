@@ -21,6 +21,7 @@ that are tagged with their corresponding time of occurence,
 > type Event t a = [(Time,a)]
 -}
 newtype Event t a = E { unE :: Prim.Event [a] }
+-- Invariant: The empty list `[]` never occurs as event value.
 
 {-| @Behavior t a@ represents a value that varies in time. Think of it as
 
