@@ -16,7 +16,10 @@ module Reactive.Banana.Frameworks (
     compile, Frameworks,
     module Control.Event.Handler,
     fromAddHandler, fromChanges, fromPoll,
-    reactimate, Future, reactimate', initial, changes, imposeChanges,
+    reactimate, Future, reactimate', initial,
+    changes,
+    -- $changes
+    imposeChanges,
     FrameworksMoment(..), execute, liftIOLater,
     -- $liftIO
     module Control.Monad.IO.Class,
@@ -217,6 +220,26 @@ initial = M . Prim.initialBLater . unB
 -- It can be used only in the context of 'reactimate''.
 changes :: Frameworks t => Behavior t a -> Moment t (Event t (Future a))
 changes = return . fmap F . singletonsE . Prim.changesB . unB
+
+{- $changes
+
+Note: If you need a variant of the 'changes' function that does /not/
+have the additional 'Future' type, then the following code snippet
+may be useful:
+
+> plainChanges :: Frameworks t => Behavior t a -> Moment t (Event t a)
+> plainChanges b = do
+>     (e, handle) <- newEvent
+>     eb <- changes b
+>     reactimate' $ (fmap handle) <$> eb
+>     return e
+
+However, this approach is not recommended, because the result 'Event'
+will occur /slightly/ later than the event returned by 'changes'.
+In fact, there is no guarantee whatsoever about what /slightly/ means
+in this context. Still, it is useful in some cases.
+
+-}
 
 -- | Impose a different sampling event on a 'Behavior'.
 --
