@@ -177,7 +177,10 @@ accumE acc = E . mapAccumE acc . Prim.mapE concatenate . unE
 
     mapAccumE :: s -> Prim.Event (s -> (a,s)) -> Prim.Event a
     mapAccumE acc =
-        Prim.mapE fst . Prim.accumE (undefined,acc) . Prim.mapE (. snd)
+        Prim.mapE fst . Prim.accumE (undefined,acc) . Prim.mapE lift
+
+    lift f (_,acc) = acc `seq` f acc
+
 
 -- strict version of scanl
 scanl' :: (a -> b -> a) -> a -> [b] -> [a]
@@ -315,5 +318,6 @@ accumB  acc = stepper acc . accumE acc
 -- | Efficient combination of 'accumE' and 'accumB'.
 mapAccum :: acc -> Event t (acc -> (x,acc)) -> (Event t x, Behavior t acc)
 mapAccum acc ef = (fst <$> e, stepper acc (snd <$> e))
-    where e = accumE (undefined,acc) ((. snd) <$> ef)
-
+    where
+    e = accumE (undefined,acc) (lift <$> ef)
+    lift f (_,acc) = acc `seq` f acc
