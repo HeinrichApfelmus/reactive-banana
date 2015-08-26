@@ -256,6 +256,15 @@ newtype FrameworksMoment a
     = FrameworksMoment
     { runFrameworksMoment :: forall t. Frameworks t => Moment t a }
 
+instance Functor FrameworksMoment where
+    fmap f (FrameworksMoment x) = FrameworksMoment (fmap f x)
+instance Applicative FrameworksMoment where
+    pure x = FrameworksMoment (pure x)
+    (FrameworksMoment f) <*> (FrameworksMoment x) = FrameworksMoment (f <*> x)
+instance Monad FrameworksMoment where
+    return x = FrameworksMoment (return x)
+    (FrameworksMoment m) >>= g = FrameworksMoment (m >>= runFrameworksMoment . g)
+
 unFM :: FrameworksMoment a -> Moment (FrameworksD,t) a
 unFM = runFrameworksMoment
 
