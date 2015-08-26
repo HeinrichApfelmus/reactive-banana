@@ -7,6 +7,7 @@ Changelog for the `reactive-banana` package
 * Change `initial` and `valueB` to behave subtly different when it comes to value recursion in the `Moment` monad.
 * Implement garbage collection for dynamically switched events.
 * Fix issue [#79][] where recursive declarations would sometimes result in dropped events.
+* Depend on the [pqueues][] package instead of the [psqueues][] package again, as the former has been updated to work with the current version of GHC.
 
   [#79]: https://github.com/HeinrichApfelmus/reactive-banana/issues/79
 
