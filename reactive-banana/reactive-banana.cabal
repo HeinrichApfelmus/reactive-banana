@@ -13,14 +13,10 @@ Description:
     .
     No semantic bugs expected.
     .
-    Significant API changes are likely in future versions,
-    though the main interface is beginning to stabilize.
+    Significant API changes are planned for version 1.0.
     .
     The library features an efficient, push-driven implementation
     and has seen some optimization work.
-    However, the inner loop still has a rather large constant factor overhead.
-    Moreover, there is currently /no/ garbage collection for events that are
-    created dynamically with @Reactive.Banana.Switch@.
 
 Homepage:            http://wiki.haskell.org/Reactive-banana
 License:             BSD3
