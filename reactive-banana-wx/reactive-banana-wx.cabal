@@ -39,7 +39,7 @@ Library
     hs-source-dirs:  src
     build-depends:   base >= 4.2 && < 5,
                      cabal-macosx >= 0.1 && < 0.3,
-                     reactive-banana == 0.8.*,
+                     reactive-banana >= 0.8 && < 0.10,
                      wxcore (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.92),
                      wx (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.92)
     extensions:      ExistentialQuantification
