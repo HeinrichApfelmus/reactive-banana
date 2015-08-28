@@ -1,5 +1,5 @@
 Name:                reactive-banana-wx
-Version:             0.9.0.1
+Version:             0.9.0.2
 Synopsis:            Examples for the reactive-banana library, using wxHaskell.
 Description:
     This library provides some GUI examples for the @reactive-banana@ library,
@@ -53,7 +53,7 @@ Source-repository    head
 Executable Animation
     if flag(buildExamples)
         build-depends:
-            process >= 1.0 && < 1.2,
+            process >= 1.0 && < 1.4,
             random == 1.0.*,
             executable-path == 0.0.*,
             filepath >= 1.1 && <= 1.4,
@@ -123,7 +123,7 @@ Executable CRUD
 
 Executable NetMonitor
     if flag(buildExamples)
-        build-depends: process >= 1.0 && < 1.2,
+        build-depends: process >= 1.0 && < 1.4,
                        reactive-banana, wx, wxcore, base
     else
         buildable: False
@@ -132,7 +132,7 @@ Executable NetMonitor
 
 Executable TicTacToe
     if flag(buildExamples)
-        build-depends: array >= 0.3 && < 0.5,
+        build-depends: array >= 0.3 && < 0.6,
                        reactive-banana, wx, wxcore, base
     else
         buildable: False
