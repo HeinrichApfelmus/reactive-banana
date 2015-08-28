@@ -15,7 +15,7 @@ import Data.List (isPrefixOf)
 import Data.Maybe
 import qualified Data.Map as Map
 
-import Graphics.UI.WX hiding (Event)
+import Graphics.UI.WX hiding (Event, update)
 import Reactive.Banana
 import Reactive.Banana.WX
 
