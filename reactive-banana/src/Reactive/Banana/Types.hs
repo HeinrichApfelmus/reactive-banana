@@ -14,20 +14,24 @@ import Control.Monad.Fix
 import qualified Reactive.Banana.Internal.Combinators as Prim
 import           Reactive.Banana.Internal.Phantom
 
-{-| @Event t a@ represents a stream of events as they occur in time.
-Semantically, you can think of @Event t a@ as an infinite list of values
+{-| @Event a@ represents a stream of events as they occur in time.
+Semantically, you can think of @Event a@ as an infinite list of values
 that are tagged with their corresponding time of occurence,
 
-> type Event t a = [(Time,a)]
+> type Event a = [(Time,a)]
+
+Each pair is called an /event occurrence/.
+Note that within a single event stream,
+no two event occurrences may happen at the same time.
 -}
-newtype Event t a = E { unE :: Prim.Event [a] }
+newtype Event a = E { unE :: Prim.Event a }
 -- Invariant: The empty list `[]` never occurs as event value.
 
-{-| @Behavior t a@ represents a value that varies in time. Think of it as
+{-| @Behavior a@ represents a value that varies in time. Think of it as
 
-> type Behavior t a = Time -> a
+> type Behavior a = Time -> a
 -}
-newtype Behavior t a = B { unB :: Prim.Behavior a }
+newtype Behavior a = B { unB :: Prim.Behavior a }
 
 -- | The 'Future' monad is just a helper type for the 'changes' function.
 -- 
@@ -47,10 +51,9 @@ instance Applicative Future where
     f <*> a = F $ unF f <*> unF a
 
 {-| The 'Moment' monad denotes a value at a particular /moment in time/.
+Think of it as a reader monad
 
-This monad is not very interesting, it is mainly used for book-keeping.
-In particular, the type parameter @t@ is used
-to disallow various unhealthy programs.
+> type Moment a = Time -> a
 
 This monad is also used to describe event networks
 in the "Reactive.Banana.Frameworks" module.
@@ -62,20 +65,22 @@ a value of type @a@ that is observed at a moment in time
 which is indicated by the type parameter @t@.
 
 -}
-newtype Moment t a = M { unM :: Prim.Moment a }
+newtype Moment a = M { unM :: Prim.Moment a }
 
 -- boilerplate class instances
-instance Functor (Moment t) where fmap f = M . fmap f . unM
+instance Functor Moment where fmap f = M . fmap f . unM
 
-instance Monad (Moment t) where
+instance Monad Moment where
     return  = M . return
     m >>= g = M $ unM m >>= unM . g
 
-instance Applicative (Moment t) where
+instance Applicative Moment where
     pure    = M . pure
     f <*> a = M $ unM f <*> unM a
 
-instance MonadFix (Moment t) where mfix f = M $ mfix (unM . f)
+instance MonadFix Moment where mfix f = M $ mfix (unM . f)
 
-instance Frameworks t => MonadIO (Moment t) where
+{-
+instance Frameworks t => MonadIO Moment where
     liftIO = M . Prim.liftIONow
+-}

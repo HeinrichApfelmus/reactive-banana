@@ -17,7 +17,7 @@ module Reactive.Banana.Combinators (
     -- * Core Combinators
     module Control.Applicative,
     module Data.Monoid,
-    never, union, unions, filterE, collect, spill, accumE,
+    never, unionWith, filterE, accumE,
     apply, stepper,
     -- $classes
     
@@ -29,8 +29,6 @@ module Reactive.Banana.Combinators (
     -- ** Accumulation
     -- $Accumulation.
     accumB, mapAccum,
-    -- ** Simultaneous event occurrences
-    calm, unionWith,
     ) where
 
 import Control.Applicative
@@ -74,82 +72,45 @@ model implementation. See "Reactive.Banana.Model" for more.
 ------------------------------------------------------------------------------}
 -- | Interpret an event processing function.
 -- Useful for testing.
-interpret :: (forall t. Event t a -> Event t b) -> [[a]] -> IO [[b]]
-interpret f xs =
-    map toList <$> Prim.interpret (return . unE . f . E) (map wrap xs)
-    where
-    wrap [] = Nothing
-    wrap xs = Just xs
-
-toList :: Maybe [a] -> [a]
-toList Nothing   = []
-toList (Just xs) = xs
+interpret :: (Event a -> Event b) -> [Maybe a] -> IO [Maybe b]
+interpret f = Prim.interpret (return . unE . f . E)
 
 {-----------------------------------------------------------------------------
     Core combinators
 ------------------------------------------------------------------------------}
-singleton :: a -> [a]
-singleton x = [x]
-
 -- | Event that never occurs.
 -- Think of it as @never = []@.
-never    :: Event t a
-never = E $ Prim.mapE singleton Prim.never
+never    :: Event a
+never = E Prim.never
 
 -- | Merge two event streams of the same type.
--- In case of simultaneous occurrences, the left argument comes first.
--- Think of it as
+-- The function argument specifies how event values are to be combined
+-- in case of a simultaneous occurrence.
 --
--- > union ((timex,x):xs) ((timey,y):ys)
--- >    | timex <= timey = (timex,x) : union xs ((timey,y):ys)
--- >    | timex >  timey = (timey,y) : union ((timex,x):xs) ys
-union    :: Event t a -> Event t a -> Event t a
-union e1 e2 = E $ Prim.unionWith (++) (unE e1) (unE e2)
-
--- | Merge several event streams of the same type.
--- 
--- > unions = foldr union never
-unions :: [Event t a] -> Event t a
-unions = foldr union never
+-- > unionWith f ((timex,x):xs) ((timey,y):ys)
+-- >    | timex <  timey = (timex,x)     : unionWith f xs ((timey,y):ys)
+-- >    | timex >  timey = (timey,y)     : unionWith f ((timex,x):xs) ys
+-- >    | timex == timey = (timex,f x y) : unionWith f xs ys
+unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
+unionWith f e1 e2 = E $ Prim.unionWith f (unE e1) (unE e2)
 
 -- | Allow all event occurrences that are 'Just' values, discard the rest.
 -- Variant of 'filterE'.
-filterJust :: Event t (Maybe a) -> Event t a
-filterJust = E . Prim.filterJust . Prim.mapE (decide . catMaybes) . unE
-    where
-    decide xs = if null xs then Nothing else Just xs
+filterJust :: Event (Maybe a) -> Event a
+filterJust = E . Prim.filterJust . unE
 
 -- | Allow all events that fulfill the predicate, discard the rest.
 -- Think of it as
 -- 
 -- > filterE p es = [(time,a) | (time,a) <- es, p a]
-filterE   :: (a -> Bool) -> Event t a -> Event t a
+filterE   :: (a -> Bool) -> Event a -> Event a
 filterE p = filterJust . fmap (\x -> if p x then Just x else Nothing)
-
--- | Collect simultaneous event occurences.
--- The result will never contain an empty list.
--- Example:
---
--- > collect [(time1, e1), (time1, e2)] = [(time1, [e1,e2])]
-collect   :: Event t a -> Event t [a]
-collect e = E $ Prim.mapE singleton (unE e)
-
--- | Emit simultaneous event occurrences.
--- The first element in the list will be emitted first, and so on.
---
--- Up to strictness, we have
---
--- > spill . collect = id
-spill :: Event t [a] -> Event t a
-spill e = E $ Prim.filterJust $ Prim.mapE (nonempty . concat) (unE e)
-    where
-    nonempty [] = Nothing
-    nonempty xs = Just xs
 
 -- | Construct a time-varying function from an initial value and 
 -- a stream of new values. Think of it as
 --
--- > stepper x0 ex = \time -> last (x0 : [x | (timex,x) <- ex, timex < time])
+-- > stepper x0 ex = \time1 -> \time2 ->
+--      last (x0 : [x | (timex,x) <- ex, time1 < timex, timex < time2])
 -- 
 -- Note that the smaller-than-sign in the comparision @timex < time@ means 
 -- that the value of the behavior changes \"slightly after\"
@@ -157,8 +118,8 @@ spill e = E $ Prim.filterJust $ Prim.mapE (nonempty . concat) (unE e)
 -- 
 -- Also note that in the case of simultaneous occurrences,
 -- only the last one is kept.
-stepper :: a -> Event t a -> Behavior t a
-stepper x e = B $ Prim.stepperB x $ Prim.mapE last $ unE e
+stepper :: a -> Event a -> Moment (Behavior a)
+stepper a = M . fmap B . Prim.stepperB a . unE
 
 -- | The 'accumE' function accumulates a stream of events.
 -- Example:
@@ -168,19 +129,8 @@ stepper x e = B $ Prim.stepperB x $ Prim.mapE last $ unE e
 --
 -- Note that the output events are simultaneous with the input events,
 -- there is no \"delay\" like in the case of 'accumB'.
-accumE   :: a -> Event t (a -> a) -> Event t a
-accumE acc = E . mapAccumE acc . Prim.mapE concatenate . unE
-    where
-    concatenate :: [a -> a] -> a -> ([a],a)
-    concatenate fs acc = (tail values, last values)
-        where values = scanl' (flip ($)) acc fs
-
-    mapAccumE :: s -> Prim.Event (s -> (a,s)) -> Prim.Event a
-    mapAccumE acc =
-        Prim.mapE fst . Prim.accumE (undefined,acc) . Prim.mapE lift
-
-    lift f (_,acc) = acc `seq` f acc
-
+accumE   :: a -> Event (a -> a) -> Moment (Event a)
+accumE acc = M . fmap E . Prim.accumE acc . unE
 
 -- strict version of scanl
 scanl' :: (a -> b -> a) -> a -> [b] -> [a]
@@ -194,22 +144,22 @@ scanl' f x ys = x : case ys of
 -- > apply bf ex = [(time, bf time x) | (time, x) <- ex]
 --
 -- This function is generally used in its infix variant '<@>'.
-apply    :: Behavior t (a -> b) -> Event t a -> Event t b
-apply bf ex = E $ Prim.applyE (Prim.mapB map $ unB bf) (unE ex)
+apply :: Behavior (a -> b) -> Event a -> Event b
+apply bf ex = E $ Prim.applyE (unB bf) (unE ex)
 
 {-$classes
 
 /Further combinators that Haddock can't document properly./
 
-> instance Applicative (Behavior t)
+> instance Applicative Behavior
 
 'Behavior' is an applicative functor. In particular, we have the following functions.
 
-> pure :: a -> Behavior t a
+> pure :: a -> Behavior a
 
 The constant time-varying value. Think of it as @pure x = \\time -> x@.
 
-> (<*>) :: Behavior t (a -> b) -> Behavior t a -> Behavior t b
+> (<*>) :: Behavior (a -> b) -> Behavior a -> Behavior b
 
 Combine behaviors in applicative style.
 Think of it as @bf \<*\> bx = \\time -> bf time $ bx time@.
@@ -223,14 +173,14 @@ instance Monoid (Event t (a -> a)) where
     mappend = unionWith (flip (.))
 -}
 
-instance Functor (Event t) where
-    fmap f e = E $ Prim.mapE (map f) (unE e)
+instance Functor Event where
+    fmap f = E . Prim.mapE f . unE
 
-instance Applicative (Behavior t) where
+instance Applicative Behavior where
     pure x    = B $ Prim.pureB x
     bf <*> bx = B $ Prim.applyB (unB bf) (unB bx)
 
-instance Functor (Behavior t) where
+instance Functor Behavior where
     fmap = liftA
 
 {-----------------------------------------------------------------------------
@@ -255,29 +205,29 @@ infixl 4 <@>, <@
 -- | Infix synonym for the 'apply' combinator. Similar to '<*>'.
 -- 
 -- > infixl 4 <@>
-(<@>) :: Behavior t (a -> b) -> Event t a -> Event t b
+(<@>) :: Behavior (a -> b) -> Event a -> Event b
 (<@>) = apply
 
 -- | Tag all event occurrences with a time-varying value. Similar to '<*'.
 --
 -- > infixl 4 <@
-(<@)  :: Behavior t b -> Event t a -> Event t b
+(<@)  :: Behavior b -> Event a -> Event b
 f <@ g = (const <$> f) <@> g 
 
 -- | Allow all events that fulfill the time-varying predicate, discard the rest.
 -- Generalization of 'filterE'.
-filterApply :: Behavior t (a -> Bool) -> Event t a -> Event t a
+filterApply :: Behavior (a -> Bool) -> Event a -> Event a
 filterApply bp = fmap snd . filterE fst . apply ((\p a-> (p a,a)) <$> bp)
 
 -- | Allow events only when the behavior is 'True'.
 -- Variant of 'filterApply'.
-whenE :: Behavior t Bool -> Event t a -> Event t a
+whenE :: Behavior Bool -> Event a -> Event a
 whenE bf = filterApply (const <$> bf)
 
 -- | Split event occurrences according to a tag.
 -- The 'Left' values go into the left component while the 'Right' values
 -- go into the right component of the result.
-split :: Event t (Either a b) -> (Event t a, Event t b)
+split :: Event (Either a b) -> (Event a, Event b)
 split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     where
     fromLeft  (Left  a) = Just a
@@ -285,16 +235,6 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     fromRight (Left  a) = Nothing
     fromRight (Right b) = Just b
 
--- | Combine simultaneous event occurrences into a single occurrence.
---
--- > unionWith f e1 e2 = fmap (foldr1 f) <$> collect (e1 `union` e2)
-unionWith :: (a -> a -> a) -> Event t a -> Event t a -> Event t a
-unionWith f e1 e2 = E $ Prim.unionWith g (unE e1) (unE e2)
-    where g xs ys = singleton $ foldr1 f (xs ++ ys)
-
--- | Keep only the last occurrence when simultaneous occurrences happen.
-calm :: Event t a -> Event t a
-calm = fmap last . collect
 
 -- $Accumulation.
 -- Note: All accumulation functions are strict in the accumulated value!
@@ -311,13 +251,14 @@ calm = fmap last . collect
 -- 
 -- Note that the value of the behavior changes \"slightly after\"
 -- the events occur. This allows for recursive definitions.
-accumB   :: a -> Event t (a -> a) -> Behavior t a
--- accumB x (Event e) = behavior $ AccumB x e
-accumB  acc = stepper acc . accumE acc
+accumB :: a -> Event (a -> a) -> Moment (Behavior a)
+accumB acc e = stepper acc =<< accumE acc e
 
 -- | Efficient combination of 'accumE' and 'accumB'.
-mapAccum :: acc -> Event t (acc -> (x,acc)) -> (Event t x, Behavior t acc)
-mapAccum acc ef = (fst <$> e, stepper acc (snd <$> e))
+mapAccum :: acc -> Event (acc -> (x,acc)) -> Moment (Event x, Behavior acc)
+mapAccum acc ef = do
+        e <- accumE  (undefined,acc) (lift <$> ef)
+        b <- stepper acc (snd <$> e)
+        return (fst <$> e, b)
     where
-    e = accumE (undefined,acc) (lift <$> ef)
     lift f (_,acc) = acc `seq` f acc

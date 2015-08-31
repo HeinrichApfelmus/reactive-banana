@@ -100,7 +100,7 @@ fromPoll poll = do
     e <- liftBuild $ do
         p <- Prim.unsafeMapIOP (const poll) =<< Prim.alwaysP
         return $ Prim.fromPure p
-    return $ stepperB a e
+    stepperB a e
 
 liftIONow :: IO a -> Moment a
 liftIONow = liftIO
@@ -117,28 +117,43 @@ imposeChanges = liftCached2 $ \(l1,_) p2 -> return (l1,p2)
 never       = don'tCache  $ liftBuild $ Prim.neverP
 unionWith f = liftCached2 $ (liftBuild .) . Prim.unionWithP f
 filterJust  = liftCached1 $ liftBuild . Prim.filterJustP
-accumE x    = liftCached1 $ liftBuild . fmap snd . Prim.accumL x
 mapE f      = liftCached1 $ liftBuild . Prim.mapP f
 applyE      = liftCached2 $ \(~(lf,_)) px -> liftBuild $ Prim.applyP lf px
 
 changesB    = liftCached1 $ \(~(lx,px)) -> liftBuild $ Prim.tagFuture lx px
 
--- FIXME: To allow more recursion, create the latch first and
--- build the pulse later.
-stepperB a  = \c1 -> cache $ do
-    p0 <- runCached c1
-    liftBuild $ do
-        p1    <- Prim.mapP const p0
-        p2    <- Prim.mapP (const ()) p1
-        (l,_) <- Prim.accumL a p1
-        return (l,p2)
-
-pureB a = stepperB a never
+pureB a = cache $ do
+    p <- runCached never
+    return (Prim.pureL a, p)
 applyB  = liftCached2 $ \(~(l1,p1)) (~(l2,p2)) -> liftBuild $ do
     p3 <- Prim.unionWithP const p1 p2
     let l3 = Prim.applyL l1 l2
     return (l3,p3)
 mapB f  = applyB (pureB f)
+
+stepperB a = \e -> do
+    let b = cache $ do
+            p0 <- runCached e
+            liftBuild $ do
+                p1    <- Prim.mapP const p0
+                p2    <- Prim.mapP (const ()) p1
+                (l,_) <- Prim.accumL a p1
+                return (l,p2)
+    
+    -- make sure that the behavior is added to the network soon
+    liftBuildFun Prim.buildLater $ void $ runCached b
+    return b
+
+accumE a = \e1 -> do
+    let e2 = cache $ do
+            p0 <- runCached e1
+            liftBuild $ do
+                (_,p1) <- Prim.accumL a p0
+                return p1
+    
+    -- make sure that the event is added to the network soon
+    liftBuildFun Prim.buildLater $ void $ runCached e2
+    return e2
 
 {-----------------------------------------------------------------------------
     Combinators - dynamic event switching
