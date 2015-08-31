@@ -1,5 +1,6 @@
-Examples
-========
+Ideas for Example applications
+==============================
+
 http://comments.gmane.org/gmane.comp.lang.haskell.cafe/90908
 http://www.reddit.com/r/haskell/comments/ijsnv/call_for_gui_examples_any_small_gui_applications/
 http://apfelmus.nfshost.com/blog/2011/07/08-call-for-gui-examples.html
