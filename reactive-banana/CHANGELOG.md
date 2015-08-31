@@ -1,6 +1,11 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 1.0.0.0**
+
+* Remove phantom type parameter and introduce `Moment` monad instead.
+* Change `Event` type to only allow a single event per moment in time.
+
 **version 0.9.0.0**
 
 * Implement garbage collection for dynamically switched events.
