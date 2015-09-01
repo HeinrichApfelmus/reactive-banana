@@ -131,29 +131,36 @@ applyB  = liftCached2 $ \(~(l1,p1)) (~(l2,p2)) -> liftBuild $ do
     return (l3,p3)
 mapB f  = applyB (pureB f)
 
-stepperB a = \e -> do
-    let b = cache $ do
-            p0 <- runCached e
-            liftBuild $ do
-                p1    <- Prim.mapP const p0
-                p2    <- Prim.mapP (const ()) p1
-                (l,_) <- Prim.accumL a p1
-                return (l,p2)
-    
-    -- make sure that the behavior is added to the network soon
-    liftBuildFun Prim.buildLater $ void $ runCached b
-    return b
+{-----------------------------------------------------------------------------
+    Combinators - accumulation
+------------------------------------------------------------------------------}
+-- make sure that the event is added to the network eventually
+trimE :: Event a -> Moment (Event a)
+trimE e = do
+    liftBuildFun Prim.buildLater $ void $ runCached e
+    return e
 
-accumE a = \e1 -> do
-    let e2 = cache $ do
-            p0 <- runCached e1
-            liftBuild $ do
-                (_,p1) <- Prim.accumL a p0
-                return p1
-    
-    -- make sure that the event is added to the network soon
-    liftBuildFun Prim.buildLater $ void $ runCached e2
-    return e2
+-- make sure that the behavior is added to the network eventually
+trimB :: Behavior a -> Moment (Behavior a)
+trimB b = do
+    liftBuildFun Prim.buildLater $ void $ runCached b
+    return $ b
+
+stepperB a = \e ->
+    trimB $ cache $ do
+        p0 <- runCached e
+        liftBuild $ do
+            p1    <- Prim.mapP const p0
+            p2    <- Prim.mapP (const ()) p1
+            (l,_) <- Prim.accumL a p1
+            return (l,p2)
+
+accumE a = \e1 ->
+    trimE $ cache $ do
+        p0 <- runCached e1
+        liftBuild $ do
+            (_,p1) <- Prim.accumL a p0
+            return p1
 
 {-----------------------------------------------------------------------------
     Combinators - dynamic event switching
@@ -170,18 +177,6 @@ valueB b = do
 
 initialBLater :: Behavior a -> Moment a
 initialBLater = liftBuildFun Prim.buildLaterReadNow . valueB
-
-trimE :: Event a -> Moment (Moment (Event a))
-trimE e = do
-    -- make sure that the event is added to the network eventually
-    liftBuildFun Prim.buildLater $ void $ runCached e
-    return $ return $ e
-
-trimB :: Behavior a -> Moment (Moment (Behavior a))
-trimB b = do
-    -- make sure that the behavior is added to the network eventually
-    liftBuildFun Prim.buildLater $ void $ runCached b
-    return $ return $ b
 
 executeP :: Pulse (Moment a) -> Moment (Pulse a)
 executeP p1 = do
