@@ -21,12 +21,13 @@ module Reactive.Banana.Combinators (
     never, unionWith, filterE,
     apply,
     -- $classes
+
     -- ** Accumulation
     Moment, MonadMoment,
     accumE, stepper,
 
     -- ** Higher-order
-    valueB, observeE, switchE, switchB,
+    valueB, valueBLater, observeE, switchE, switchB,
 
     -- * Derived Combinators
     -- ** Infix operators
@@ -162,7 +163,7 @@ instance Functor Behavior where
 -- a stream of new values. Think of it as
 --
 -- > stepper x0 ex = \time1 -> \time2 ->
---      last (x0 : [x | (timex,x) <- ex, time1 < timex, timex < time2])
+-- >     last (x0 : [x | (timex,x) <- ex, time1 < timex, timex < time2])
 --
 -- Note that the smaller-than-sign in the comparision @timex < time@ means
 -- that the value of the behavior changes \"slightly after\"
@@ -185,15 +186,24 @@ stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 accumE :: MonadMoment m => a -> Event (a -> a) -> m (Event a)
 accumE acc = liftMoment . M . fmap E . Prim.accumE acc . unE
 
--- | Obtain the value of the 'Behavior' at moment @t@.
+-- | Obtain the value of the 'Behavior' at a given moment in time.
 --
 -- NOTE: The value is immediately available for pattern matching.
 -- Unfortunately, this means that @valueB@ is unsuitable for use
 -- with value recursion in the 'Moment' monad.
---
--- If you need recursion, please use 'initial' instead.
+-- If you need recursion, please use 'valueBLater' instead.
 valueB :: MonadMoment m => Behavior a -> m a
 valueB = liftMoment . M . Prim.valueB . unB
+
+-- | Obtain the value of the 'Behavior' at a given moment in time.
+--
+-- NOTE: To allow for more recursion, the value is returned /lazily/
+-- and not available for pattern matching immediately.
+-- It can be used safely with most combinators like 'stepper'.
+-- If that doesn't work for you, please use 'valueB' instead.
+valueBLater :: MonadMoment m => Behavior a -> m a
+valueBLater = liftMoment . M . Prim.initialBLater . unB
+
 
 -- | Observe a value at those moments in time where
 -- event occurrences happen.
