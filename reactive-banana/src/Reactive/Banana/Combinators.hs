@@ -7,20 +7,27 @@
 module Reactive.Banana.Combinators (
     -- * Synopsis
     -- | Combinators for building event graphs.
-    
+
     -- * Introduction
     -- $intro1
     Event, Behavior,
     -- $intro2
     interpret,
-    
+
     -- * Core Combinators
+    -- ** First-order
     module Control.Applicative,
     module Data.Monoid,
-    never, unionWith, filterE, accumE,
-    apply, stepper,
+    never, unionWith, filterE,
+    apply,
     -- $classes
-    
+    -- ** Accumulation
+    Moment, MonadMoment,
+    accumE, stepper,
+
+    -- ** Higher-order
+    valueB, observeE, switchE, switchB,
+
     -- * Derived Combinators
     -- ** Infix operators
     (<@>), (<@),
@@ -101,46 +108,14 @@ filterJust = E . Prim.filterJust . unE
 
 -- | Allow all events that fulfill the predicate, discard the rest.
 -- Think of it as
--- 
+--
 -- > filterE p es = [(time,a) | (time,a) <- es, p a]
 filterE   :: (a -> Bool) -> Event a -> Event a
 filterE p = filterJust . fmap (\x -> if p x then Just x else Nothing)
 
--- | Construct a time-varying function from an initial value and 
--- a stream of new values. Think of it as
---
--- > stepper x0 ex = \time1 -> \time2 ->
---      last (x0 : [x | (timex,x) <- ex, time1 < timex, timex < time2])
--- 
--- Note that the smaller-than-sign in the comparision @timex < time@ means 
--- that the value of the behavior changes \"slightly after\"
--- the event occurrences. This allows for recursive definitions.
--- 
--- Also note that in the case of simultaneous occurrences,
--- only the last one is kept.
-stepper :: a -> Event a -> Moment (Behavior a)
-stepper a = M . fmap B . Prim.stepperB a . unE
-
--- | The 'accumE' function accumulates a stream of events.
--- Example:
---
--- > accumE "x" [(time1,(++"y")),(time2,(++"z"))]
--- >    = [(time1,"xy"),(time2,"xyz")]
---
--- Note that the output events are simultaneous with the input events,
--- there is no \"delay\" like in the case of 'accumB'.
-accumE   :: a -> Event (a -> a) -> Moment (Event a)
-accumE acc = M . fmap E . Prim.accumE acc . unE
-
--- strict version of scanl
-scanl' :: (a -> b -> a) -> a -> [b] -> [a]
-scanl' f x ys = x : case ys of
-    []   -> []
-    y:ys -> let z = f x y in z `seq` scanl' f z ys
-
 -- | Apply a time-varying function to a stream of events.
 -- Think of it as
--- 
+--
 -- > apply bf ex = [(time, bf time x) | (time, x) <- ex]
 --
 -- This function is generally used in its infix variant '<@>'.
@@ -183,6 +158,56 @@ instance Applicative Behavior where
 instance Functor Behavior where
     fmap = liftA
 
+-- | Construct a time-varying function from an initial value and
+-- a stream of new values. Think of it as
+--
+-- > stepper x0 ex = \time1 -> \time2 ->
+--      last (x0 : [x | (timex,x) <- ex, time1 < timex, timex < time2])
+--
+-- Note that the smaller-than-sign in the comparision @timex < time@ means
+-- that the value of the behavior changes \"slightly after\"
+-- the event occurrences. This allows for recursive definitions.
+--
+-- Also note that in the case of simultaneous occurrences,
+-- only the last one is kept.
+stepper :: MonadMoment m => a -> Event a ->m (Behavior a)
+stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
+
+-- | The 'accumE' function accumulates a stream of events.
+-- Example:
+--
+-- > accumE "x" [(time1,(++"y")),(time2,(++"z"))]
+-- >    = \time0 -> filter (\(time,_) -> time >= time0)
+-- >                [(time1,"xy"),(time2,"xyz")]
+--
+-- Note that the output events are simultaneous with the input events,
+-- there is no \"delay\" like in the case of 'accumB'.
+accumE :: MonadMoment m => a -> Event (a -> a) -> m (Event a)
+accumE acc = liftMoment . M . fmap E . Prim.accumE acc . unE
+
+-- | Obtain the value of the 'Behavior' at moment @t@.
+--
+-- NOTE: The value is immediately available for pattern matching.
+-- Unfortunately, this means that @valueB@ is unsuitable for use
+-- with value recursion in the 'Moment' monad.
+--
+-- If you need recursion, please use 'initial' instead.
+valueB :: MonadMoment m => Behavior a -> m a
+valueB = liftMoment . M . Prim.valueB . unB
+
+-- | Observe a value at those moments in time where
+-- event occurrences happen.
+observeE :: Event (Moment a) -> Event a
+observeE = E . Prim.observeE . Prim.mapE unM . unE
+
+-- | Dynamically switch between 'Event'.
+switchE :: Event (Event a) -> Event a
+switchE = E . Prim.switchE . Prim.mapE (return . unE) . unE
+
+-- | Dynamically switch between 'Behavior'.
+switchB :: Behavior a -> Event (Behavior a) -> Behavior a
+switchB b = B . Prim.switchB (unB b) . Prim.mapE (return . unB) . unE
+
 {-----------------------------------------------------------------------------
     Derived Combinators
 ------------------------------------------------------------------------------}
@@ -203,7 +228,7 @@ instance Num a => Num (Behavior t a) where
 infixl 4 <@>, <@
 
 -- | Infix synonym for the 'apply' combinator. Similar to '<*>'.
--- 
+--
 -- > infixl 4 <@>
 (<@>) :: Behavior (a -> b) -> Event a -> Event b
 (<@>) = apply
@@ -212,7 +237,7 @@ infixl 4 <@>, <@
 --
 -- > infixl 4 <@
 (<@)  :: Behavior b -> Event a -> Event b
-f <@ g = (const <$> f) <@> g 
+f <@ g = (const <$> f) <@> g
 
 -- | Allow all events that fulfill the time-varying predicate, discard the rest.
 -- Generalization of 'filterE'.
@@ -238,7 +263,7 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
 
 -- $Accumulation.
 -- Note: All accumulation functions are strict in the accumulated value!
--- 
+--
 -- Note: The order of arguments is @acc -> (x,acc)@
 -- which is also the convention used by 'unfoldr' and 'State'.
 
@@ -248,7 +273,7 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
 --
 -- > accumB "x" [(time1,(++"y")),(time2,(++"z"))]
 -- >    = stepper "x" [(time1,"xy"),(time2,"xyz")]
--- 
+--
 -- Note that the value of the behavior changes \"slightly after\"
 -- the events occur. This allows for recursive definitions.
 accumB :: a -> Event (a -> a) -> Moment (Behavior a)

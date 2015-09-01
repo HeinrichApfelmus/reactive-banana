@@ -61,8 +61,7 @@ Library
                         Reactive.Banana.Frameworks,
                         Reactive.Banana.Model,
                         Reactive.Banana.Prim,
-                        Reactive.Banana.Prim.Cached,
-                        Reactive.Banana.Switch
+                        Reactive.Banana.Prim.Cached
     
     other-modules:
                         Control.Monad.Trans.ReaderWriterIO,

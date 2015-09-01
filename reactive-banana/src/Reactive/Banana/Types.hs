@@ -3,7 +3,8 @@
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Types (
     -- | Primitive types.
-    Event (..), Behavior (..), Moment (..), Future(..)
+    Event (..), Behavior (..), Moment (..), Future(..),
+    MonadMoment (..),
     ) where
 
 import Control.Applicative
@@ -27,7 +28,8 @@ no two event occurrences may happen at the same time.
 newtype Event a = E { unE :: Prim.Event a }
 -- Invariant: The empty list `[]` never occurs as event value.
 
-{-| @Behavior a@ represents a value that varies in time. Think of it as
+{-| @Behavior a@ represents a value that varies in time.
+Think of it as
 
 > type Behavior a = Time -> a
 -}
@@ -50,22 +52,34 @@ instance Applicative Future where
     pure    = F . pure
     f <*> a = F $ unF f <*> unF a
 
-{-| The 'Moment' monad denotes a value at a particular /moment in time/.
-Think of it as a reader monad
+{-| The 'Moment' monad denotes a /pure/ computation that happens
+at one particular moment in time. Think of it as a reader monad
 
 > type Moment a = Time -> a
 
-This monad is also used to describe event networks
-in the "Reactive.Banana.Frameworks" module.
-This only happens when the type parameter @t@
-is constrained by the 'Frameworks' class.
+The argument is the time at which this computation happens.
 
-To be precise, an expression of type @Moment t a@ denotes
-a value of type @a@ that is observed at a moment in time
-which is indicated by the type parameter @t@.
-
+Note that in this context, /time/ really means to /logical time/.
+Of course, every calculation on a computer takes a non-zero
+amount of wall-clock time to complete.
+What is meant here is rather the time as it relates to
+'Event's and 'Behavior's.
+We use the fiction that every calculation within the 'Moment'
+monad takes zero /logical time/ to perform.
 -}
 newtype Moment a = M { unM :: Prim.Moment a }
+
+
+{-| An instance of the 'MonadMoment' class denotes a computation
+that happens at one particular moment in time.
+
+Unlike the 'Moment' monad, it need not be pure anymore.
+-}
+class Monad m => MonadMoment m where
+    liftMoment :: Moment a -> m a
+
+instance MonadMoment Moment where
+    liftMoment = id
 
 -- boilerplate class instances
 instance Functor Moment where fmap f = M . fmap f . unM
