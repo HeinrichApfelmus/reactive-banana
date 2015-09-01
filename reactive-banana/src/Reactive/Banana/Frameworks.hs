@@ -13,14 +13,14 @@ module Reactive.Banana.Frameworks (
 
     -- * Building event networks with input/output
     -- $build
-    compile, Frameworks,
+    compile, MomentIO,
     module Control.Event.Handler,
     fromAddHandler, fromChanges, fromPoll,
-    reactimate, Future, reactimate', initial,
+    reactimate, Future, reactimate',
     changes,
     -- $changes
     imposeChanges,
-    FrameworksMoment(..), execute, liftIOLater,
+    execute, liftIOLater,
     -- $liftIO
     module Control.Monad.IO.Class,
     
@@ -41,7 +41,6 @@ import           Control.Monad.IO.Class
 import           Data.IORef
 import           Reactive.Banana.Combinators
 import qualified Reactive.Banana.Internal.Combinators as Prim
-import           Reactive.Banana.Internal.Phantom
 import           Reactive.Banana.Types
 
 
@@ -83,7 +82,7 @@ A typical setup looks like this:
 >   ...
 >
 >   -- describe the event network
->   let networkDescription :: forall t. Frameworks t => Moment t ()
+>   let networkDescription :: MomentIO ()
 >       networkDescription = do
 >           -- input: obtain  Event  from functions that register event handlers
 >           emouse    <- fromAddHandler $ registerMouseEvent window
@@ -94,8 +93,8 @@ A typical setup looks like this:
 >           bdie      <- fromPoll       $ randomRIO (1,6)
 >
 >           -- express event graph
+>           behavior1 <- accumB ...
 >           let
->               behavior1 = accumB ...
 >               ...
 >               event15 = union event13 event14
 >   
@@ -120,9 +119,6 @@ The library uses this to register event handlers with your event-based framework
 {-----------------------------------------------------------------------------
     Combinators
 ------------------------------------------------------------------------------}
-singletonsE :: Prim.Event a -> Event t a
-singletonsE = E . Prim.mapE (:[])
-
 {- | Output.
 Execute the 'IO' action whenever the event occurs.
 
@@ -140,7 +136,7 @@ Fortuantely, this is a very rare occurrence, and only happens if
 
 In these cases, the @reactimate@s follow the control flow
 of your event-based framework.
-    
+
 Note: An event network essentially behaves like a single,
 huge callback function. The 'IO' action are not run in a separate thread.
 The callback function will throw an exception if one of your 'IO' actions
@@ -148,16 +144,16 @@ does so as well.
 Your event-based framework will have to handle this situation.
 
 -}
-reactimate :: Frameworks t => Event t (IO ()) -> Moment t ()
-reactimate = M . Prim.addReactimate . Prim.mapE (return . sequence_) . unE
+reactimate :: Event (IO ()) -> MomentIO ()
+reactimate = MIO . Prim.addReactimate . Prim.mapE return . unE
 
 -- | Output.
 -- Execute the 'IO' action whenever the event occurs.
 --
 -- This version of 'reactimate' can deal with values obtained
 -- from the 'changes' function.
-reactimate' :: Frameworks t => Event t (Future (IO ())) -> Moment t ()
-reactimate' = M . Prim.addReactimate . Prim.mapE (unF . fmap sequence_ . sequence) . unE
+reactimate' :: Event (Future (IO ())) -> MomentIO ()
+reactimate' = MIO . Prim.addReactimate . Prim.mapE unF . unE
 
 
 -- | Input,
@@ -166,8 +162,8 @@ reactimate' = M . Prim.addReactimate . Prim.mapE (unF . fmap sequence_ . sequenc
 -- When the event network is actuated,
 -- this will register a callback function such that
 -- an event will occur whenever the callback function is called.
-fromAddHandler :: Frameworks t => AddHandler a -> Moment t (Event t a)
-fromAddHandler = M . fmap singletonsE . Prim.fromAddHandler
+fromAddHandler ::AddHandler a -> MomentIO (Event a)
+fromAddHandler = MIO . fmap E . Prim.fromAddHandler
 
 -- | Input,
 -- obtain a 'Behavior' by frequently polling mutable data, like the current time.
@@ -181,25 +177,17 @@ fromAddHandler = M . fmap singletonsE . Prim.fromAddHandler
 -- Ideally, the argument IO action just polls a mutable variable,
 -- it should not perform expensive computations.
 -- Neither should its side effects affect the event network significantly.
-fromPoll :: Frameworks t => IO a -> Moment t (Behavior t a)
-fromPoll = M . fmap B . Prim.fromPoll
+fromPoll :: IO a -> MomentIO (Behavior a)
+fromPoll = MIO . fmap B . Prim.fromPoll
 
 -- | Input,
 -- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
 -- 
 -- This is essentially just an application of the 'stepper' combinator.
-fromChanges :: Frameworks t => a -> AddHandler a -> Moment t (Behavior t a)
-fromChanges initial changes = stepper initial <$> fromAddHandler changes
-
--- | Output,
--- observe the initial value contained in a 'Behavior'.
---
--- NOTE: To allow for more recursion, the value is returned /lazily/
--- and not available for pattern matching immediately.
---
--- If that doesn't work for you, please use 'valueB' instead.
-initial :: Behavior t a -> Moment t a
-initial = M . Prim.initialBLater . unB
+fromChanges :: a -> AddHandler a -> MomentIO (Behavior a)
+fromChanges initial changes = do
+    e <- fromAddHandler changes
+    stepper initial e
 
 -- | Output,
 -- observe when a 'Behavior' changes.
@@ -213,13 +201,13 @@ initial = M . Prim.initialBLater . unB
 -- created by 'stepper'. There are no formal guarantees,
 -- but the idea is that
 --
--- > changes (stepper x e) = return (calm e)
+-- > changes =<< stepper x e = return e
 --
 -- Note: The values of the event will not become available
 -- until event processing is complete.
 -- It can be used only in the context of 'reactimate''.
-changes :: Frameworks t => Behavior t a -> Moment t (Event t (Future a))
-changes = return . fmap F . singletonsE . Prim.changesB . unB
+changes :: Behavior a -> MomentIO (Event (Future a))
+changes = return . E . Prim.mapE F . Prim.changesB . unB
 
 {- $changes
 
@@ -227,7 +215,7 @@ Note: If you need a variant of the 'changes' function that does /not/
 have the additional 'Future' type, then the following code snippet
 may be useful:
 
-> plainChanges :: Frameworks t => Behavior t a -> Moment t (Event t a)
+> plainChanges :: Behavior a -> MomentIO (Event a)
 > plainChanges b = do
 >     (e, handle) <- newEvent
 >     eb <- changes b
@@ -248,38 +236,20 @@ in this context. Still, it is useful in some cases.
 -- imposed event.
 --
 -- Note: This function is useful only in very specific circumstances.
-imposeChanges :: Frameworks t => Behavior t a -> Event t () -> Behavior t a
+imposeChanges :: Behavior a -> Event () -> Behavior a
 imposeChanges b e = B $ Prim.imposeChanges (unB b) (Prim.mapE (const ()) (unE e))
-
--- | Dummy type needed to simulate impredicative polymorphism.
-newtype FrameworksMoment a
-    = FrameworksMoment
-    { runFrameworksMoment :: forall t. Frameworks t => Moment t a }
-
-instance Functor FrameworksMoment where
-    fmap f (FrameworksMoment x) = FrameworksMoment (fmap f x)
-instance Applicative FrameworksMoment where
-    pure x = FrameworksMoment (pure x)
-    (FrameworksMoment f) <*> (FrameworksMoment x) = FrameworksMoment (f <*> x)
-instance Monad FrameworksMoment where
-    return x = FrameworksMoment (return x)
-    (FrameworksMoment m) >>= g = FrameworksMoment (m >>= runFrameworksMoment . g)
-
-unFM :: FrameworksMoment a -> Moment (FrameworksD,t) a
-unFM = runFrameworksMoment
 
 -- | Dynamically add input and output to an existing event network.
 --
 -- Note: You can even do 'IO' actions here, but there is no
 -- guarantee about the order in which they are executed.
-execute
-    :: Frameworks t
-    => Event t (FrameworksMoment a)
-    -> Moment t (Event t a)
-execute = M
-    . fmap singletonsE . Prim.executeE
-    . Prim.mapE (fmap last . sequence . map (unM . unFM) )
-    . unE
+-- It may also happen that the actions are not executed at all
+-- if the result event is garbage collected.
+--
+-- If you want a reliable way to turn events into 'IO' actions
+-- use the 'reactimate' and 'reactimate'' functions.
+execute :: Event (MomentIO a) -> MomentIO (Event a)
+execute = MIO . fmap E . Prim.executeE . Prim.mapE unMIO . unE
 
 -- $liftIO
 -- 
@@ -290,8 +260,8 @@ execute = M
 -- | Lift an 'IO' action into the 'Moment' monad,
 -- but defer its execution until compilation time.
 -- This can be useful for recursive definitions using 'MonadFix'.
-liftIOLater :: Frameworks t => IO () -> Moment t ()
-liftIOLater = M . Prim.liftIOLater
+liftIOLater :: IO () -> MomentIO ()
+liftIOLater = MIO . Prim.liftIOLater
 
 -- | Compile the description of an event network
 -- into an 'EventNetwork'
@@ -299,8 +269,8 @@ liftIOLater = M . Prim.liftIOLater
 --
 -- Event networks are described in the 'Moment' monad
 -- and use the 'Frameworks' class constraint.
-compile :: (forall t. Frameworks t => Moment t ()) -> IO EventNetwork
-compile m = fmap EN $ Prim.compile $ unM (m :: Moment (FrameworksD, t) ())
+compile :: MomentIO () -> IO EventNetwork
+compile = fmap EN . Prim.compile . unMIO
 
 {-----------------------------------------------------------------------------
     Running event networks
@@ -344,7 +314,7 @@ showNetwork = Prim.showNetwork . unEN
 ------------------------------------------------------------------------------}
 -- | Interpret by using a framework internally.
 -- Only useful for testing library internals.
-interpretFrameworks :: (forall t. Event t a -> Event t b) -> [a] -> IO [[b]]
+interpretFrameworks :: (Event a -> Event b) -> [a] -> IO [[b]]
 interpretFrameworks f xs = do
     output                    <- newIORef []
     (addHandler, runHandlers) <- newAddHandler
@@ -362,9 +332,7 @@ interpretFrameworks f xs = do
 
 -- | Simple way to write a single event handler with
 -- functional reactive programming.
-interpretAsHandler
-    :: (forall t. Event t a -> Event t b)
-    -> AddHandler a -> AddHandler b
+interpretAsHandler :: (Event a -> Event b) -> AddHandler a -> AddHandler b
 interpretAsHandler f addHandlerA = AddHandler $ \handlerB -> do
     network <- compile $ do
         e <- fromAddHandler addHandlerA
@@ -392,7 +360,7 @@ interpretAsHandler f addHandlerA = AddHandler $ \handlerB -> do
 -- 
 -- This function is mainly useful for passing callback functions
 -- inside a 'reactimate'.
-newEvent :: Frameworks t => Moment t (Event t a, Handler a)
+newEvent :: MomentIO (Event a, Handler a)
 newEvent = do
     (addHandler, fire) <- liftIO $ newAddHandler
     e <- fromAddHandler addHandler
