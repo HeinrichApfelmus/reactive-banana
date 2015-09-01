@@ -58,7 +58,6 @@ Library
                         Control.Event.Handler,
                         Reactive.Banana,
                         Reactive.Banana.Combinators,
-                        Reactive.Banana.Experimental.Calm,
                         Reactive.Banana.Frameworks,
                         Reactive.Banana.Model,
                         Reactive.Banana.Prim,
