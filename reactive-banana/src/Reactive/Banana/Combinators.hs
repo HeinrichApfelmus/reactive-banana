@@ -171,7 +171,7 @@ instance Functor Behavior where
 --
 -- Also note that in the case of simultaneous occurrences,
 -- only the last one is kept.
-stepper :: MonadMoment m => a -> Event a ->m (Behavior a)
+stepper :: MonadMoment m => a -> Event a -> m (Behavior a)
 stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 
 -- | The 'accumE' function accumulates a stream of events.

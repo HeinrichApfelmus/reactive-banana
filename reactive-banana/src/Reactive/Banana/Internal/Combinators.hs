@@ -144,7 +144,7 @@ trimE e = do
 trimB :: Behavior a -> Moment (Behavior a)
 trimB b = do
     liftBuildFun Prim.buildLater $ void $ runCached b
-    return $ b
+    return b
 
 stepperB a = \e ->
     trimB $ cache $ do
