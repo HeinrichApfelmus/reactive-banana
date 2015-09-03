@@ -62,7 +62,7 @@ instance Applicative Moment where
     (<*>) = ap
 instance Monad Moment where
     return a = M (return a) (return a)
-    (M x y) >>= g = M (x >>= fstM . g) (y >>= sndM . g)
+    ~(M x y) >>= g = M (x >>= fstM . g) (y >>= sndM . g)
 instance MonadFix Moment where
     mfix f = M (mfix fx) (mfix fy)
         where
@@ -70,10 +70,10 @@ instance MonadFix Moment where
         fy a = let M _ y = f a in y
 
 
-accumE   a (E x y) = M
+accumE   a ~(E x y) = M
     (fmap ex $ X.accumE a x)
     (fmap ey $ Y.accumE a y)
-stepperB a (E x y) = M
+stepperB a ~(E x y) = M
     (fmap bx $ X.stepperB a x)
     (fmap by $ Y.stepperB a y)
 stepper            = stepperB

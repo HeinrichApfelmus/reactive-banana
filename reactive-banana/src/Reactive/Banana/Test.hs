@@ -35,18 +35,18 @@ main = defaultMain
         , testModelMatch "sharing"     sharing
         , testModelMatch "unionFilter" unionFilter
         , testModelMatchM "recursive1A"  recursive1A
-        -- FIXME , testModelMatchM "recursive1B"  recursive1B
-        -- FIXME , testModelMatchM "recursive2"  recursive2
-        -- FIXME , testModelMatchM "recursive3"  recursive3
-        -- FIXME , testModelMatchM "recursive4a" recursive4a
+        , testModelMatchM "recursive1B"  recursive1B
+        , testModelMatchM "recursive2"  recursive2
+        , testModelMatchM "recursive3"  recursive3
+        , testModelMatchM "recursive4a" recursive4a
         -- , testModelMatchM "recursive4b" recursive4b
         , testModelMatchM "accumBvsE"   accumBvsE
         ]
     , testGroup "Dynamic Event Switching"
         [ testModelMatch  "observeE_id"         observeE_id
-        , testModelMatchM "initialB_immediate"  initialB_immediate
-        -- , testModelMatchM "initialB_recursive1" initialB_recursive1
-        -- , testModelMatchM "initialB_recursive2" initialB_recursive2
+        , testModelMatchM "valueB_immediate"    valueB_immediate
+        -- , testModelMatchM "valueB_recursive1" valueB_recursive1
+        -- , testModelMatchM "valueB_recursive2" valueB_recursive2
         , testModelMatchM "dynamic_apply"       dynamic_apply
         , testModelMatch  "switchE1"            switchE1
         , testModelMatchM "switchB_two"         switchB_two
@@ -189,20 +189,18 @@ accumBvsE e = mdo
 
 observeE_id = observeE . fmap return -- = id
 
-initialB_immediate e = do
+valueB_immediate e = do
     x <- valueB =<< stepper 0 e
     return $ x <$ e
 
-{-- The following tests can no longer work with 'Build'
-being a transformer of the 'IO' monad.
-See Note [Recursion].
+{-- The following tests would need to use the  valueBLater  combinator
 
-initialB_recursive1 e1 = mdo
+valueB_recursive1 e1 = mdo
     _ <- initialB b
     let b = stepper 0 e1
     return $ b <@ e1
 
-initialB_recursive2 e1 = mdo
+valueB_recursive2 e1 = mdo
     x <- initialB b
     let bf = const x <$ stepper 0 e1
     let b  = stepper 0 $ (bf <*> b) <@ e1
