@@ -4,9 +4,9 @@
 {-# LANGUAGE BangPatterns #-}
 module Reactive.Banana.Model (
     -- * Synopsis
-    -- | Model implementation of the abstract syntax tree.
+    -- | Model implementation for learning and testing.
 
-    -- * Description
+    -- * Overview
     -- $model
 
     -- * Combinators
@@ -28,12 +28,12 @@ import Control.Monad (join)
 
 {-$model
 
-This module contains the model implementation for the primitive combinators
-defined "Reactive.Banana.Internal.AST"
-which in turn are the basis for the official combinators
-documented in "Reactive.Banana.Combinators".
+This module reimplements the key FRP types and functions from the module
+"Reactive.Banana.Combinators" in a simple that is easier to understand.
+Thereby, this model also specifies the semantics of the library.
+Of course, the real implementation is much more efficient than this model here.
 
-Look at the source code to make maximal use of this module.
+To understand the model in detail, look at the source code!
 (If there is no link to the source code at every type signature,
 then you have to run cabal with --hyperlink-source flag.)
 
@@ -42,8 +42,6 @@ both the actual implementation and its model /must/ agree on the result.
 Note that this must also hold for recursive and partial definitions
 (at least in spirit, I'm not going to split hairs over @_|_@ vs @\\_ -> _|_@).
 
-Concerning time and space complexity, the model is not authoritative, however.
-Implementations are free to be much more efficient.
 -}
 
 {-----------------------------------------------------------------------------

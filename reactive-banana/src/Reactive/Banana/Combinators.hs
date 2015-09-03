@@ -6,15 +6,13 @@
 
 module Reactive.Banana.Combinators (
     -- * Synopsis
-    -- | Combinators for building event graphs.
-
-    -- * Introduction
-    -- $intro1
-    Event, Behavior,
-    -- $intro2
-    interpret,
+    -- $synopsis
 
     -- * Core Combinators
+    -- ** Event and Behavior
+    Event, Behavior,
+    interpret,
+
     -- ** First-order
     module Control.Applicative,
     module Data.Monoid,
@@ -22,7 +20,7 @@ module Reactive.Banana.Combinators (
     apply,
     -- $classes
 
-    -- ** Accumulation
+    -- ** Moment and accumulation
     Moment, MonadMoment,
     accumE, stepper,
 
@@ -50,30 +48,19 @@ import           Reactive.Banana.Types
 {-----------------------------------------------------------------------------
     Introduction
 ------------------------------------------------------------------------------}
-{-$intro1
+{-$synopsis
 
-At its core, Functional Reactive Programming (FRP) is about two
-data types 'Event' and 'Behavior' and the various ways to combine them.
+The main types and combinators of Functional Reactive Programming (FRP).
+
+At its core, FRP is about two data types 'Event' and 'Behavior'
+and the various ways to combine them.
+There is also a third type 'Moment',
+which is necessary for the higher-order combinators.
 
 -}
 
 -- Event
 -- Behavior
-
-{-$intro2
-
-As you can see, both types seem to have a superfluous parameter @t@.
-The library uses it to rule out certain gross inefficiencies,
-in particular in connection with dynamic event switching.
-For basic stuff, you can completely ignore it,
-except of course for the fact that it will annoy you in your type signatures.
-
-While the type synonyms mentioned above are the way you should think about
-'Behavior' and 'Event', they are a bit vague for formal manipulation.
-To remedy this, the library provides a very simple but authoritative
-model implementation. See "Reactive.Banana.Model" for more.
-
--}
 
 {-----------------------------------------------------------------------------
     Interpetation
@@ -163,14 +150,11 @@ instance Functor Behavior where
 -- a stream of new values. Think of it as
 --
 -- > stepper x0 ex = \time1 -> \time2 ->
--- >     last (x0 : [x | (timex,x) <- ex, time1 < timex, timex < time2])
+-- >     last (x0 : [x | (timex,x) <- ex, time1 <= timex, timex < time2])
 --
--- Note that the smaller-than-sign in the comparision @timex < time@ means
+-- Note that the smaller-than-sign in the comparision @timex < time2@ means
 -- that the value of the behavior changes \"slightly after\"
 -- the event occurrences. This allows for recursive definitions.
---
--- Also note that in the case of simultaneous occurrences,
--- only the last one is kept.
 stepper :: MonadMoment m => a -> Event a -> m (Behavior a)
 stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 
@@ -180,9 +164,6 @@ stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 -- > accumE "x" [(time1,(++"y")),(time2,(++"z"))]
 -- >    = \time0 -> filter (\(time,_) -> time >= time0)
 -- >                [(time1,"xy"),(time2,"xyz")]
---
--- Note that the output events are simultaneous with the input events,
--- there is no \"delay\" like in the case of 'accumB'.
 accumE :: MonadMoment m => a -> Event (a -> a) -> m (Event a)
 accumE acc = liftMoment . M . fmap E . Prim.accumE acc . unE
 
@@ -206,7 +187,9 @@ valueBLater = liftMoment . M . Prim.initialBLater . unB
 
 
 -- | Observe a value at those moments in time where
--- event occurrences happen.
+-- event occurrences happen. Think of it as
+--
+-- > observeE e = [(time, m time) | (time, m) <- ex]
 observeE :: Event (Moment a) -> Event a
 observeE = E . Prim.observeE . Prim.mapE unM . unE
 

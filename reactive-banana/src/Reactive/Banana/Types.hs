@@ -57,7 +57,7 @@ at one particular moment in time. Think of it as a reader monad
 
 > type Moment a = Time -> a
 
-The argument is the time at which this computation happens.
+When run, the argument tells the time at which this computation happens.
 
 Note that in this context, /time/ really means to /logical time/.
 Of course, every calculation on a computer takes some

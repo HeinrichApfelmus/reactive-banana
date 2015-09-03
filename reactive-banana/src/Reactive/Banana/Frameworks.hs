@@ -5,14 +5,16 @@
 
 module Reactive.Banana.Frameworks (
     -- * Synopsis
-    -- | Build event networks using existing event-based frameworks
-    -- and run them.
-    
+    -- | Connect to the outside world by building 'EventNetwork's
+    -- and running them.
+
     -- * Simple use
     interpretAsHandler,
 
-    -- * Building event networks with input/output
+    -- * Overview
     -- $build
+
+    -- * Building event networks with input/output
     compile, MomentIO,
     module Control.Event.Handler,
     fromAddHandler, fromChanges, fromPoll,
@@ -23,14 +25,14 @@ module Reactive.Banana.Frameworks (
     execute, liftIOLater,
     -- $liftIO
     module Control.Monad.IO.Class,
-    
+
     -- * Running event networks
     EventNetwork, actuate, pause,
-    
+
     -- * Utilities
     -- $utilities
     newEvent,
-    
+
     -- * Internal
     interpretFrameworks, showNetwork,
     ) where
@@ -60,22 +62,22 @@ The module presented here allows you to
 
 * perform /output/ in reaction to events.
 
-In constrast, the functions from "Reactive.Banana.Combinators" allow you 
+In constrast, the functions from "Reactive.Banana.Combinators" allow you
 to express the output events in terms of the input events.
 This expression is called an /event graph/.
 
 An /event network/ is an event graph together with inputs and outputs.
 To build an event network,
 describe the inputs, outputs and event graph in the
-'Moment' monad 
+'MomentIO' monad
 and use the 'compile' function to obtain an event network from that.
 
 To /activate/ an event network, use the 'actuate' function.
-The network will register its input event handlers and start 
+The network will register its input event handlers and start
 producing output.
 
 A typical setup looks like this:
-   
+
 > main = do
 >   -- initialize your GUI framework
 >   window <- newWindow
@@ -97,7 +99,7 @@ A typical setup looks like this:
 >           let
 >               ...
 >               event15 = union event13 event14
->   
+>
 >           -- output: animate some event occurences
 >           reactimate $ fmap print event15
 >           reactimate $ fmap drawCircle eventCircle
@@ -114,6 +116,9 @@ The library uses this to register event handlers with your event-based framework
 
 * Use 'reactimate' to animate /output/ events.
 
+* Use 'compile' to put everything together in an 'EventNetwork's
+and use 'actuate' to start handling events.
+
 -}
 
 {-----------------------------------------------------------------------------
@@ -124,7 +129,7 @@ Execute the 'IO' action whenever the event occurs.
 
 
 Note: If two events occur very close to each other,
-there is no guarantee that the @reactimate@s for one 
+there is no guarantee that the @reactimate@s for one
 event will have finished before the ones for the next event start executing.
 This does /not/ affect the values of events and behaviors,
 it only means that the @reactimate@ for different events may interleave.
@@ -173,7 +178,7 @@ fromAddHandler = MIO . fmap E . Prim.fromAddHandler
 --
 -- This function is occasionally useful, but
 -- the recommended way to obtain 'Behaviors' is by using 'fromChanges'.
--- 
+--
 -- Ideally, the argument IO action just polls a mutable variable,
 -- it should not perform expensive computations.
 -- Neither should its side effects affect the event network significantly.
@@ -182,7 +187,7 @@ fromPoll = MIO . fmap B . Prim.fromPoll
 
 -- | Input,
 -- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
--- 
+--
 -- This is essentially just an application of the 'stepper' combinator.
 fromChanges :: a -> AddHandler a -> MomentIO (Behavior a)
 fromChanges initial changes = do
@@ -191,13 +196,13 @@ fromChanges initial changes = do
 
 -- | Output,
 -- observe when a 'Behavior' changes.
--- 
+--
 -- Strictly speaking, a 'Behavior' denotes a value that
 -- varies /continuously/ in time,
 -- so there is no well-defined event which indicates when the behavior changes.
--- 
+--
 -- Still, for reasons of efficiency, the library provides a way to observe
--- changes when the behavior is a step function, for instance as 
+-- changes when the behavior is a step function, for instance as
 -- created by 'stepper'. There are no formal guarantees,
 -- but the idea is that
 --
@@ -241,18 +246,20 @@ imposeChanges b e = B $ Prim.imposeChanges (unB b) (Prim.mapE (const ()) (unE e)
 
 -- | Dynamically add input and output to an existing event network.
 --
--- Note: You can even do 'IO' actions here, but there is no
--- guarantee about the order in which they are executed.
--- It may also happen that the actions are not executed at all
--- if the result event is garbage collected.
---
+-- Note: You can even do 'IO' actions here,
+-- which is useful if you want to register additional event handlers
+-- dynamically.
+-- However, there is no
+-- guarantee about the order in which the actions are executed.
+-- If the result 'Event' of this function is garbage collected,
+-- it may also happen that the actions are not executed at all.
 -- If you want a reliable way to turn events into 'IO' actions
 -- use the 'reactimate' and 'reactimate'' functions.
 execute :: Event (MomentIO a) -> MomentIO (Event a)
 execute = MIO . fmap E . Prim.executeE . Prim.mapE unMIO . unE
 
 -- $liftIO
--- 
+--
 -- > liftIO :: Frameworks t => IO a -> Moment t a
 --
 -- Lift an 'IO' action into the 'Moment' monad.
@@ -266,9 +273,6 @@ liftIOLater = MIO . Prim.liftIOLater
 -- | Compile the description of an event network
 -- into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
---
--- Event networks are described in the 'Moment' monad
--- and use the 'Frameworks' class constraint.
 compile :: MomentIO () -> IO EventNetwork
 compile = fmap EN . Prim.compile . unMIO
 
@@ -348,16 +352,16 @@ interpretAsHandler f addHandlerA = AddHandler $ \handlerB -> do
 
     This section collects a few convenience functions
     for unusual use cases. For instance:
-    
+
     * The event-based framework you want to hook into is poorly designed
-    
+
     * You have to write your own event loop and roll a little event framework
 
 -}
 
--- | Build an 'Event' together with an 'IO' action that can 
+-- | Build an 'Event' together with an 'IO' action that can
 -- fire occurrences of this event. Variant of 'newAddHandler'.
--- 
+--
 -- This function is mainly useful for passing callback functions
 -- inside a 'reactimate'.
 newEvent :: MomentIO (Event a, Handler a)

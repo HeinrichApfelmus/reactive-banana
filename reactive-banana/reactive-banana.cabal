@@ -9,11 +9,13 @@ Description:
     See the project homepage <http://wiki.haskell.org/Reactive-banana>
     for more detailed documentation and examples.
     .
-    /Stability forecast:/
-    .
+    /Stability forecast./
     This is a stable library, though minor API changes are still likely.
     It features an efficient, push-driven implementation
     and has seen some optimization work.
+    .
+    /API guide./
+    Start with the "Reactive.Banana" module.
 
 Homepage:            http://wiki.haskell.org/Reactive-banana
 License:             BSD3
