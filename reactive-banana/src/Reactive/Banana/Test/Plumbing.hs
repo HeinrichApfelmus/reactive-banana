@@ -46,12 +46,9 @@ filterJust (E x y)              = E (X.filterJust x) (Y.filterJust y)
 unionWith f (E x1 y1) (E x2 y2) = E (X.unionWith f x1 x2) (Y.unionWith f y1 y2)
 mapE f (E x y)                  = E (X.mapE f x) (Y.mapE f y)
 applyE ~(B x1 y1) (E x2 y2)     = E (X.applyE x1 x2) (Y.applyE y1 y2)
-accumE a (E x y)                = E (X.accumE a x) (Y.accumE a y)
 
 instance Functor Event where fmap = mapE
 
-stepper = stepperB
-stepperB a (E x y)              = B (X.stepperB a x) (Y.stepperB a y)
 pureB a                         = B (X.pureB a) (Y.pureB a)
 applyB (B x1 y1) (B x2 y2)      = B (X.applyB x1 x2) (Y.applyB y1 y2)
 mapB f (B x y)                  = B (X.mapB f x) (Y.mapB f y)
@@ -72,34 +69,36 @@ instance MonadFix Moment where
         fx a = let M x _ = f a in x
         fy a = let M _ y = f a in y
 
-trimE :: Event a -> Moment (Moment (Event a))
-trimE (E x y) = M
-    (fmap (fmap ex . mx) $ X.trimE x)
-    (fmap (fmap ey . my) $ Y.trimE y)
-trimB :: Behavior a -> Moment (Moment (Behavior a))
-trimB (B x y) = M
-    (fmap (fmap bx . mx) $ X.trimB x)
-    (fmap (fmap by . my) $ Y.trimB y)
+
+accumE   a (E x y) = M
+    (fmap ex $ X.accumE a x)
+    (fmap ey $ Y.accumE a y)
+stepperB a (E x y) = M
+    (fmap bx $ X.stepperB a x)
+    (fmap by $ Y.stepperB a y)
+stepper            = stepperB
 
 valueB ~(B x y) = M (X.valueB x) (Y.valueB y)
 
 observeE :: Event (Moment a) -> Event a
 observeE (E x y) = E (X.observeE $ X.mapE fstM x) (Y.observeE $ Y.mapE sndM y)
 
-switchE :: Event (Moment (Event a)) -> Event a
+switchE :: Event (Event a) -> Event a
 switchE (E x y) = E
-    (X.switchE $ X.mapE (fstM . fmap fstE) x)
-    (Y.switchE $ Y.mapE (sndM . fmap sndE) y)
+    (X.switchE $ X.mapE (fstE) x)
+    (Y.switchE $ Y.mapE (sndE) y)
 
-switchB :: Behavior a -> Event (Moment (Behavior a)) -> Behavior a
+switchB :: Behavior a -> Event (Behavior a) -> Behavior a
 switchB (B x y) (E xe ye) = B
-    (X.switchB x $ X.mapE (fstM . fmap fstB) xe)
-    (Y.switchB y $ Y.mapE (sndM . fmap sndB) ye)
+    (X.switchB x $ X.mapE (fstB) xe)
+    (Y.switchB y $ Y.mapE (sndB) ye)
 
 {-----------------------------------------------------------------------------
     Derived combinators
 ------------------------------------------------------------------------------}
-accumB acc = stepperB acc . accumE acc
+accumB acc e1 = do
+    e2 <- accumE acc e1
+    stepperB acc e2
 whenE b = filterJust . applyE ((\b e -> if b then Just e else Nothing) <$> b)
 
 infixl 4 <@>, <@

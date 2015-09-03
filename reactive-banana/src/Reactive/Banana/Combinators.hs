@@ -212,11 +212,11 @@ observeE = E . Prim.observeE . Prim.mapE unM . unE
 
 -- | Dynamically switch between 'Event'.
 switchE :: Event (Event a) -> Event a
-switchE = E . Prim.switchE . Prim.mapE (return . unE) . unE
+switchE = E . Prim.switchE . Prim.mapE (unE) . unE
 
 -- | Dynamically switch between 'Behavior'.
 switchB :: Behavior a -> Event (Behavior a) -> Behavior a
-switchB b = B . Prim.switchB (unB b) . Prim.mapE (return . unB) . unE
+switchB b = B . Prim.switchB (unB b) . Prim.mapE (unB) . unE
 
 {-----------------------------------------------------------------------------
     Derived Combinators
