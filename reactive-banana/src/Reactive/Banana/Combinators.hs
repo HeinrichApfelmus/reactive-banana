@@ -168,7 +168,7 @@ stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 -- Example:
 --
 -- > accumE "x" [(time1,(++"y")),(time2,(++"z"))]
--- >     = trimeE [(time1,"xy"),(time2,"xyz")]
+-- >     = trimE [(time1,"xy"),(time2,"xyz")]
 -- >     where
 -- >     trimE e start = [(time,x) | (time,x) <- e, start <= time]
 --
