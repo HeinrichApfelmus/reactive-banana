@@ -134,33 +134,34 @@ mapB f  = applyB (pureB f)
 {-----------------------------------------------------------------------------
     Combinators - accumulation
 ------------------------------------------------------------------------------}
--- make sure that the event is added to the network eventually
-trimE :: Event a -> Moment (Event a)
-trimE e = do
-    liftBuildFun Prim.buildLater $ void $ runCached e
-    return e
-
--- make sure that the behavior is added to the network eventually
-trimB :: Behavior a -> Moment (Behavior a)
-trimB b = do
+-- Make sure that the cached computation (Event or Behavior)
+-- is executed eventually during this moment.
+trim :: Cached Moment a -> Moment (Cached Moment a)
+trim b = do
     liftBuildFun Prim.buildLater $ void $ runCached b
     return b
 
-stepperB a = \e ->
-    trimB $ cache $ do
-        p0 <- runCached e
-        liftBuild $ do
-            p1    <- Prim.mapP const p0
-            p2    <- Prim.mapP (const ()) p1
-            (l,_) <- Prim.accumL a p1
-            return (l,p2)
+-- Cache a computation at this moment in time
+-- and make sure that it is performed in the Build monad eventually
+cacheAndSchedule :: Moment a -> Moment (Cached Moment a)
+cacheAndSchedule m = ask >>= \r -> liftBuild $ do
+    let c = cache (const m r)   -- prevent let-floating!
+    Prim.buildLater $ void $ runReaderT (runCached c) r
+    return c
 
-accumE a = \e1 ->
-    trimE $ cache $ do
-        p0 <- runCached e1
-        liftBuild $ do
-            (_,p1) <- Prim.accumL a p0
-            return p1
+stepperB a e = cacheAndSchedule $ do
+    p0 <- runCached e
+    liftBuild $ do
+        p1    <- Prim.mapP const p0
+        p2    <- Prim.mapP (const ()) p1
+        (l,_) <- Prim.accumL a p1
+        return (l,p2)
+
+accumE a e1 = cacheAndSchedule $ do
+    p0 <- runCached e1
+    liftBuild $ do
+        (_,p1) <- Prim.accumL a p0
+        return p1
 
 {-----------------------------------------------------------------------------
     Combinators - dynamic event switching
