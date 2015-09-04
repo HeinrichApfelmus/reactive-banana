@@ -44,6 +44,7 @@ main = defaultMain
         ]
     , testGroup "Dynamic Event Switching"
         [ testModelMatch  "observeE_id"         observeE_id
+        , testModelMatch  "observeE_stepper"    observeE_stepper
         , testModelMatchM "valueB_immediate"    valueB_immediate
         -- , testModelMatchM "valueB_recursive1" valueB_recursive1
         -- , testModelMatchM "valueB_recursive2" valueB_recursive2
@@ -188,6 +189,12 @@ accumBvsE e = mdo
     return $ merge e1 e2
 
 observeE_id = observeE . fmap return -- = id
+
+observeE_stepper :: Event Int -> Event Int
+observeE_stepper e = observeE $ (valueB =<< mb) <$ e
+    where
+    mb :: Moment (Behavior Int)
+    mb = stepper 0 e
 
 valueB_immediate e = do
     x <- valueB =<< stepper 0 e
