@@ -152,18 +152,26 @@ instance Functor Behavior where
 -- > stepper x0 ex = \time1 -> \time2 ->
 -- >     last (x0 : [x | (timex,x) <- ex, time1 <= timex, timex < time2])
 --
--- Note that the smaller-than-sign in the comparision @timex < time2@ means
+-- Note: The smaller-than-sign in the comparison @timex < time2@ means
 -- that the value of the behavior changes \"slightly after\"
 -- the event occurrences. This allows for recursive definitions.
 stepper :: MonadMoment m => a -> Event a -> m (Behavior a)
 stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 
--- | The 'accumE' function accumulates a stream of events.
+-- | The 'accumE' function accumulates a stream of event values,
+-- similar to a /strict/ left scan, 'scanl''.
+-- It starts with an initial value and emits a new value
+-- whenever an event occurrence happens.
+-- The new value is calculated by applying the function in the event
+-- to the old value.
+--
 -- Example:
 --
 -- > accumE "x" [(time1,(++"y")),(time2,(++"z"))]
--- >    = \time0 -> filter (\(time,_) -> time >= time0)
--- >                [(time1,"xy"),(time2,"xyz")]
+-- >     = trimeE [(time1,"xy"),(time2,"xyz")]
+-- >     where
+-- >     trimE e start = [(time,x) | (time,x) <- e, start <= time]
+--
 accumE :: MonadMoment m => a -> Event (a -> a) -> m (Event a)
 accumE acc = liftMoment . M . fmap E . Prim.accumE acc . unE
 
