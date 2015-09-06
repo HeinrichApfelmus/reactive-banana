@@ -21,7 +21,7 @@ module Reactive.Banana.Combinators (
     -- $classes
 
     -- ** Moment and accumulation
-    Moment, MonadMoment,
+    Moment, MonadMoment(..),
     accumE, stepper,
 
     -- ** Higher-order
