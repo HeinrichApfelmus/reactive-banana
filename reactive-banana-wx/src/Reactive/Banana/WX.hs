@@ -32,8 +32,7 @@ import qualified Graphics.UI.WXCore as WXCore
     General
 ------------------------------------------------------------------------------}
 -- | Event with exactly one parameter.
-event1 :: Frameworks t =>
-    w -> WX.Event w (a -> IO ()) -> Moment t (Event t a)
+event1 :: w -> WX.Event w (a -> IO ()) -> MomentIO (Event a)
 event1 widget e = do
     addHandler <- liftIO $ event1ToAddHandler widget e
     fromAddHandler addHandler
@@ -44,28 +43,25 @@ event1 widget e = do
     -- Not sure what to do with this.
 
 -- | Event without parameters.
-event0 :: Frameworks t =>
-    w -> WX.Event w (IO ()) -> Moment t (Event t ())
+event0 :: w -> WX.Event w (IO ()) -> MomentIO (Event ())
 event0 widget = event1 widget . event0ToEvent1
 
 -- | Behavior from an attribute.
 -- Uses 'fromPoll', so may behave as you expect.
-behavior :: Frameworks t =>
-    w -> WX.Attr w a -> Moment t (Behavior t a)
+behavior :: w -> WX.Attr w a -> MomentIO (Behavior a)
 behavior widget attr = fromPoll $ get widget attr
 
 -- | Variant of wx properties that accept a 'Behavior'.
-data Prop' t w = forall a. (WX.Attr w a) :== Behavior t a
+data Prop' w = forall a. (WX.Attr w a) :== Behavior a
 
 infixr 0 :==
 
 -- | "Animate" a property with a behavior
-sink :: Frameworks t =>
-    w -> [Prop' t w] -> Moment t ()
+sink :: w -> [Prop' w] -> MomentIO ()
 sink widget = mapM_ sink1
     where
     sink1 (attr :== b) = do
-        x <- initial b
+        x <- valueBLater b
         liftIOLater $ set widget [attr := x]
         e <- changes b
         reactimate' $ (fmap $ \x -> set widget [attr := x]) <$> e
@@ -75,8 +71,7 @@ sink widget = mapM_ sink1
 ------------------------------------------------------------------------------}
 -- | Event that occurs when the /user/ changed
 -- the text in text edit widget.
-eventText :: Frameworks t =>
-    TextCtrl w -> Moment t (Event t String)
+eventText :: TextCtrl w -> MomentIO (Event String)
 eventText w = do
     addHandler <- liftIO $ event1ToAddHandler w (event0ToEvent1 onText)
     fromAddHandler
@@ -92,14 +87,12 @@ onText = WX.newEvent "onText" WXCore.controlGetOnText WXCore.controlOnText
 -- keyboardUp  = WX.newEvent "keyboardUp" WXCore.windowGetOnKeyUp WXCore.windowOnKeyUp
 
 -- | Behavior corresponding to user input the text field.
-behaviorText :: Frameworks t =>
-    TextCtrl w -> String -> Moment t (Behavior t String)
-behaviorText w s = stepper s <$> eventText w
+behaviorText :: TextCtrl w -> String -> MomentIO (Behavior String)
+behaviorText w s = stepper s =<< eventText w
 
 -- | Event that occurs when the /user/ changed
 -- the selection marker in a list box widget.
-eventSelection :: Frameworks t =>
-    SingleListBox b -> Moment t (Event t Int)
+eventSelection :: SingleListBox b -> MomentIO (Event Int)
 eventSelection w = do
     liftIO $ fixSelectionEvent w
     addHandler <- liftIO $ event1ToAddHandler w (event0ToEvent1 select)

@@ -1,9 +1,16 @@
 {-----------------------------------------------------------------------------
     reactive-banana-wx
-    
+
     Example: Bar tab with a variable number of widgets
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
+{-# LANGUAGE ScopedTypeVariables #-}
+    -- allows pattern signatures like
+    -- do
+    --     (b :: Behavior Int) <- stepper 0 ...
+{-# LANGUAGE RecursiveDo #-}
+    -- allows recursive do notation
+    -- mdo
+    --     ...
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
 
 import Data.Maybe (listToMaybe)
@@ -24,53 +31,52 @@ main = start $ do
     total  <- staticText f []
     add    <- button f [text := "Add"]
     remove <- button f [text := "Remove"]
-    
-    let networkDescription :: forall t. Frameworks t => Moment t ()
-        networkDescription = do
+
+    let networkDescription :: MomentIO ()
+        networkDescription = mdo
             eAdd    <- event0 add command
             eRemove <- event0 remove command
-            
+
             let
-                newEntry :: Frameworks s
-                         => Moment s (TextCtrl (), AnyMoment Behavior String) 
+                newEntry :: MomentIO (TextCtrl (), Behavior String)
                 newEntry = do
                     wentry <- liftIO $ entry f []
-                    bentry <- trimB =<< behaviorText wentry ""
+                    bentry <- behaviorText wentry ""
                     return (wentry, bentry)
-            
-            eNewEntry <- execute $ FrameworksMoment newEntry <$ eAdd
-            
-            let
-                eDoRemove = whenE (not . null <$> bEntries) eRemove
-            
-                eEntries :: Event t [(TextCtrl (), AnyMoment Behavior String)]
-                eEntries = accumE [] $
-                    ((\x -> (++ [x])) <$> eNewEntry) `union` (init <$ eDoRemove)
-            
-                bEntries = stepper [] eEntries
-            
+
+            eNewEntry <- execute $ newEntry <$ eAdd
+
+            let eDoRemove = whenE (not . null <$> bEntries) eRemove
+
+            (eEntries :: Event [(TextCtrl (), Behavior String)])
+                <- accumE [] $ unions
+                    [ (\x -> (++ [x])) <$> eNewEntry
+                    , init <$ eDoRemove
+                    ]
+            bEntries <- stepper [] eEntries
+
             reactimate $ ((\w -> set w [ visible := False]) . fst . last)
                 <$> bEntries <@ eDoRemove
-            
+
             let
-                ePrices :: Event t [AnyMoment Behavior Number]
+                ePrices :: Event [Behavior Number]
                 ePrices = map (fmap readNumber . snd) <$> eEntries
-                
-                bLayout :: Behavior t Layout
+
+                bLayout :: Behavior Layout
                 bLayout = mkLayout . map fst <$> bEntries
-                
+
                 mkLayout entries = margin 10 $ column 10 $
                     [row 10 [widget add, widget remove]] ++ map widget entries
                     ++ [row 10 [widget msg, minsize (sz 40 20) $ widget total]]
-        
-                bTotal :: Behavior t Number
+
+                bTotal :: Behavior Number
                 bTotal = switchB (pure Nothing) $
                             (fmap sum . sequenceA) <$> ePrices
 
             sink total [text   :== showNumber <$> bTotal]
             sink f     [layout :== bLayout]
-            
-    network <- compile networkDescription    
+
+    network <- compile networkDescription
     actuate network
 
 {-----------------------------------------------------------------------------
@@ -87,7 +93,7 @@ instance Num Number where
     fromInteger = pure . fromInteger
 
 readNumber :: Read a => String -> Maybe a
-readNumber s = listToMaybe [x | (x,"") <- reads s]    
+readNumber s = listToMaybe [x | (x,"") <- reads s]
 
 showNumber :: Maybe Double -> String
 showNumber   = maybe "--" show

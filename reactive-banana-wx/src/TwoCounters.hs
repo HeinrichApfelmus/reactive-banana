@@ -3,7 +3,14 @@
     
     Example: Two Counters.
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
+{-# LANGUAGE ScopedTypeVariables #-}
+    -- allows pattern signatures like
+    -- do
+    --     (b :: Behavior Int) <- stepper 0 ...
+{-# LANGUAGE RecursiveDo #-}
+    -- allows recursive do notation
+    -- mdo
+    --     ...
 
 import Graphics.UI.WX hiding (Event)
 import Reactive.Banana
@@ -26,24 +33,25 @@ main = start $ do
                       grid 5 5 [[label "First Counter:" , widget out1]
                                ,[label "Second Counter:", widget out2]]]]
     
-    let networkDescription :: forall t. Frameworks t => Moment t ()
-        networkDescription = do
+    let networkDescription :: forall t. MomentIO ()
+        networkDescription = mdo
 
             eup     <- event0 bup     command
             edown   <- event0 bdown   command
             eswitch <- event0 bswitch command
         
             let
-                -- do we act on the left button?
-                firstcounter :: Behavior t Bool
-                firstcounter = accumB True $ not <$ eswitch
+            -- do we act on the left button?
+            (firstcounter :: Behavior Bool)
+                <- accumB True $ not <$ eswitch
         
-                -- joined state of the two counters
-                counters :: Behavior t (Int, Int)
-                counters = accumB (0,0) $
-                    union ((increment <$> firstcounter) `apply` eup)
-                          ((decrement <$> firstcounter) `apply` edown)
-            
+            -- joined state of the two counters
+            (counters :: Behavior (Int, Int))
+                <- accumB (0,0) $ unions
+                    [ increment <$> firstcounter <@> eup
+                    , decrement <$> firstcounter <@> edown
+                    ]
+            let
                 increment left _ (x,y) = if left then (x+1,y) else (x,y+1)
                 decrement left _ (x,y) = if left then (x-1,y) else (x,y-1)
     

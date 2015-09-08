@@ -3,7 +3,6 @@
     
     Example: Currency Converter
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 
 import Data.Maybe
 import Text.Printf
@@ -31,7 +30,7 @@ main = start $ do
     set f [layout := widget p]
     focusOn dollar
 
-    let networkDescription :: forall t. Frameworks t => Moment t ()
+    let networkDescription :: MomentIO ()
         networkDescription = do
         
         euroIn   <- behaviorText euro   "0"
@@ -43,7 +42,7 @@ main = start $ do
                 $ listToMaybe [x | (x,"") <- reads s] 
         
             -- define output values in terms of input values
-            dollarOut, euroOut :: Behavior t String
+            dollarOut, euroOut :: Behavior String
             dollarOut = withString (/ rate) <$> euroIn
             euroOut   = withString (* rate) <$> dollarIn
     

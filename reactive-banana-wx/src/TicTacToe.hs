@@ -4,7 +4,14 @@
     Example: A version of TicTacToe with eclectic interface elements
     Original Author: Gideon Sireling
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
+{-# LANGUAGE ScopedTypeVariables #-}
+    -- allows pattern signatures like
+    -- do
+    --     (b :: Behavior Int) <- stepper 0 ...
+{-# LANGUAGE RecursiveDo #-}
+    -- allows recursive do notation
+    -- mdo
+    --     ...
 
 import Control.Monad
 import Data.Array
@@ -35,29 +42,30 @@ main = start $ do
                     [map widget btns, map widget radios, map widget checks]
                     , floatCenter $ widget label]]
 
-    let networkDescription :: forall t. Frameworks t => Moment t ()
-        networkDescription = do
+    let networkDescription :: MomentIO ()
+        networkDescription = mdo
             -- convert WxHaskell events to FRP events
             let event0s widgets event = forM widgets $ \x -> event0 x event
             events <- liftM concat $ sequence
                 [event0s btns command, event0s radios select, event0s checks command]
         
             let
-                moves :: Event t (Game -> Game)
-                moves = foldl1 union $ zipWith (\e s -> move s <$ e) events
+                moves :: Event (Game -> Game)
+                moves = unions $ zipWith (\e s -> move s <$ e) events
                         [(x,y) | y <- [1..3], x <- [1..3]]
             
-                eState :: Event t Game
-                eState = accumE newGame moves
+            (eState :: Event Game)
+                <- accumE newGame moves
             
-                state :: Behavior t Game
-                state = stepper newGame eState
+            (state :: Behavior Game)
+                <- stepper newGame eState
             
-                currentPlayer :: Behavior t String
+            let
+                currentPlayer :: Behavior String
                 currentPlayer = (show . player) <$> state
             
-                tokens :: [Behavior t String]
-                tokens = map (\e -> stepper "" (currentPlayer <@ e)) events
+            (tokens :: [Behavior String])
+                <- mapM (\e -> stepper "" (currentPlayer <@ e)) events
         
             -- wire up the widget event handlers
             zipWithM_ (\b e -> sink b [text :== e, enabled :== null <$> e])

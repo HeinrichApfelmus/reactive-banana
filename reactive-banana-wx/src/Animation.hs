@@ -3,7 +3,14 @@
     
     Example: A simple animation.
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
+{-# LANGUAGE ScopedTypeVariables #-}
+    -- allows pattern signatures like
+    -- do
+    --     (b :: Behavior Int) <- stepper 0 ...
+{-# LANGUAGE RecursiveDo #-}
+    -- allows recursive do notation
+    -- mdo
+    --     ...
 
 import Graphics.UI.WX hiding (Event, Vector)
 import Reactive.Banana
@@ -42,30 +49,32 @@ main = start $ do
     set ff [ layout  := minsize (sz width height) $ widget pp ]
     
     -- event network
-    let networkDescription :: forall t. Frameworks t => Moment t ()
-        networkDescription = do
+    let networkDescription :: MomentIO ()
+        networkDescription = mdo
             etick  <- event0 t command  -- frame timer
             emouse <- event1 pp mouse   -- mouse events
             
-            let
-                -- mouse pointer position
-                bmouse = fromPoint <$> stepper (point 0 0)
+            -- mouse pointer position
+            (bmouse :: Behavior Vector) <-
+                fmap fromPoint <$> stepper (point 0 0)
                     (filterJust $ justMotion <$> emouse)
-            
+
+            let
                 -- sprite velocity
-                bvelocity :: Behavior t Vector
+                bvelocity :: Behavior Vector
                 bvelocity =
                     (\pos mouse -> speedup $ mouse `vecSub` pos `vecSub` vec 0 45)
                     <$> bposition <*> bmouse
                     where
                     speedup v = v `vecScale` (vecLengthDouble v / 20)
                 
-                -- sprite position
-                bposition :: Behavior t Vector
-                bposition = accumB (vec 0 0) $
+            -- sprite position
+            (bposition :: Behavior Vector)
+                <- accumB (vec 0 0) $
                     (\v pos -> clipToFrame $ (v `vecScale` dt) `vecAdd` pos)
                     <$> bvelocity <@ etick
             
+            let
                 clipToFrame v = vec
                         (clip 0 x (fromIntegral $ width  - bitmapWidth ))
                         (clip 0 y (fromIntegral $ height - bitmapHeight))

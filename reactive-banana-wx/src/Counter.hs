@@ -3,7 +3,10 @@
     
     Example: Counter
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
+{-# LANGUAGE ScopedTypeVariables #-}
+    -- allows pattern signatures like
+    -- do
+    --     (b :: Behavior Int) <- stepper 0 ...
 
 import Graphics.UI.WX hiding (Event)
 import Reactive.Banana
@@ -22,16 +25,18 @@ main = start $ do
     set f [layout := margin 10 $
             column 5 [widget bup, widget bdown, widget output]]
 
-    let networkDescription :: forall t. Frameworks t => Moment t ()
+    let networkDescription :: MomentIO ()
         networkDescription = do
         
         eup   <- event0 bup   command
         edown <- event0 bdown command
         
-        let
-            counter :: Behavior t Int
-            counter = accumB 0 $ ((+1) <$ eup) `union` (subtract 1 <$ edown)
-    
+        (counter :: Behavior Int)
+            <- accumB 0 $ unions
+                [ (+1)       <$ eup
+                , subtract 1 <$ edown
+                ]
+
         sink output [text :== show <$> counter] 
 
     network <- compile networkDescription    
