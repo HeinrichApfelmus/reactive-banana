@@ -34,7 +34,7 @@ module Reactive.Banana.Combinators (
     filterJust, filterApply, whenE, split,
     -- ** Accumulation
     -- $Accumulation.
-    accumB, mapAccum,
+    unions, accumB, mapAccum,
     ) where
 
 import Control.Applicative
@@ -267,6 +267,19 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
 --
 -- Note: The order of arguments is @acc -> (x,acc)@
 -- which is also the convention used by 'unfoldr' and 'State'.
+
+-- | Merge event streams whose values are functions.
+-- In case of simultaneous occurrences, the functions at the beginning
+-- of the list are applied /after/ the functions at the end.
+--
+-- > unions [] = never
+-- > unions xs = foldr1 (unionWith (.)) xs
+--
+-- Very useful in conjunction with accumulation functions like 'accumB'
+-- and 'accumE'.
+unions :: [Event (a -> a)] -> Event (a -> a)
+unions [] = never
+unions xs = foldr1 (unionWith (.)) xs
 
 -- | The 'accumB' function accumulates event occurrences into a 'Behavior'.
 --
