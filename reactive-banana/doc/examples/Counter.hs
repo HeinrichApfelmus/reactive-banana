@@ -70,7 +70,10 @@ setupNetwork (eplus, eminus, espause) = compile $ do
     counterDown <- fromAddHandler (addHandler eminus)
     epause      <- fromAddHandler (addHandler espause)
 
-    let ecount = accumE 0 $ ((+1) <$ counterUp) `union` (subtract 1 <$ counterDown)
+    ecount <- accumE 0 $ unions
+        [ (+1)       <$ counterUp
+        , subtract 1 <$ counterDown
+        ]
 
     reactimate $ fmap print ecount
     reactimate $ fmap pause epause

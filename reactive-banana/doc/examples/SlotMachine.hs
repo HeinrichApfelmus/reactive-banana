@@ -3,7 +3,14 @@
     
     Example: Slot machine
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. NetworkDescription t"
+{-# LANGUAGE ScopedTypeVariables #-}
+    -- allows pattern signatures like
+    -- do
+    --     (b :: Behavior Int) <- stepper 0 ...
+{-# LANGUAGE RecursiveDo #-}
+    -- allows recursive do notation
+    -- mdo
+    --     ...
 
 import Control.Monad (when)
 import Data.Maybe (isJust, fromJust)
@@ -21,7 +28,7 @@ main :: IO ()
 main = do
     displayHelpMessage
     sources <- makeSources
-    network <- compile $ setupNetwork sources
+    network <- compile $ networkDescription sources
     actuate network
     eventLoop sources
 
@@ -79,10 +86,9 @@ type Reels = (Int,Int,Int)
 data Win = Double | Triple
 
 
--- Set up the program logic in terms of events and behaviors.
-setupNetwork :: forall t. Frameworks t => 
-    (EventSource (), EventSource ()) -> Moment t ()
-setupNetwork (escoin,esplay) = do
+-- Program logic in terms of events and behaviors.
+networkDescription :: (EventSource (), EventSource ()) -> MomentIO ()
+networkDescription (escoin,esplay) = mdo
     -- initial random number generator
     initialStdGen <- liftIO $ newStdGen
 
@@ -90,20 +96,19 @@ setupNetwork (escoin,esplay) = do
     ecoin <- fromAddHandler (addHandler escoin)
     eplay <- fromAddHandler (addHandler esplay)
     
-    let         
-        -- The state of the slot machine is captured in Behaviors.
-            
-        -- State: credits that the player has to play the game
-        -- The  ecoin      event adds a coin to the credits
-        -- The  edoesplay  event removes money
-        -- The  ewin       event adds credits because the player has won
-        bcredits :: Behavior t Money
-        ecredits :: Event t Money
-        (ecredits, bcredits) = mapAccum 0 . fmap (\f x -> (f x,f x)) $
-            ((addCredit <$ ecoin)
-            `union` (removeCredit <$ edoesplay)
-            `union` (addWin <$> ewin))
+    -- The state of the slot machine is captured in Behaviors.
         
+    -- State: credits that the player has to play the game
+    -- The  ecoin      event adds a coin to the credits
+    -- The  edoesplay  event removes money
+    -- The  ewin       event adds credits because the player has won
+    (ecredits :: Event Money, bcredits :: Behavior Money)
+        <- mapAccum 0 . fmap (\f x -> (f x,f x)) $ unions $
+            [ addCredit    <$ ecoin
+            , removeCredit <$ edoesplay
+            , addWin       <$> ewin
+            ]
+    let
         -- functions that change the accumulated state
         addCredit     = (+1)
         removeCredit  = subtract 1
@@ -111,34 +116,34 @@ setupNetwork (escoin,esplay) = do
         addWin Triple = (+20)
         
         -- Event: does the player have enough money to play the game?
-        emayplay :: Event t Bool
-        emayplay = apply ((\credits _ -> credits > 0) <$> bcredits) eplay
+        emayplay :: Event Bool
+        emayplay = (\credits _ -> credits > 0) <$> bcredits <@> eplay
         
         -- Event: player has enough coins and plays
-        edoesplay :: Event t ()
+        edoesplay :: Event ()
         edoesplay = () <$ filterE id  emayplay
         -- Event: event that fires when the player doesn't have enough money
-        edenied   :: Event t ()
+        edenied   :: Event ()
         edenied   = () <$ filterE not emayplay
         
         
-        -- State: random number generator
-        bstdgen :: Behavior t StdGen
-        eroll   :: Event t Reels
+    -- State: random number generator
+    (eroll :: Event Reels, bstdgen :: Behavior StdGen)
         -- accumulate the random number generator while rolling the reels
-        (eroll, bstdgen) = mapAccum initialStdGen (roll <$> edoesplay)
-        
+        <- mapAccum initialStdGen $ roll <$> edoesplay
+
+    let
         -- roll the reels
         roll :: () -> StdGen -> (Reels, StdGen)
         roll () gen0 = ((z1,z2,z3),gen3)
             where
-            random = randomR(1,4)
+            random    = randomR(1,4)
             (z1,gen1) = random gen0
             (z2,gen2) = random gen1
             (z3,gen3) = random gen2
         
         -- Event: it's a win!
-        ewin :: Event t Win
+        ewin :: Event Win
         ewin = fmap fromJust $ filterE isJust $ fmap checkWin eroll
         checkWin (z1,z2,z3)
             | length (nub [z1,z2,z3]) == 1 = Just Triple
@@ -157,6 +162,3 @@ showCredit money    = "Credits: " ++ show money
 showRoll (z1,z2,z3) = "You rolled  " ++ show z1 ++ show z2 ++ show z3
 showWin Double = "Wow, a double!"
 showWin Triple = "Wowwowow! A triple! So awesome!"
-
-
-

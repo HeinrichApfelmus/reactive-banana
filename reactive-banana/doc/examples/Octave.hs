@@ -1,17 +1,22 @@
 {-----------------------------------------------------------------------------
     reactive-banana
-    
+
     Example: "The world's worst synthesizer"
     from the unofficial tutorial.
     <http://wiki.haskell.org/FRP_explanation_using_reactive-banana>
 ------------------------------------------------------------------------------}
+{-# LANGUAGE RecursiveDo #-}
+    -- allows recursive do notation
+    -- mdo
+    --     ...
+
 module Main where
 
-import Data.Char (toUpper)
+import Data.Char     (toUpper)
 import Control.Monad (forever)
-import System.IO (BufferMode(..), hSetEcho, hSetBuffering, stdin)
+import System.IO     (BufferMode(..), hSetEcho, hSetBuffering, stdin)
+
 import Reactive.Banana
-import Reactive.Banana.Prim (addHandler)
 import Reactive.Banana.Frameworks
 
 
@@ -40,7 +45,7 @@ instance Show Note where
     show (Note o p) = show p ++ show o
 
 -- Filter and transform events at the same time.
-filterMapJust :: (a -> Maybe b) -> Event t a -> Event t b
+filterMapJust :: (a -> Maybe b) -> Event a -> Event b
 filterMapJust f = filterJust . fmap f
 
 -- Change the original octave by adding a number of octaves, taking
@@ -55,16 +60,20 @@ getOctaveChange c = case c of
     '-' -> Just (-1)
     _ -> Nothing
 
-makeNetworkDescription :: Frameworks t => AddHandler Char -> Moment t ()
+makeNetworkDescription :: AddHandler Char -> MomentIO ()
 makeNetworkDescription addKeyEvent = do
     eKey <- fromAddHandler addKeyEvent
+
+    let eOctaveChange = filterMapJust getOctaveChange eKey
+    bOctave <- accumB 3 (changeOctave <$> eOctaveChange)
+
+    let ePitch = filterMapJust (`lookup` charPitches) eKey
+    bPitch <- stepper PC ePitch
+
     let
-        eOctaveChange = filterMapJust getOctaveChange eKey
-        bOctave = accumB 3 (changeOctave <$> eOctaveChange)
-        ePitch = filterMapJust (`lookup` charPitches) eKey
-        bPitch = stepper PC ePitch
         bNote = Note <$> bOctave <*> bPitch
         foo = Note 0 PA
+
     eNoteChanged <- changes bNote
     reactimate' $ fmap (\n -> putStrLn ("Now playing " ++ show n))
                  <$> eNoteChanged

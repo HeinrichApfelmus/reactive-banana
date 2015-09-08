@@ -71,7 +71,7 @@ setupNetwork (escounter, espause) = compile $ do
     ecounter <- fromAddHandler (addHandler escounter)
     epause   <- fromAddHandler (addHandler espause  )
     
-    let ecount = accumE 0 ((+1) <$ ecounter)
+    ecount <- accumE 0 $ (+1) <$ ecounter
     
     reactimate $ fmap print ecount
     reactimate $ fmap pause epause
