@@ -268,20 +268,23 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
 -- Note: The order of arguments is @acc -> (x,acc)@
 -- which is also the convention used by 'unfoldr' and 'State'.
 
--- | The 'accumB' function is similar to a /strict/ left fold, 'foldl''.
--- It starts with an initial value and combines it with incoming events.
--- For example, think
+-- | The 'accumB' function accumulates event occurrences into a 'Behavior'.
+--
+-- The value is accumulated using 'accumE' and converted
+-- into a time-varying value using 'stepper'.
+--
+-- Example:
 --
 -- > accumB "x" [(time1,(++"y")),(time2,(++"z"))]
 -- >    = stepper "x" [(time1,"xy"),(time2,"xyz")]
 --
--- Note that the value of the behavior changes \"slightly after\"
+-- Note: As with 'stepper', the value of the behavior changes \"slightly after\"
 -- the events occur. This allows for recursive definitions.
-accumB :: a -> Event (a -> a) -> Moment (Behavior a)
+accumB :: MonadMoment m => a -> Event (a -> a) -> m (Behavior a)
 accumB acc e = stepper acc =<< accumE acc e
 
 -- | Efficient combination of 'accumE' and 'accumB'.
-mapAccum :: acc -> Event (acc -> (x,acc)) -> Moment (Event x, Behavior acc)
+mapAccum :: MonadMoment m => acc -> Event (acc -> (x,acc)) -> m (Event x, Behavior acc)
 mapAccum acc ef = do
         e <- accumE  (undefined,acc) (lift <$> ef)
         b <- stepper acc (snd <$> e)
