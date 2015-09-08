@@ -129,13 +129,6 @@ Think of it as @bf \<*\> bx = \\time -> bf time $ bx time@.
 
 -}
 
-{- No monoid instance, sorry.
-
-instance Monoid (Event t (a -> a)) where
-    mempty  = never
-    mappend = unionWith (flip (.))
--}
-
 instance Functor Event where
     fmap f = E . Prim.mapE f . unE
 
