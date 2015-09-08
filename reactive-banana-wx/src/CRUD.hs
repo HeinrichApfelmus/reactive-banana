@@ -7,8 +7,14 @@
     that the database is updated. This is perfectly fine for rapid prototyping.
     A more sophisticated approach would use incremental updates.
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
-{-# LANGUAGE RecursiveDo, NoMonomorphismRestriction #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+    -- allows pattern signatures like
+    -- do
+    --     (b :: Behavior Int) <- stepper 0 ...
+{-# LANGUAGE RecursiveDo #-}
+    -- allows recursive do notation
+    -- mdo
+    --     ...
 
 import Prelude hiding (lookup)
 import Data.List (isPrefixOf)
@@ -46,15 +52,15 @@ main = start $ do
                 ]]
 
     -- event network
-    let networkDescription :: forall t. Frameworks t => Moment t ()
+    let networkDescription :: MomentIO ()
         networkDescription = mdo
             -- events from buttons
             eCreate <- event0 createBtn command       
             eDelete <- event0 deleteBtn command
             -- filter string
             tFilterString <- reactiveTextEntry filterEntry bFilterString
-            let bFilterString = stepper "" $ rumors tFilterString
-                tFilter = isPrefixOf <$> tFilterString
+            bFilterString <- stepper "" $ rumors tFilterString
+            let tFilter = isPrefixOf <$> tFilterString
                 bFilter = facts  tFilter
                 eFilter = rumors tFilter
 
@@ -65,42 +71,42 @@ main = start $ do
             eDataItemIn <- rumors <$> reactiveDataItem (firstname,lastname)
                 bSelectionDataItem
 
-            let -- database
-                bDatabase :: Behavior t (Database DataItem)
-                bDatabase = accumB emptydb $ unions
+            -- database
+            (bDatabase :: Behavior (Database DataItem))
+                <- accumB emptydb $ unions
                     [ create ("Emil","Example") <$ eCreate
                     , filterJust $ update' <$> bSelection <@> eDataItemIn
                     , delete <$> filterJust (bSelection <@ eDelete)
                     ]
-                    where
-                    update' mkey x = flip update x <$> mkey
+            let update' mkey x = flip update x <$> mkey
                 
-                -- selection
-                bSelection :: Behavior t (Maybe DatabaseKey)
-                bSelection = stepper Nothing $ unions
+            -- selection
+            (bSelection :: Behavior (Maybe DatabaseKey))
+                <- stepper Nothing $ foldr1 (unionWith const)
                     [ eSelection
                     , Nothing <$ eDelete
                     , Just . nextKey <$> bDatabase <@ eCreate
                     , (\b s p -> b >>= \a -> if p (s a) then Just a else Nothing)
                         <$> bSelection <*> bShowDataItem <@> eFilter
                     ]
-                
-                bLookup :: Behavior t (DatabaseKey -> Maybe DataItem)
+            
+            let
+                bLookup :: Behavior (DatabaseKey -> Maybe DataItem)
                 bLookup = flip lookup <$> bDatabase
                 
-                bShowDataItem :: Behavior t (DatabaseKey -> String)
+                bShowDataItem :: Behavior (DatabaseKey -> String)
                 bShowDataItem = (maybe "" showDataItem .) <$> bLookup
                 
-                bListBoxItems :: Behavior t [DatabaseKey]
+                bListBoxItems :: Behavior [DatabaseKey]
                 bListBoxItems = (\p show -> filter (p. show) . keys)
                     <$> bFilter <*> bShowDataItem <*> bDatabase
 
-                bSelectionDataItem :: Behavior t (Maybe DataItem)
+                bSelectionDataItem :: Behavior (Maybe DataItem)
                 bSelectionDataItem = (=<<) <$> bLookup <*> bSelection
 
             -- automatically enable / disable editing
             let
-                bDisplayItem :: Behavior t Bool
+                bDisplayItem :: Behavior Bool
                 bDisplayItem = isJust <$> bSelection
             
             sink deleteBtn [ enabled :== bDisplayItem ]
@@ -143,10 +149,10 @@ showDataItem :: ([Char], [Char]) -> [Char]
 showDataItem (firstname, lastname) = lastname ++ ", " ++ firstname
 
 -- single text entry
-reactiveTextEntry :: Frameworks t
-    => TextCtrl a
-    -> Behavior t String              -- text value
-    -> Moment t (Tidings t String)    -- user changes
+reactiveTextEntry
+    :: TextCtrl a
+    -> Behavior String              -- text value
+    -> MomentIO (Tidings String)    -- user changes
 reactiveTextEntry w btext = do
     eUser <- eventText w        -- user changes
 
@@ -160,10 +166,10 @@ reactiveTextEntry w btext = do
     return $ tidings btext eUser
 
 -- whole data item (consisting of two text entries)
-reactiveDataItem :: Frameworks t
-    => (TextCtrl a, TextCtrl b)
-    -> Behavior t (Maybe DataItem)
-    -> Moment t (Tidings t DataItem)
+reactiveDataItem
+    :: (TextCtrl a, TextCtrl b)
+    -> Behavior (Maybe DataItem)
+    -> MomentIO (Tidings DataItem)
 reactiveDataItem (firstname,lastname) binput = do
     t1 <- reactiveTextEntry firstname (fst . fromMaybe ("","") <$> binput)
     t2 <- reactiveTextEntry lastname  (snd . fromMaybe ("","") <$> binput)
@@ -178,19 +184,19 @@ reactiveDataItem (firstname,lastname) binput = do
     Changing the set may unselect the current item,
         but will not change it to another item.
 ------------------------------------------------------------------------------}
-reactiveListDisplay :: forall t a b. (Ord a, Frameworks t)
+reactiveListDisplay :: forall a b. Ord a
     => SingleListBox b          -- ListBox widget to use
-    -> Behavior t [a]           -- list of items
-    -> Behavior t (Maybe a)     -- selected element
-    -> Behavior t (a -> String) -- display an item
-    -> Moment t
-        (Tidings t (Maybe a))   -- current selection as item (possibly empty)
+    -> Behavior [a]             -- list of items
+    -> Behavior (Maybe a)       -- selected element
+    -> Behavior (a -> String)   -- display an item
+    -> MomentIO
+        (Tidings (Maybe a))     -- current selection as item (possibly empty)
 reactiveListDisplay w bitems bsel bdisplay = do
     -- animate output items
     sink w [ items :== map <$> bdisplay <*> bitems ]
    
     -- animate output selection
-    let bindices :: Behavior t (Map.Map a Int)
+    let bindices :: Behavior (Map.Map a Int)
         bindices = (Map.fromList . flip zip [0..]) <$> bitems
         bindex   = (\m a -> fromMaybe (-1) $ flip Map.lookup m =<< a) <$>
                     bindices <*> bsel
@@ -201,7 +207,7 @@ reactiveListDisplay w bitems bsel bdisplay = do
     -- sink listBox [ selection :== stepper (-1) $ bSelection <@ eDisplay ]
 
     -- user selection
-    let bindices2 :: Behavior t (Map.Map Int a)
+    let bindices2 :: Behavior (Map.Map Int a)
         bindices2 = Map.fromList . zip [0..] <$> bitems
     esel <- eventSelection w
     return $ tidings bsel $ flip Map.lookup <$> bindices2 <@> esel

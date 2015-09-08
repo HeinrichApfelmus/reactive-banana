@@ -16,22 +16,22 @@ import Reactive.Banana.Combinators
 
 -- | Data type representing a behavior 'facts'
 -- and suggestions to change it 'rumors'.
-data Tidings t a = T { facts :: Behavior t a, rumors :: Event t a }
+data Tidings a = T { facts :: Behavior a, rumors :: Event a }
 
 -- | Smart constructor. Combine facts and rumors into 'Tidings'.
-tidings :: Behavior t a -> Event t a -> Tidings t a
-tidings b e = T b (calm e)
+tidings :: Behavior a -> Event a -> Tidings a
+tidings b e = T b e
 
-instance Functor (Tidings t) where
+instance Functor Tidings where
     fmap f (T b e) = T (fmap f b) (fmap f e)
 
 -- | The applicative instance combines 'rumors'
 -- and uses 'facts' when some of the 'rumors' are not available.
-instance Applicative (Tidings t) where
+instance Applicative Tidings where
     pure x  = T (pure x) never
     f <*> x = uncurry ($) <$> pair f x
 
-pair :: Tidings t a -> Tidings t b -> Tidings t (a,b)
+pair :: Tidings a -> Tidings b -> Tidings (a,b)
 pair (T bx ex) (T by ey) = T b e
     where
     b = (,) <$> bx <*> by
