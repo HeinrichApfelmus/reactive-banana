@@ -36,7 +36,7 @@ compile m state1 = do
 
     let state2 = Network
             { nTime    = next time1
-            , nOutputs = foldr OB.insert outputs1 os
+            , nOutputs = OB.inserts outputs1 os
             , nAlwaysP = Just theAlwaysP
             }
     return (a,state2)

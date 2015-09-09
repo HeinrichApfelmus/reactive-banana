@@ -49,7 +49,7 @@ step (inputs,pulses)
     let actions = OB.inOrder outputs outputs1   -- EvalO actions in proper order
         state2  = Network
             { nTime    = next time1
-            , nOutputs = foldr OB.insert outputs1 os
+            , nOutputs = OB.inserts outputs1 os
             , nAlwaysP = Just alwaysP
             }
     return (runEvalOs $ map snd actions, state2)

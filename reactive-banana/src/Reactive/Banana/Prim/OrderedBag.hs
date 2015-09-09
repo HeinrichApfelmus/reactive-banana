@@ -9,7 +9,7 @@ module Reactive.Banana.Prim.OrderedBag where
 import           Data.Functor
 import qualified Data.HashMap.Strict as Map
 import           Data.Hashable
-import           Data.List
+import           Data.List  hiding (insert)
 import           Data.Maybe
 import           Data.Ord
 
@@ -25,8 +25,16 @@ empty = OB Map.empty 0
 
 -- | Add an element to an ordered bag after all the others.
 -- Does nothing if the element is already in the bag.
-insert :: (Eq a, Hashable a) => a -> OrderedBag a -> OrderedBag a
-insert x (OB xs n) = OB (Map.insertWith (\new old -> old) x n xs) (n+1)
+insert :: (Eq a, Hashable a) => OrderedBag a -> a -> OrderedBag a
+insert (OB xs n) x = OB (Map.insertWith (\new old -> old) x n xs) (n+1)
+
+-- | Add a sequence of elements to an ordered bag.
+--
+-- The ordering is left-to-right. For example, the head of the sequence
+-- comes after all elements in the bag,
+-- but before the other elements in the sequence.
+inserts :: (Eq a, Hashable a) => OrderedBag a -> [a] -> OrderedBag a
+inserts bag xs = foldl insert bag xs
 
 -- | Reorder a list of elements to appear as they were inserted into the bag.
 -- Remove any elements from the list that do not appear in the bag.
