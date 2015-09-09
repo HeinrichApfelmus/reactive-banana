@@ -69,7 +69,6 @@ Library
                         Control.Monad.Trans.ReaderWriterIO,
                         Control.Monad.Trans.RWSIO,
                         Reactive.Banana.Internal.Combinators,
-                        Reactive.Banana.Internal.Phantom,
                         Reactive.Banana.Prim.Combinators,
                         Reactive.Banana.Prim.Compile,
                         Reactive.Banana.Prim.Dependencies,
