@@ -24,6 +24,8 @@ that are tagged with their corresponding time of occurence,
 Each pair is called an /event occurrence/.
 Note that within a single event stream,
 no two event occurrences may happen at the same time.
+
+<<doc/frp-event.png>>
 -}
 newtype Event a = E { unE :: Prim.Event a }
 -- Invariant: The empty list `[]` never occurs as event value.
@@ -32,6 +34,8 @@ newtype Event a = E { unE :: Prim.Event a }
 Think of it as
 
 > type Behavior a = Time -> a
+
+<<doc/frp-behavior.png>>
 -}
 newtype Behavior a = B { unB :: Prim.Behavior a }
 

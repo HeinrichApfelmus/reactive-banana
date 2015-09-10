@@ -30,6 +30,7 @@ extra-source-files:     CHANGELOG.md,
                         doc/examples/*.hs,
                         src/Reactive/Banana/Test.hs,
                         src/Reactive/Banana/Test/Plumbing.hs
+extra-doc-files:        doc/*.png
 
 Source-repository head
     type:               git
