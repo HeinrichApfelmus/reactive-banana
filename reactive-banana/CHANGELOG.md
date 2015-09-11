@@ -3,8 +3,20 @@ Changelog for the `reactive-banana` package
 
 **version 1.0.0.0**
 
-* Remove phantom type parameter and introduce `Moment` monad instead.
-* Change `Event` type to only allow a single event per moment in time.
+The API has been redesign significantly in this version!
+
+* Remove phantom type parameter `t` from `Event`, `Behavior` and `Moment` types.
+    * Change accumulation functions (`accumB`, `accumE`, `stepper`) to have a monadic result type.
+    * Merge module `Reactive.Banana.Switch` into module `Reactive.Banana.Combinators`.
+    * Simplify types of the switching functions (`switchE`, `switchB`, `observeB`, `execute`).
+    * Remove functions `trimE` and `trimB`.
+    * Remove types `AnyMoment` and `Identity`.
+* Remove `Frameworks` class constraint, use `MomentIO` type instead.
+    * Add class `MonadMoment` for both polymoprhism over the `Moment` and `MomentIO` types.
+* Change type `Event` to only allow a single event per moment in time.
+    * Remove function `union`. Use `unionWith` instead.
+    * Change function `unions` to only merge events of type `Event (a -> a)`.
+* Remove module `Reactive.Banana.Experimental.Calm`.
 
 **version 0.9.0.0**
 
@@ -13,7 +25,8 @@ Changelog for the `reactive-banana` package
 * Limit value recursion in the `Moment` monad slightly.
 * Change `initial` and `valueB` to behave subtly different when it comes to value recursion in the `Moment` monad.
 * Add `Functor`, `Applicative` and `Monad` instances for the `FrameworksMoment` type.
-* Depend on the [pqueues][] package instead of the [psqueues][] package again, as the former has been updated to work with the current version of GHC.
+* Depend on the [pqueue][] package instead of the [psqueues][] package again, as the former has been updated to work with the current version of GHC.
+
   [#79]: https://github.com/HeinrichApfelmus/reactive-banana/issues/79
 
 **version 0.8.1.2**
