@@ -51,6 +51,15 @@ The reactive-banana library actually contains *two* FRP implementations:
   [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Model.hs
   [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Prim.hs
 
+## License
+
+The source code is distributed under a BSD3 license. See the `LICENSE` files in the corresponding subdirectories.
+
+The reactive-banana mascot [[png]][mascot] is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a> with attribution to Heinrich Apfelmus and the reactive-banana library.
+
+  [mascot]: https://github.com/HeinrichApfelmus/reactive-banana/raw/master/banana.png
+
+
 ## Contribute
 
 Send me your examples, bindings, problems, suggestions, etc!
