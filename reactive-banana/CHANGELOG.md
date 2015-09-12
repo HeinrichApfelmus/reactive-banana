@@ -17,6 +17,7 @@ The API has been redesign significantly in this version!
     * Remove function `union`. Use `unionWith` instead.
     * Change function `unions` to only merge events of type `Event (a -> a)`.
 * Remove module `Reactive.Banana.Experimental.Calm`.
+* Change the model implementation in the module `Reactive.Banana.Model` to the new API as well.
 
 **version 0.9.0.0**
 

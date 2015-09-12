@@ -23,7 +23,7 @@ import Reactive.Banana.Test.Plumbing
 main = defaultMain
     [ testGroup "Simple"
         [ testModelMatch "id"      id
-        -- , testModelMatch "never1"  never1
+        , testModelMatch "never1"  never1
         , testModelMatch "fmap1"   fmap1
         , testModelMatch "filter1" filter1
         , testModelMatch "filter2" filter2
@@ -50,7 +50,8 @@ main = defaultMain
         -- , testModelMatchM "valueB_recursive2" valueB_recursive2
         , testModelMatchM "dynamic_apply"       dynamic_apply
         , testModelMatch  "switchE1"            switchE1
-        , testModelMatchM "switchB_two"         switchB_two
+        , testModelMatchM "switchB1"            switchB1
+        , testModelMatchM "switchB2"            switchB2
         ]
     , testGroup "Regression tests"
         [ testModelMatchM "issue79" issue79
@@ -220,7 +221,14 @@ dynamic_apply e = do
     -- = stepper 0 e <@ e
 
 switchE1 e = switchE (e <$ e)
-switchB_two e = do
+
+switchB1 e = do
+    b0 <- stepper 0 e
+    b1 <- stepper 0 e
+    let b = switchB b0 $ (\x -> if odd x then b1 else b0) <$> e
+    return $ b <@ e
+
+switchB2 e = do
     b0 <- stepper 0 $ filterE even e
     b1 <- stepper 1 $ filterE odd  e
     let b = switchB b0 $ (\x -> if odd x then b1 else b0) <$> e

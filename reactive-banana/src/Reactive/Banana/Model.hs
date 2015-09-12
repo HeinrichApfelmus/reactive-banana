@@ -11,12 +11,11 @@ module Reactive.Banana.Model (
 
     -- * Combinators
     -- ** Data types
-    Event, Behavior,
+    Time, Event, Behavior, Moment,
     -- ** Basic
     never, filterJust, unionWith, mapE, accumE, applyE,
     stepperB, pureB, applyB, mapB,
     -- ** Dynamic event switching
-    Moment,
     valueB, observeE, switchE, switchB,
 
     -- * Interpretation
@@ -25,11 +24,12 @@ module Reactive.Banana.Model (
 
 import Control.Applicative
 import Control.Monad (join)
+import Data.List     (splitAt)
 
 {-$model
 
 This module reimplements the key FRP types and functions from the module
-"Reactive.Banana.Combinators" in a simple that is easier to understand.
+"Reactive.Banana.Combinators" in a way that is hopefully easier to understand.
 Thereby, this model also specifies the semantics of the library.
 Of course, the real implementation is much more efficient than this model here.
 
@@ -45,103 +45,143 @@ Note that this must also hold for recursive and partial definitions
 -}
 
 {-----------------------------------------------------------------------------
+    Types
+------------------------------------------------------------------------------}
+-- | The FRP model used in this library is actually a model with continuous time.
+--
+-- However, it can be shown that this model is observationally
+-- equivalent to a particular model with (seemingly) discrete time steps,
+-- which is implemented here.
+-- Details will be explained elsewhere.
+type Time = Int
+
+data Event    a = E Time [Maybe a]  -- starting time, event values (always infinite)
+    deriving (Show)
+data Behavior a = B Time a [a]      -- starting time, old value, new values (always infinite)
+    deriving (Show)
+type Moment   a = Time -> a         -- should be abstract
+
+epoch :: Time
+epoch = 0
+
+-- | Set the starting time of an Event.
+trimE :: Event a -> Moment (Event a)
+trimE (E t xs) s
+    | s <= t = E s $ replicate (t-s) Nothing ++ xs
+    | s >  t = E s $ drop (s-t) xs
+
+-- | Set the starting time of an Event.
+trimB :: Behavior a -> Moment (Behavior a)
+trimB (B t x xs) s
+    | s <= t = B s x $ replicate (t-s) x ++ xs
+    | s >  t = B s (last ys) zs
+        where
+        (ys,zs) = splitAt (s-t) xs
+
+-- Synchronize two entities
+syncEE ~ex@(E tx _)   ~ey@(E ty _)   = (ex `trimE` t, ey `trimE` t)
+    where t = min tx ty
+syncBE ~bx@(B tx _ _) ~ey@(E ty _)   = (bx `trimB` t, ey `trimE` t)
+    where t = min tx ty
+syncBB ~bx@(B tx _ _) ~by@(B ty _ _) = (bx `trimB` t, by `trimB` t)
+    where t = min tx ty
+
+{-----------------------------------------------------------------------------
     Basic Combinators
 ------------------------------------------------------------------------------}
-type Event a    = [Maybe a]              -- should be abstract
-data Behavior a = StepperB !a (Event a)  -- should be abstract
-
 interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
-interpret f e = f e 0
+interpret f as = zipWith const bs as
+    where
+    input  = E epoch (as ++ repeat Nothing)
+    output = f input (epoch-7) `trimE` epoch
+    E _ bs = output
+    -- build network before epoch, but start external event at epoch
 
 never :: Event a
-never = repeat Nothing
+never = E epoch (repeat Nothing)
 
 filterJust :: Event (Maybe a) -> Event a
-filterJust = map join
+filterJust (E t xs) = E t (map join xs)
 
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
-unionWith f = zipWith g
+unionWith f ex ey = E t $ zipWith g xs ys
     where
+    (E t xs, E _ ys) = syncEE ex ey
+
     g (Just x) (Just y) = Just $ f x y
     g (Just x) Nothing  = Just x
     g Nothing  (Just y) = Just y
     g Nothing  Nothing  = Nothing
 
-mapE f  = applyE (pureB f)
+mapE f = applyE (pureB f)
 
 applyE :: Behavior (a -> b) -> Event a -> Event b
-applyE _               []     = []
-applyE (StepperB f fe) (x:xs) = fmap f x : applyE (step f fe) xs
+applyE bf ex = E t $ zipWith (\f x -> fmap f x) (f:fs) xs
     where
-    step a (Nothing:b) = StepperB a b
-    step _ (Just a :b) = StepperB a b
+    (B t f fs, E _ xs) = syncBE bf ex
 
 -- applicative functor
-pureB x = StepperB x never
+pureB x = B epoch x (repeat x)
 
 applyB :: Behavior (a -> b) -> Behavior a -> Behavior b
-applyB (StepperB f fe) (StepperB x xe) =
-    StepperB (f x) $ mapE (uncurry ($)) (pair 0)
+applyB bf bx = B t (f x) $ zipWith ($) fs xs
     where
-    pair = accumE (f,x) $ unionWith (.) (mapE changeL fe) (mapE changeR xe)
-    changeL f (_,x) = (f,x)
-    changeR x (f,_) = (f,x)
+    (B t f fs, B _ x xs) = syncBB bf bx
 
 mapB f = applyB (pureB f)
 
 {-----------------------------------------------------------------------------
     Accumulation
 ------------------------------------------------------------------------------}
+-- Turn first occurence into `Nothing`.
+smotherFirst :: Event a -> Event a
+smotherFirst (E t (_:xs)) = E t (Nothing:xs)
+
 accumE :: a -> Event (a -> a) -> Moment (Event a)
-accumE x e = \time -> go x $ drop (time - 0) e
+accumE x e time = E time $ go x xs
     where
-    go x []           = []
+    E _ xs = smotherFirst $ e `trimE` time
+
     go x (Nothing:fs) = Nothing : go x fs
     go x (Just f :fs) = let y = f x in y `seq` (Just y:go y fs)
 
 stepperB :: a -> Event a -> Moment (Behavior a)
-stepperB x e = \time -> StepperB x $ drop (time - 0) e
+stepperB x e time = B time x $ go x xs
+    where
+    E _ xs = smotherFirst $ e `trimE` time
+
+    go x (Nothing:ys) = x : go x ys
+    go x (Just y :ys) = y : go y ys
 
 {-----------------------------------------------------------------------------
     Dynamic Event Switching
 ------------------------------------------------------------------------------}
-type Time     = Int
-type Moment a = Time -> a     -- should be abstract
-
 {-
 instance Monad Moment where
     return  = const
     m >>= g = \time -> g (m time) time
 -}
 
-trimB 0    b                           = b
-trimB time (StepperB x []            ) = StepperB x []
-trimB time (StepperB x (Nothing : xs)) = trimB (time-1) $ StepperB x xs
-trimB time (StepperB x (Just y  : xs)) = trimB (time-1) $ StepperB y xs
-
 valueB :: Behavior a -> Moment a
-valueB b = \time -> let StepperB x _ = trimB time b in x
+valueB b time = x
+    where B _ x _ = b `trimB` time
 
 observeE :: Event (Moment a) -> Event a
-observeE = zipWith (\time -> fmap ($ time)) [0..]
+observeE (E t xs) = E t $ zipWith (\time -> fmap ($ time)) [t..] xs
 
 switchE :: Event (Event a) -> Event a
-switchE = step 0 never
+switchE (E t xs) = E t $ go t (repeat Nothing) xs
     where
-    step time ys     []           = ys
-    step time (y:ys) (Nothing:xs) = y : step (time+1) ys xs
-    step time (y:ys) (Just zs:xs) = y : step (time+1) (drop (time+1) zs) xs
-    -- assume that the dynamic events are at least as long as the
-    -- switching event
+    go time (y:ys) (Nothing:es) = y : go (time+1) ys es
+    go time (y:ys) (Just e :es) = y : go (time+1) zs es
+        where
+        E _ zs = e `trimE` (time + 1)
 
 switchB :: Behavior a -> Event (Behavior a) -> Behavior a
-switchB (StepperB x e) = StepperB x . step 0 e
+switchB b x = B t y $ go t ys es
     where
-    step t ys     []             = ys
-    step t (y:ys) (Nothing : xs) =          y : step (t+1) ys xs
-    step t (y:ys) (Just b  : xs) = Just value : step (t+1) (drop 1 zs) xs
-        where
-        StepperB z zs = trimB t b
-        value         = case zs of
-            Just z : _ -> z -- new behavior changes right away
-            _          -> z -- new behavior stays constant for a while
+    (B t y ys, E _ es) = syncBE b x
+
+    go time (y:ys) (Nothing:es) = y : go (time+1) ys es
+    go time _      (Just b :es) = z : go (time+1) zs es
+        where B _ z zs = b `trimB` (time+1)
