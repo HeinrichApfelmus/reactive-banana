@@ -56,7 +56,7 @@ Executable Animation
             process >= 1.0 && < 1.4,
             random >= 1.0 && <= 1.1,
             executable-path == 0.0.*,
-            filepath >= 1.1 && <= 1.4,
+            filepath >= 1.1 && <= 1.4.0.0,
             reactive-banana, wx, wxcore, base
         cpp-options: -DbuildExamples
     else
@@ -78,7 +78,7 @@ Executable Asteroids
         build-depends:
             random >= 1.0 && <= 1.1,
             executable-path == 0.0.*,
-            filepath >= 1.1 && <= 1.4,
+            filepath >= 1.1 && <= 1.4.0.0,
             reactive-banana, wx, wxcore, base
         cpp-options: -DbuildExamples
     else
