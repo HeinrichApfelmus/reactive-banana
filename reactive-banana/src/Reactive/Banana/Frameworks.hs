@@ -62,7 +62,7 @@ The module presented here allows you to
 
 * perform /output/ in reaction to events.
 
-In constrast, the functions from "Reactive.Banana.Combinators" allow you
+In contrast, the functions from "Reactive.Banana.Combinators" allow you
 to express the output events in terms of the input events.
 This expression is called an /event graph/.
 
@@ -100,7 +100,7 @@ A typical setup looks like this:
 >               ...
 >               event15 = union event13 event14
 >
->           -- output: animate some event occurences
+>           -- output: animate some event occurrences
 >           reactimate $ fmap print event15
 >           reactimate $ fmap drawCircle eventCircle
 >
@@ -133,7 +133,7 @@ there is no guarantee that the @reactimate@s for one
 event will have finished before the ones for the next event start executing.
 This does /not/ affect the values of events and behaviors,
 it only means that the @reactimate@ for different events may interleave.
-Fortuantely, this is a very rare occurrence, and only happens if
+Fortunately, this is a very rare occurrence, and only happens if
 
 * you call an event handler from inside 'reactimate',
 

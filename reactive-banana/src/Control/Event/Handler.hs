@@ -22,7 +22,7 @@ type Map = Map.Map
 -- /event value/ and performs some computation.
 type Handler a = a -> IO ()
 
--- | A value of type @Addhandler a@ is a facility for registering
+-- | The type 'AddHandler' represents a facility for registering
 -- event handlers. These will be called whenever the event occurs.
 -- 
 -- When registering an event handler, you will also be given an action

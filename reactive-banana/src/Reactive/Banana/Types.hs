@@ -17,7 +17,7 @@ import qualified Reactive.Banana.Internal.Combinators as Prim
 
 {-| @Event a@ represents a stream of events as they occur in time.
 Semantically, you can think of @Event a@ as an infinite list of values
-that are tagged with their corresponding time of occurence,
+that are tagged with their corresponding time of occurrence,
 
 > type Event a = [(Time,a)]
 

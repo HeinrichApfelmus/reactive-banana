@@ -3,7 +3,7 @@ Changelog for the `reactive-banana` package
 
 **version 1.0.0.0**
 
-The API has been redesign significantly in this version!
+The API has been redesigned significantly in this version!
 
 * Remove phantom type parameter `t` from `Event`, `Behavior` and `Moment` types.
     * Change accumulation functions (`accumB`, `accumE`, `stepper`) to have a monadic result type.
@@ -12,7 +12,7 @@ The API has been redesign significantly in this version!
     * Remove functions `trimE` and `trimB`.
     * Remove types `AnyMoment` and `Identity`.
 * Remove `Frameworks` class constraint, use `MomentIO` type instead.
-    * Add class `MonadMoment` for both polymoprhism over the `Moment` and `MomentIO` types.
+    * Add class `MonadMoment` for both polymorphism over the `Moment` and `MomentIO` types.
 * Change type `Event` to only allow a single event per moment in time.
     * Remove function `union`. Use `unionWith` instead.
     * Change function `unions` to only merge events of type `Event (a -> a)`.
@@ -49,7 +49,7 @@ The API has been redesign significantly in this version!
 
 **version 0.8.0.4**
 
-* Just a reupload. The previous archive was broken.
+* Just a re-upload. The previous archive was broken.
 
 **version 0.8.0.3**
 
@@ -100,7 +100,7 @@ This update includes numerous changes, in particular a complete overhaul of the 
 * Remove general `Monoid` instance for `Event` to simplify reasoning about simultaneous events.
 * Add `initial` and `changes` combinators that allow you to observe updates to `Behavior`. Remove the `Reactive.Banana.Incremental` module.
 * Rename most modules,
-* Change type singaturs: The main types `Event`, `Behavior` and `NetworkDescription` now carry an additional phantom type.
+* Change type signatures: The main types `Event`, `Behavior` and `NetworkDescription` now carry an additional phantom type.
 
 **version 0.4.3.1**
 

@@ -42,7 +42,7 @@ flag UseExtensions
                  This enables the efficient push-driven implementation,
                  but doesn't necessarily work with compilers other than GHC.
 -- Cabal checks if the package can be build with  UseExtensions = True,
--- otherewise it is set to  False .
+-- otherwise it is set to  False .
 
 Library
     default-language:   Haskell98
