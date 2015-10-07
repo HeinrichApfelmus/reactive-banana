@@ -54,7 +54,10 @@ mkWeakIORefValueFinalizer r@(GHC.IORef (GHC.STRef r#)) v f = GHC.IO $ \s ->
   case GHC.mkWeak# r# v f s of (# s1, w #) -> (# s1, GHC.Weak w #)
 
 mkWeakIORefValue :: IORef a -> value -> IO (Weak value)
-mkWeakIORefValue a b = mkWeakIORefValueFinalizer a b (return ())
+mkWeakIORefValue a b = mkWeakIORefValueFinalizer a b $ touch a >> return ()
+    where
+    -- FIXME: The key is referenced in the finalizer for compatibility with GHCJS
+    touch ref = void $ readIORef ref
 
 mkWeakRefValue :: MonadIO m => Ref a -> value -> m (Weak value)
 mkWeakRefValue (Ref ref _) v = liftIO $ mkWeakIORefValue ref v
