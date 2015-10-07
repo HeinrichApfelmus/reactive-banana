@@ -165,6 +165,16 @@ stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 -- >     where
 -- >     trimE e start = [(time,x) | (time,x) <- e, start <= time]
 --
+--
+-- Note: It makes sense to list the 'accumE' function as a primitive
+-- combinator, but keep in mind that it can actually be expressed
+-- in terms of 'stepper' and 'apply' by using recursion:
+--
+-- > accumE a e1 = mdo
+-- >    let e2 = (\a f -> f a) <$> b <@> e1
+-- >    b <- stepper a e2
+-- >    return e2
+--
 accumE :: MonadMoment m => a -> Event (a -> a) -> m (Event a)
 accumE acc = liftMoment . M . fmap E . Prim.accumE acc . unE
 
