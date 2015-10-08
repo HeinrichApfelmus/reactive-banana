@@ -4,6 +4,7 @@
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
 module Reactive.Banana.Prim.Util where
 
+import           Control.Exception             (evaluate)
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Hashable
@@ -54,10 +55,10 @@ mkWeakIORefValueFinalizer r@(GHC.IORef (GHC.STRef r#)) v f = GHC.IO $ \s ->
   case GHC.mkWeak# r# v f s of (# s1, w #) -> (# s1, GHC.Weak w #)
 
 mkWeakIORefValue :: IORef a -> value -> IO (Weak value)
-mkWeakIORefValue a b = mkWeakIORefValueFinalizer a b $ touch a >> return ()
+mkWeakIORefValue a b = mkWeakIORefValueFinalizer a b $ touch b
     where
-    -- FIXME: The key is referenced in the finalizer for compatibility with GHCJS
-    touch ref = void $ readIORef ref
+    -- FIXME: The value is referenced in the finalizer for compatibility with GHCJS
+    touch x = void $ evaluate (Just x)
 
 mkWeakRefValue :: MonadIO m => Ref a -> value -> m (Weak value)
 mkWeakRefValue (Ref ref _) v = liftIO $ mkWeakIORefValue ref v
