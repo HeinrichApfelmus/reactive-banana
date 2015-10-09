@@ -19,6 +19,10 @@ The API has been redesigned significantly in this version!
 * Remove module `Reactive.Banana.Experimental.Calm`.
 * Change the model implementation in the module `Reactive.Banana.Model` to the new API as well.
 
+Other changes:
+
+* Add illustrations to the API documentation.
+
 **version 0.9.0.0**
 
 * Implement garbage collection for dynamically switched events.
