@@ -31,7 +31,7 @@ newtype Event a = E { unE :: Prim.Event a }
 -- Invariant: The empty list `[]` never occurs as event value.
 
 {-| @Behavior a@ represents a value that varies in time.
-Think of it as
+Semantically, you can think of it as a function
 
 > type Behavior a = Time -> a
 
@@ -57,7 +57,7 @@ instance Applicative Future where
     f <*> a = F $ unF f <*> unF a
 
 {-| The 'Moment' monad denotes a /pure/ computation that happens
-at one particular moment in time. Think of it as a reader monad
+at one particular moment in time. Semantically, it as a reader monad
 
 > type Moment a = Time -> a
 

@@ -74,13 +74,13 @@ interpret f = Prim.interpret (return . unE . f . E)
     Core combinators
 ------------------------------------------------------------------------------}
 -- | Event that never occurs.
--- Think of it as @never = []@.
+-- Semantically, @never = []@.
 never    :: Event a
 never = E Prim.never
 
 -- | Merge two event streams of the same type.
 -- The function argument specifies how event values are to be combined
--- in case of a simultaneous occurrence.
+-- in case of a simultaneous occurrence. The semantics are
 --
 -- > unionWith f ((timex,x):xs) ((timey,y):ys)
 -- >    | timex <  timey = (timex,x)     : unionWith f xs ((timey,y):ys)
@@ -95,14 +95,14 @@ filterJust :: Event (Maybe a) -> Event a
 filterJust = E . Prim.filterJust . unE
 
 -- | Allow all events that fulfill the predicate, discard the rest.
--- Think of it as
+-- Semantically,
 --
 -- > filterE p es = [(time,a) | (time,a) <- es, p a]
 filterE   :: (a -> Bool) -> Event a -> Event a
 filterE p = filterJust . fmap (\x -> if p x then Just x else Nothing)
 
 -- | Apply a time-varying function to a stream of events.
--- Think of it as
+-- Semantically,
 --
 -- > apply bf ex = [(time, bf time x) | (time, x) <- ex]
 --
@@ -120,12 +120,12 @@ apply bf ex = E $ Prim.applyE (unB bf) (unE ex)
 
 > pure :: a -> Behavior a
 
-The constant time-varying value. Think of it as @pure x = \\time -> x@.
+The constant time-varying value. Semantically, @pure x = \\time -> x@.
 
 > (<*>) :: Behavior (a -> b) -> Behavior a -> Behavior b
 
 Combine behaviors in applicative style.
-Think of it as @bf \<*\> bx = \\time -> bf time $ bx time@.
+The semantics are: @bf \<*\> bx = \\time -> bf time $ bx time@.
 
 -}
 
@@ -140,7 +140,8 @@ instance Functor Behavior where
     fmap = liftA
 
 -- | Construct a time-varying function from an initial value and
--- a stream of new values. Think of it as
+-- a stream of new values. The result will be a step function.
+-- Semantically,
 --
 -- > stepper x0 ex = \time1 -> \time2 ->
 -- >     last (x0 : [x | (timex,x) <- ex, time1 <= timex, timex < time2])
@@ -179,6 +180,9 @@ accumE :: MonadMoment m => a -> Event (a -> a) -> m (Event a)
 accumE acc = liftMoment . M . fmap E . Prim.accumE acc . unE
 
 -- | Obtain the value of the 'Behavior' at a given moment in time.
+-- Semantically, it corresponds to
+--
+-- > valueB b = \time -> b time
 --
 -- NOTE: The value is immediately available for pattern matching.
 -- Unfortunately, this means that @valueB@ is unsuitable for use
@@ -188,6 +192,9 @@ valueB :: MonadMoment m => Behavior a -> m a
 valueB = liftMoment . M . Prim.valueB . unB
 
 -- | Obtain the value of the 'Behavior' at a given moment in time.
+-- Semantically, it corresponds to
+--
+-- > valueBLater b = \time -> b time
 --
 -- NOTE: To allow for more recursion, the value is returned /lazily/
 -- and not available for pattern matching immediately.
@@ -198,17 +205,29 @@ valueBLater = liftMoment . M . Prim.initialBLater . unB
 
 
 -- | Observe a value at those moments in time where
--- event occurrences happen. Think of it as
+-- event occurrences happen. Semantically,
 --
--- > observeE e = [(time, m time) | (time, m) <- ex]
+-- > observeE e = [(time, m time) | (time, m) <- e]
 observeE :: Event (Moment a) -> Event a
 observeE = E . Prim.observeE . Prim.mapE unM . unE
 
 -- | Dynamically switch between 'Event'.
+-- Semantically,
+--
+-- > switchE ee = concat [trim t1 t2 e | (t1,t2,e) <- intervals ee]
+-- >     where
+-- >     intervals e        = [(time1, time2, x) | ((time1,x),(time2,_)) <- zip e (tail e)]
+-- >     trim time1 time2 e = [x | (timex,x) <- e, time1 < timex, timex <= time2]
+
 switchE :: Event (Event a) -> Event a
 switchE = E . Prim.switchE . Prim.mapE (unE) . unE
 
 -- | Dynamically switch between 'Behavior'.
+-- Semantically,
+--
+-- >  switchB b0 eb = \time ->
+-- >     last (b0 : [b | (time2,b) <- eb, time2 < time]) time
+
 switchB :: Behavior a -> Event (Behavior a) -> Behavior a
 switchB b = B . Prim.switchB (unB b) . Prim.mapE (unB) . unE
 
