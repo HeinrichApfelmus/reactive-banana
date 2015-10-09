@@ -146,9 +146,16 @@ instance Functor Behavior where
 -- > stepper x0 ex = \time1 -> \time2 ->
 -- >     last (x0 : [x | (timex,x) <- ex, time1 <= timex, timex < time2])
 --
+-- Here is an illustration of the result Behavior at a particular time:
+--
+-- <<doc/frp-stepper.png>>
+--
 -- Note: The smaller-than-sign in the comparison @timex < time2@ means
--- that the value of the behavior changes \"slightly after\"
--- the event occurrences. This allows for recursive definitions.
+-- that at time @time2 == timex@, the value of the Behavior will
+-- still be the previous value.
+-- In the illustration, this is indicated by the dots at the end
+-- of each step.
+-- This allows for recursive definitions.
 stepper :: MonadMoment m => a -> Event a -> m (Behavior a)
 stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 
