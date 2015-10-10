@@ -15,6 +15,7 @@ module Reactive.Banana.Frameworks (
     -- $build
 
     -- * Building event networks with input/output
+    -- ** Core functions
     compile, MomentIO,
     module Control.Event.Handler,
     fromAddHandler, fromChanges, fromPoll,
@@ -26,12 +27,13 @@ module Reactive.Banana.Frameworks (
     -- $liftIO
     module Control.Monad.IO.Class,
 
+    -- ** Utility functions
+    -- | This section collects a few convience functions
+    -- built from the core functions.
+    newEvent, mapEventIO,
+
     -- * Running event networks
     EventNetwork, actuate, pause,
-
-    -- * Utilities
-    -- $utilities
-    newEvent,
 
     -- * Internal
     interpretFrameworks, showNetwork,
@@ -313,6 +315,40 @@ pause   = Prim.pause . unEN
 showNetwork :: EventNetwork -> IO String
 showNetwork = Prim.showNetwork . unEN
 
+
+{-----------------------------------------------------------------------------
+    Utilities
+------------------------------------------------------------------------------}
+-- | Build an 'Event' together with an 'IO' action that can
+-- fire occurrences of this event. Variant of 'newAddHandler'.
+--
+-- This function is mainly useful for passing callback functions
+-- inside a 'reactimate'.
+newEvent :: MomentIO (Event a, Handler a)
+newEvent = do
+    (addHandler, fire) <- liftIO $ newAddHandler
+    e <- fromAddHandler addHandler
+    return (e,fire)
+
+-- | Build a new 'Event' that contains the result
+-- of an IO computation.
+-- The input and result events will /not/ be simultaneous anymore,
+-- the latter will occur /later/ than the former.
+--
+-- Please use the 'fmap' for 'Event' if your computation is pure.
+--
+-- Implementation:
+--
+-- > mapEventIO f e1 = do
+-- >     (e2, handler) <- newEvent
+-- >     reactimate $ (\a -> f a >>= handler) <$> e1
+-- >     return e2
+mapEventIO :: (a -> IO b) -> Event a -> MomentIO (Event b)
+mapEventIO f e1 = do
+    (e2, handler) <- newEvent
+    reactimate $ (\a -> f a >>= handler) <$> e1
+    return e2
+
 {-----------------------------------------------------------------------------
     Simple use
 ------------------------------------------------------------------------------}
@@ -343,29 +379,3 @@ interpretAsHandler f addHandlerA = AddHandler $ \handlerB -> do
         reactimate $ handlerB <$> f e
     actuate network
     return (pause network)
-
-
-{-----------------------------------------------------------------------------
-    Utilities
-------------------------------------------------------------------------------}
-{-$utilities
-
-    This section collects a few convenience functions
-    for unusual use cases. For instance:
-
-    * The event-based framework you want to hook into is poorly designed
-
-    * You have to write your own event loop and roll a little event framework
-
--}
-
--- | Build an 'Event' together with an 'IO' action that can
--- fire occurrences of this event. Variant of 'newAddHandler'.
---
--- This function is mainly useful for passing callback functions
--- inside a 'reactimate'.
-newEvent :: MomentIO (Event a, Handler a)
-newEvent = do
-    (addHandler, fire) <- liftIO $ newAddHandler
-    e <- fromAddHandler addHandler
-    return (e,fire)

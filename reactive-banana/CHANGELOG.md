@@ -21,6 +21,7 @@ The API has been redesigned significantly in this version!
 
 Other changes:
 
+* Add `mapEventIO` utility function to build an event that contains the result of an IO computation.
 * Add illustrations to the API documentation.
 
 **version 0.9.0.0**
