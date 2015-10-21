@@ -330,7 +330,7 @@ newEvent = do
     e <- fromAddHandler addHandler
     return (e,fire)
 
--- | Build an 'Behavior' toget with an initial value and a 'IO'
+-- | Build an 'Behavior' together with an initial value and a 'IO'
 --  action that can push changes to this 'Behavior'.
 newBehavior :: a -> MomentIO (Behavior a, Handler a)
 newBehavior s0 = do
