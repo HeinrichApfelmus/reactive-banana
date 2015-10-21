@@ -332,7 +332,7 @@ newEvent = do
 
 -- | Build an 'Behavior' toget with an initial value and a 'IO'
 --  action that can push changes to this 'Behavior'.
-newBehavior :: a -> MomentIO (Behavior a, a -> IO ())
+newBehavior :: a -> MomentIO (Behavior a, Handler a)
 newBehavior s0 = do
   (e, fe) <- newEvent
   (,) <$> stepper s0 e <*> pure fe
