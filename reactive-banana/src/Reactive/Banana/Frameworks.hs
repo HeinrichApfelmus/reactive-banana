@@ -30,7 +30,7 @@ module Reactive.Banana.Frameworks (
     -- ** Utility functions
     -- | This section collects a few convience functions
     -- built from the core functions.
-    newEvent, mapEventIO,
+    newEvent, mapEventIO, newBehavior,
 
     -- * Running event networks
     EventNetwork, actuate, pause,
@@ -329,6 +329,14 @@ newEvent = do
     (addHandler, fire) <- liftIO $ newAddHandler
     e <- fromAddHandler addHandler
     return (e,fire)
+
+-- | Build an 'Behavior' toget with an initial value and a 'IO'
+--  action that can push changes to this 'Behavior'.
+newBehavior :: a -> MomentIO (Behavior a, a -> IO ())
+newBehavior s0 = do
+  (e, fe) <- newEvent
+  (,) <$> stepper s0 e <*> pure fe
+
 
 -- | Build a new 'Event' that contains the result
 -- of an IO computation.
