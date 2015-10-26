@@ -21,7 +21,8 @@ The API has been redesigned significantly in this version!
 
 Other changes:
 
-* Add `mapEventIO` utility function to build an event that contains the result of an IO computation.
+* Add `mapEventIO` utility function to build an Event that contains the result of an IO computation.
+* Add `newBehavior` utility function to build a Behavior that can be updated with a `Handler`.
 * Add illustrations to the API documentation.
 
 **version 0.9.0.0**

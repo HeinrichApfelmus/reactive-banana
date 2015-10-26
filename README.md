@@ -66,6 +66,6 @@ Send me your examples, bindings, problems, suggestions, etc!
 
 Many thanks to
 
-Alexander Berntsen, Oliver Charles, Samuel Gélineau, madjestic, *and also* Abu Alam, Vincent Berthoux, Kevin Cantu, Gregory Crosswhite, Peter Hillerström, Joseph Heinemeyer, Elliott Hird, Matt Kraai, John Lato, Vladimir Lopatin, Peter Minten, Gideon Sireling, Henning Thielemann, Daniel Werner
+Alexander Berntsen, Oliver Charles, Samuel Gélineau, madjestic, *and also* Abu Alam, Markus Barenhoff, Vincent Berthoux, Kevin Cantu, Gregory Crosswhite, Peter Hillerström, Joseph Heinemeyer, Elliott Hird, Matt Kraai, John Lato, Vladimir Lopatin, Peter Minten, Gideon Sireling, Henning Thielemann, Daniel Werner
 
 for their contributions!
