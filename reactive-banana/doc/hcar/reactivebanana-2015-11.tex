@@ -1,0 +1,40 @@
+% reactivebanana-Hr.tex
+\begin{hcarentry}[updated]{reactive-banana}
+\report{Heinrich Apfelmus}%11/15
+\status{active development}
+\makeheader
+
+%**<img width=200 src="./banana.jpg">
+%*ignore
+\begin{center}
+\includegraphics[width=0.2\textwidth]{html/banana.jpg}
+\end{center}
+%*endignore
+
+Reactive-banana is a library for functional reactive programming (FRP).
+
+FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. It promises to avoid the spaghetti code that is all too common in traditional approaches to GUI programming.
+
+The goal of the library is to provide a solid foundation.
+\begin{compactitem}
+\item Programmers interested in implementing FRP will have a \emph{reference} for a \emph{simple semantics} with a working implementation. The library stays fairly close to the semantics pioneered by Conal Elliott.
+\item The library features an \emph{efficient implementation}. No more spooky time leaks, predicting space \& time usage should be straightforward.
+\end{compactitem}
+
+The library is meant to be used in conjunction with existing libraries that are specific to your problem domain. For instance, you can hook it into any event-based GUI framework, like wxHaskell or Gtk2Hs. Several helper packages like reactive-banana-wx provide a small amount of glue code that can make life easier.
+
+\emph{Status.} With the release of version \verb+1.0.0.0+, the development of the reactive-banana library has reached a milestone! I finally feel that the library does all the things that I wanted it to do.
+
+In particular, compared to the previous report, the library now implements garbage collection for dynamically switched events. Also, the API no longer uses a phantom parameter to keep track of starting times; instead, a monadic approach is used. This simplifies the API for dynamic event switching, at the cost of requiring monadic types for some first-order combinators like \verb!stepper!.
+
+Additionally, there has been a small change concerning the semantics of the \verb!Event! type: It is no longer possible to have multiple simultaneous occurrences in a single event stream. This forces the programmer to be more thoughtful about simultaneous event occurrences, a common source of bugs. The expressivity is the same, the old semantics can be recovered by using lists as occurrences.
+
+\emph{Current development.}
+With the library being complete, is there anything left to do? Well, of course, a library is never complete! However, my future focus will lie more on applications of FRP, rather than the implementation of the FRP primitives. For instance, I want to make more use of FRP in my \verb`threepenny-gui` project, which is a library for writing graphical user interfaces in Haskell \cref{threepenny-gui}. In turn, this will probably lead to improvements in the reactive-banana library, be it API revisions or performance tuning.
+
+\FurtherReading
+\begin{compactitem}
+\item Project homepage: \url{http://wiki.haskell.org/Reactive-banana}
+\item Example code: \url{http://wiki.haskell.org/Reactive-banana/Examples}
+\end{compactitem}
+\end{hcarentry}
