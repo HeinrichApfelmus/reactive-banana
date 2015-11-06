@@ -57,7 +57,7 @@ instance Applicative Future where
     f <*> a = F $ unF f <*> unF a
 
 {-| The 'Moment' monad denotes a /pure/ computation that happens
-at one particular moment in time. Semantically, it as a reader monad
+at one particular moment in time. Semantically, it is a reader monad
 
 > type Moment a = Time -> a
 
@@ -82,7 +82,6 @@ instance MonadIO MomentIO where liftIO = MIO . liftIO
 
 {-| An instance of the 'MonadMoment' class denotes a computation
 that happens at one particular moment in time.
-
 Unlike the 'Moment' monad, it need not be pure anymore.
 -}
 class Monad m => MonadMoment m where

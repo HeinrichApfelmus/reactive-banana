@@ -191,7 +191,7 @@ accumE acc = liftMoment . M . fmap E . Prim.accumE acc . unE
 --
 -- > valueB b = \time -> b time
 --
--- NOTE: The value is immediately available for pattern matching.
+-- Note: The value is immediately available for pattern matching.
 -- Unfortunately, this means that @valueB@ is unsuitable for use
 -- with value recursion in the 'Moment' monad.
 -- If you need recursion, please use 'valueBLater' instead.
@@ -203,7 +203,7 @@ valueB = liftMoment . M . Prim.valueB . unB
 --
 -- > valueBLater b = \time -> b time
 --
--- NOTE: To allow for more recursion, the value is returned /lazily/
+-- Note: To allow for more recursion, the value is returned /lazily/
 -- and not available for pattern matching immediately.
 -- It can be used safely with most combinators like 'stepper'.
 -- If that doesn't work for you, please use 'valueB' instead.
