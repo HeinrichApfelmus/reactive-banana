@@ -14,7 +14,7 @@ module Reactive.Banana.Combinators (
     interpret,
 
     -- ** First-order
-    -- | This subsections lists the core first-order combinators for FRP.
+    -- | This subsections lists the primitive first-order combinators for FRP.
     -- The 'Functor' and 'Applicative' instances are also part of this,
     -- but they are documented at the types 'Event' and 'Behavior'.
     module Control.Applicative,
@@ -25,6 +25,9 @@ module Reactive.Banana.Combinators (
     -- ** Moment and accumulation
     Moment, MonadMoment(..),
     accumE, stepper,
+
+    -- ** Recursion
+    -- $recursion
 
     -- ** Higher-order
     valueB, valueBLater, observeE, switchE, switchB,
@@ -129,6 +132,7 @@ apply bf ex = E $ Prim.applyE (unB bf) (unE ex)
 -- In the illustration, this is indicated by the dots at the end
 -- of each step.
 -- This allows for recursive definitions.
+-- See the discussion below for more on recursion.
 stepper :: MonadMoment m => a -> Event a -> m (Behavior a)
 stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 
@@ -145,19 +149,62 @@ stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 -- >     = trimE [(time1,"xy"),(time2,"xyz")]
 -- >     where
 -- >     trimE e start = [(time,x) | (time,x) <- e, start <= time]
---
---
--- Note: It makes sense to list the 'accumE' function as a primitive
--- combinator, but keep in mind that it can actually be expressed
--- in terms of 'stepper' and 'apply' by using recursion:
---
--- > accumE a e1 = mdo
--- >    let e2 = (\a f -> f a) <$> b <@> e1
--- >    b <- stepper a e2
--- >    return e2
---
 accumE :: MonadMoment m => a -> Event (a -> a) -> m (Event a)
 accumE acc = liftMoment . M . fmap E . Prim.accumE acc . unE
+
+{-$recursion
+
+/Recursion/ is a very important technique in FRP that is not apparent
+from the type signatures.
+
+Here is a prototypical example. It shows how the 'accumE' can be expressed
+in terms of the 'stepper' and 'apply' functions by using recursion:
+
+> accumE a e1 = mdo
+>    let e2 = (\a f -> f a) <$> b <@> e1
+>    b <- stepper a e2
+>    return e2
+
+(The @mdo@ notation refers to /value recursion/ in a monad.
+The 'MonadFix' instance for the 'Moment' class enables this kind of recursive code.)
+(Strictly speaking, this also means that 'accumE' is not a primitive,
+because it can be expressed in terms of other combinators.)
+
+This general pattern appears very often in practice:
+A Behavior (here @b@) controls what value is put into an Event (here @e2@),
+but at the same time, the Event contributes to changes in this Behavior.
+Modeling this situation requires recursion.
+
+For another example, consider a vending machine that sells banana juice.
+The amount that the customer still has to pay for a juice
+is modeled by a Behavior @bAmount@.
+Whenever the customer inserts a coin into the machine,
+an Event @eCoin@ occurs, and the amount will be reduced.
+Whenver the amount goes below zero, an Event @eSold@ will occur,
+indicating the release of a bottle of fresh banana juice,
+and the amount to be paid will be reset to the original price.
+The model requires recursion, and can be expressed in code as follows:
+
+> mdo
+>     let price = 50 :: Int
+>     bAmount <- stepper price $ unions
+>                   [ subtract 10 <$ eCoin
+>                   , const price <$ eSold ]
+>     eSold   <- whenE ((=< 0) <$> bAmount) eCoin
+
+On one hand, the Behavior @bAmount@ controls whether the Event @eSold@
+occcurs at all; the bottle of banana juice is unavailable to penniless customers.
+But at the same time, the Event @eSold@ will cause a reset
+of the Behavior @bAmount@, so both depend on each other.
+
+Recursive code like this examples works thanks to the semantics of 'stepper'.
+In general, /mutual recursion/ between several 'Event's and 'Behavior's
+is always well-defined,
+as long as an Event depends on itself only /via/ a Behavior,
+and vice versa.
+
+-}
+
 
 -- | Obtain the value of the 'Behavior' at a given moment in time.
 -- Semantically, it corresponds to
