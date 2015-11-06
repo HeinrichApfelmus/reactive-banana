@@ -1,6 +1,10 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 1.0.0.1**
+
+* Improve documentation. Add prose section on recursion.
+
 **version 1.0.0.0**
 
 The API has been redesigned significantly in this version!
