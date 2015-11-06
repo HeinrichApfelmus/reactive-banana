@@ -14,11 +14,13 @@ module Reactive.Banana.Combinators (
     interpret,
 
     -- ** First-order
+    -- | This subsections lists the core first-order combinators for FRP.
+    -- The 'Functor' and 'Applicative' instances are also part of this,
+    -- but they are documented at the types 'Event' and 'Behavior'.
     module Control.Applicative,
     module Data.Monoid,
     never, unionWith, filterE,
     apply,
-    -- $classes
 
     -- ** Moment and accumulation
     Moment, MonadMoment(..),
@@ -109,35 +111,6 @@ filterE p = filterJust . fmap (\x -> if p x then Just x else Nothing)
 -- This function is generally used in its infix variant '<@>'.
 apply :: Behavior (a -> b) -> Event a -> Event b
 apply bf ex = E $ Prim.applyE (unB bf) (unE ex)
-
-{-$classes
-
-/Further combinators that Haddock can't document properly./
-
-> instance Applicative Behavior
-
-'Behavior' is an applicative functor. In particular, we have the following functions.
-
-> pure :: a -> Behavior a
-
-The constant time-varying value. Semantically, @pure x = \\time -> x@.
-
-> (<*>) :: Behavior (a -> b) -> Behavior a -> Behavior b
-
-Combine behaviors in applicative style.
-The semantics are: @bf \<*\> bx = \\time -> bf time $ bx time@.
-
--}
-
-instance Functor Event where
-    fmap f = E . Prim.mapE f . unE
-
-instance Applicative Behavior where
-    pure x    = B $ Prim.pureB x
-    bf <*> bx = B $ Prim.applyB (unB bf) (unB bx)
-
-instance Functor Behavior where
-    fmap = liftA
 
 -- | Construct a time-varying function from an initial value and
 -- a stream of new values. The result will be a step function.

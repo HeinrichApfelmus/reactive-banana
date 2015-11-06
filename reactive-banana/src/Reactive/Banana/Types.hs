@@ -15,6 +15,10 @@ import Control.Monad.Fix
 
 import qualified Reactive.Banana.Internal.Combinators as Prim
 
+{-----------------------------------------------------------------------------
+    Types
+------------------------------------------------------------------------------}
+
 {-| @Event a@ represents a stream of events as they occur in time.
 Semantically, you can think of @Event a@ as an infinite list of values
 that are tagged with their corresponding time of occurrence,
@@ -30,6 +34,15 @@ no two event occurrences may happen at the same time.
 newtype Event a = E { unE :: Prim.Event a }
 -- Invariant: The empty list `[]` never occurs as event value.
 
+-- | The function 'fmap' applies a function @f@ to every value.
+-- Semantically,
+--
+-- > fmap :: (a -> b) -> Event a -> Event b
+-- > fmap f e = [(time, f a) | (time, a) <- e]
+instance Functor Event where
+    fmap f = E . Prim.mapE f . unE
+
+
 {-| @Behavior a@ represents a value that varies in time.
 Semantically, you can think of it as a function
 
@@ -39,8 +52,30 @@ Semantically, you can think of it as a function
 -}
 newtype Behavior a = B { unB :: Prim.Behavior a }
 
+-- | The function 'pure' returns a value that is constant in time. Semantically,
+--
+-- > pure     :: a -> Behavior a
+-- > pure x    = \time -> x
+--
+-- The combinator '<*>' applies a time-varying function to a time-varying value.
+--
+-- > (<*>)    :: Behavior (a -> b) -> Behavior a -> Behavior b
+-- > fx <*> bx = \time -> fx time $ bx time
+instance Applicative Behavior where
+    pure x    = B $ Prim.pureB x
+    bf <*> bx = B $ Prim.applyB (unB bf) (unB bx)
+
+-- | The function 'fmap' applies a function @f@ at every point in time.
+-- Semantically,
+--
+-- > fmap :: (a -> b) -> Behavior a -> Behavior b
+-- > fmap f b = \time -> f (b time)
+instance Functor Behavior where
+    fmap = liftA
+
+
 -- | The 'Future' monad is just a helper type for the 'changes' function.
--- 
+--
 -- A value of type @Future a@ is only available in the context
 -- of a 'reactimate' but not during event processing.
 newtype Future a = F { unF :: Prim.Future a }
@@ -55,6 +90,7 @@ instance Monad Future where
 instance Applicative Future where
     pure    = F . pure
     f <*> a = F $ unF f <*> unF a
+
 
 {-| The 'Moment' monad denotes a /pure/ computation that happens
 at one particular moment in time. Semantically, it is a reader monad
@@ -108,9 +144,3 @@ instance Applicative MomentIO where
     pure    = MIO . pure
     f <*> a = MIO $ unMIO f <*> unMIO a
 instance MonadFix MomentIO where mfix f = MIO $ mfix (unMIO . f)
-
-
-{-
-instance Frameworks t => MonadIO Moment where
-    liftIO = M . Prim.liftIONow
--}
