@@ -187,10 +187,10 @@ The model requires recursion, and can be expressed in code as follows:
 
 > mdo
 >     let price = 50 :: Int
->     bAmount <- stepper price $ unions
+>     bAmount  <- accumB price $ unions
 >                   [ subtract 10 <$ eCoin
 >                   , const price <$ eSold ]
->     eSold   <- whenE ((=< 0) <$> bAmount) eCoin
+>     let eSold = whenE ((<= 0) <$> bAmount) eCoin
 
 On one hand, the Behavior @bAmount@ controls whether the Event @eSold@
 occcurs at all; the bottle of banana juice is unavailable to penniless customers.
@@ -204,7 +204,6 @@ as long as an Event depends on itself only /via/ a Behavior,
 and vice versa.
 
 -}
-
 
 -- | Obtain the value of the 'Behavior' at a given moment in time.
 -- Semantically, it corresponds to
