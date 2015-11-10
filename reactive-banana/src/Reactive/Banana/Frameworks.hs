@@ -197,21 +197,35 @@ fromChanges initial changes = do
     stepper initial e
 
 -- | Output,
--- observe when a 'Behavior' changes.
+-- return an 'Event' that is adapted to the changes of a 'Behavior'.
 --
--- Strictly speaking, a 'Behavior' denotes a value that
--- varies /continuously/ in time,
--- so there is no well-defined event which indicates when the behavior changes.
+-- Remember that semantically, a 'Behavior' is a function @Behavior a = Time -> a@.
+-- This means that a Behavior does not have a notion of \"changes\" associated with it.
+-- For instance, the following Behaviors are equal:
 --
--- Still, for reasons of efficiency, the library provides a way to observe
--- changes when the behavior is a step function, for instance as
--- created by 'stepper'. There are no formal guarantees,
--- but the idea is that
+-- > stepper 0 []
+-- > = stepper 0 [(time1, 0), (time2, 0)]
+-- > = stepper 0 $ zip [time1,time2..] (repeat 0)
 --
--- > changes =<< stepper x e = return e
+-- In principle, to perform IO actions with the value of a Behavior,
+-- one has to sample it using an 'Event' and the 'apply' function.
 --
--- Note: The values of the event will not become available
--- until event processing is complete.
+-- However, in practice, Behaviors are usually step functions.
+-- For reasons of efficiency, the library provides a way
+-- to obtain an Event that /mostly/ coincides with the steps of a Behavior,
+-- so that sampling is only done at a few select points in time.
+-- The idea is that
+--
+-- > changes =<< stepper x e  =  return e
+--
+-- Please use 'changes' only in a ways that do /not/ distinguish
+-- between the different expressions for the same Behavior above.
+--
+-- Note that the value of the event is actually the /new/ value,
+-- i.e. that value slightly after this point in time. (See the documentation of 'stepper').
+-- This is more convenient.
+-- However, the value will not become available until after event processing is complete;
+-- this is indicated by the type 'Future'.
 -- It can be used only in the context of 'reactimate''.
 changes :: Behavior a -> MomentIO (Event (Future a))
 changes = return . E . Prim.mapE F . Prim.changesB . unB
@@ -238,7 +252,7 @@ in this context. Still, it is useful in some cases.
 
 -- | Impose a different sampling event on a 'Behavior'.
 --
--- The 'Behavior' will vary continuously as before, but the event returned
+-- The 'Behavior' will have the same values as before, but the event returned
 -- by the 'changes' function will now happen simultaneously with the
 -- imposed event.
 --

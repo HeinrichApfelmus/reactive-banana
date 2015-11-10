@@ -3,7 +3,9 @@ Changelog for the `reactive-banana` package
 
 **version 1.0.0.1**
 
-* Improve documentation. Add prose section on recursion.
+* Improve documentation.
+    * Add prose section on recursion.
+    * Improve explanation for the `changes` function.
 
 **version 1.0.0.0**
 
