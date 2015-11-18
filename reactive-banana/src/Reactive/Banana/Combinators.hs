@@ -39,7 +39,7 @@ module Reactive.Banana.Combinators (
     filterJust, filterApply, whenE, split,
     -- ** Accumulation
     -- $Accumulation.
-    unions, accumB, mapAccum,
+    unions, accumB, mapAccum
     ) where
 
 import Control.Applicative
@@ -308,7 +308,6 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     fromLeft  (Right b) = Nothing
     fromRight (Left  a) = Nothing
     fromRight (Right b) = Just b
-
 
 -- $Accumulation.
 -- Note: All accumulation functions are strict in the accumulated value!

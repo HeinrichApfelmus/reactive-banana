@@ -36,7 +36,7 @@ module Reactive.Banana.Frameworks (
     EventNetwork, actuate, pause,
 
     -- * Internal
-    interpretFrameworks, showNetwork,
+    interpretFrameworks, interpretFrameworks', showNetwork,
     ) where
 
 import           Control.Event.Handler
@@ -398,6 +398,30 @@ interpretFrameworks f xs = do
         writeIORef output []
         return bs
     return bs
+
+-- Alternate version to test Behaviors
+interpretFrameworks' :: (Event a -> MomentIO (Behavior b)) -> [a] -> IO (b,[[b]])
+interpretFrameworks' f xs = do
+  output                      <- newIORef []
+  init                        <- newIORef undefined
+  (addHandler, runHandlers)   <- newAddHandler
+  network                     <- compile $ do
+    e <- fromAddHandler addHandler
+    f' <- f e
+    o <- changes $ f'
+    i <- valueB $ f'
+    liftIO $ writeIORef init i
+    reactimate' $ (fmap . fmap) (\b -> modifyIORef output (++[b])) o
+
+  actuate network
+  bs <- forM xs $ \x -> do
+      runHandlers x
+      bs <- readIORef output
+      writeIORef output []
+      return bs
+  i <- readIORef init
+  return (i, bs)
+
 
 -- | Simple way to write a single event handler with
 -- functional reactive programming.
