@@ -37,13 +37,6 @@ Source-repository head
     location:           git://github.com/HeinrichApfelmus/reactive-banana.git
     subdir:             reactive-banana/
 
-flag UseExtensions
-    description: Use GHC-specific language extensions.
-                 This enables the efficient push-driven implementation,
-                 but doesn't necessarily work with compilers other than GHC.
--- Cabal checks if the package can be build with  UseExtensions = True,
--- otherwise it is set to  False .
-
 Library
     default-language:   Haskell98
     hs-source-dirs:     src
@@ -56,8 +49,6 @@ Library
                         hashable >= 1.1 && < 1.3,
                         pqueue >= 1.0 && < 1.4
 
---      CPP-options:    -DUseExtensions
-        
     exposed-modules:
                         Control.Event.Handler,
                         Reactive.Banana,
