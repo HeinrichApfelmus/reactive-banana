@@ -6,6 +6,8 @@ Changelog for the `reactive-banana` package
 * Improve documentation.
     * Add prose section on recursion.
     * Improve explanation for the `changes` function.
+* Bump `transfomers` dependency.
+* Remove defunct `UseExtensions` flag from cabal file.
 
 **version 1.0.0.0**
 
