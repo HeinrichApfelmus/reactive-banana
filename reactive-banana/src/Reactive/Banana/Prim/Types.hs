@@ -29,8 +29,6 @@ data Network = Network
     , nAlwaysP        :: !(Maybe (Pulse ()))   -- Pulse that always fires.
     }
 
-instance Show Network where show = error "instance Show Network not implemented."
-
 type Inputs        = ([SomeNode], Lazy.Vault)
 type EvalNetwork a = Network -> IO (a, Network)
 type Step          = EvalNetwork (IO ())

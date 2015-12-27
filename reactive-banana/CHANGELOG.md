@@ -3,7 +3,7 @@ Changelog for the `reactive-banana` package
 
 **version 1.1.0.0**
 
-
+* Remove `showNetwork` function
 
 **version 1.0.0.1**
 

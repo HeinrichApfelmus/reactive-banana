@@ -36,7 +36,7 @@ module Reactive.Banana.Frameworks (
     EventNetwork, actuate, pause,
 
     -- * Internal
-    interpretFrameworks, showNetwork,
+    interpretFrameworks,
     ) where
 
 import           Control.Event.Handler
@@ -319,16 +319,6 @@ actuate = Prim.actuate . unEN
 -- the current event has been processed completely.
 pause :: EventNetwork -> IO ()
 pause   = Prim.pause . unEN
-
--- | A multiline description of the current 'Latch'es and 'Pulse's in
--- the 'EventNetwork'.
---
--- Incidentally, evaluation the returned string to normal
--- form will also force the 'EventNetwork' to some kind of normal form.
--- This may be useful for benchmarking purposes.
-showNetwork :: EventNetwork -> IO String
-showNetwork = Prim.showNetwork . unEN
-
 
 {-----------------------------------------------------------------------------
     Utilities

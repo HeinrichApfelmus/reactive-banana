@@ -49,7 +49,6 @@ data EventNetwork = EventNetwork
     { runStep :: Prim.Step -> IO ()
     , actuate :: IO ()
     , pause   :: IO ()
-    , showNetwork :: IO String
     }
 
 -- | Compile to an event network.
@@ -70,7 +69,6 @@ compile setup = do
             { runStep = runStep
             , actuate = writeIORef actuated True
             , pause   = writeIORef actuated False
-            , showNetwork = show <$> readMVar s
             }
 
     (output, s0) <-                             -- compile initial graph
