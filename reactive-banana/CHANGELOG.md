@@ -1,6 +1,10 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 1.1.0.0**
+
+
+
 **version 1.0.0.1**
 
 * Improve documentation.
