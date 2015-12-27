@@ -79,7 +79,9 @@ interpret f = Prim.interpret (return . unE . f . E)
     Core combinators
 ------------------------------------------------------------------------------}
 -- | Event that never occurs.
--- Semantically, @never = []@.
+-- Semantically,
+--
+-- > never = []
 never    :: Event a
 never = E Prim.never
 
