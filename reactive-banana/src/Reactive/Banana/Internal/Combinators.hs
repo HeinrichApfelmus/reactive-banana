@@ -199,12 +199,14 @@ switchE = liftCached1 $ \p1 -> do
     p3 <- executeP p2
     liftBuild $ Prim.switchP p3
 
-switchB :: Behavior a -> Event (Behavior a) -> Behavior a
-switchB = liftCached2 $ \(l0,p0) p1 -> do
-    p2 <- liftBuild $ Prim.mapP (runCached) p1
-    p3 <- executeP p2
-    
+switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
+switchB b e = ask >>= \r -> cacheAndSchedule $ do
+    ~(l0,p0) <- runCached b
+    p1       <- runCached e
     liftBuild $ do
+        p2 <- Prim.mapP (runReaderT . runCached) p1
+        p3 <- Prim.executeP p2 r
+
         lr <- Prim.switchL l0 =<< Prim.mapP fst p3
         -- TODO: switch away the initial behavior
         let c1 = p0                              -- initial behavior changes

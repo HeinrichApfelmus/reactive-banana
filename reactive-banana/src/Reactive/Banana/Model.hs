@@ -70,7 +70,7 @@ trimE (E t xs) s
     | s <= t = E s $ replicate (t-s) Nothing ++ xs
     | s >  t = E s $ drop (s-t) xs
 
--- | Set the starting time of an Event.
+-- | Set the starting time of a Behavior.
 trimB :: Behavior a -> Moment (Behavior a)
 trimB (B t x xs) s
     | s <= t = B s x $ replicate (t-s) x ++ xs
@@ -177,10 +177,10 @@ switchE (E t xs) = E t $ go t (repeat Nothing) xs
         where
         E _ zs = e `trimE` (time + 1)
 
-switchB :: Behavior a -> Event (Behavior a) -> Behavior a
-switchB b x = B t y $ go t ys es
+switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
+switchB b x time0 = B t y $ go t ys es
     where
-    (B t y ys, E _ es) = syncBE b x
+    (B t y ys, E _ es) = syncBE (trimB b time0) x
 
     go time (y:ys) (Nothing:es) = y : go (time+1) ys es
     go time _      (Just b :es) = z : go (time+1) zs es

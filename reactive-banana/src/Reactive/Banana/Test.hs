@@ -225,13 +225,13 @@ switchE1 e = switchE (e <$ e)
 switchB1 e = do
     b0 <- stepper 0 e
     b1 <- stepper 0 e
-    let b = switchB b0 $ (\x -> if odd x then b1 else b0) <$> e
+    b  <- switchB b0 $ (\x -> if odd x then b1 else b0) <$> e
     return $ b <@ e
 
 switchB2 e = do
     b0 <- stepper 0 $ filterE even e
     b1 <- stepper 1 $ filterE odd  e
-    let b = switchB b0 $ (\x -> if odd x then b1 else b0) <$> e
+    b  <- switchB b0 $ (\x -> if odd x then b1 else b0) <$> e
     return $ b <@ e
 
 {-----------------------------------------------------------------------------

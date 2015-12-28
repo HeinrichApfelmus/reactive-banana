@@ -88,10 +88,10 @@ switchE (E x y) = E
     (X.switchE $ X.mapE (fstE) x)
     (Y.switchE $ Y.mapE (sndE) y)
 
-switchB :: Behavior a -> Event (Behavior a) -> Behavior a
-switchB (B x y) (E xe ye) = B
-    (X.switchB x $ X.mapE (fstB) xe)
-    (Y.switchB y $ Y.mapE (sndB) ye)
+switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
+switchB (B x y) (E xe ye) = M
+    (fmap bx $ X.switchB x $ X.mapE (fstB) xe)
+    (fmap by $ Y.switchB y $ Y.mapE (sndB) ye)
 
 {-----------------------------------------------------------------------------
     Derived combinators

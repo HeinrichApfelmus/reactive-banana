@@ -257,8 +257,8 @@ switchE = E . Prim.switchE . Prim.mapE (unE) . unE
 -- >  switchB b0 eb = \time ->
 -- >     last (b0 : [b | (time2,b) <- eb, time2 < time]) time
 
-switchB :: Behavior a -> Event (Behavior a) -> Behavior a
-switchB b = B . Prim.switchB (unB b) . Prim.mapE (unB) . unE
+switchB :: MonadMoment m => Behavior a -> Event (Behavior a) -> m (Behavior a)
+switchB b = liftMoment . M . fmap B . Prim.switchB (unB b) . Prim.mapE (unB) . unE
 
 {-----------------------------------------------------------------------------
     Derived Combinators
