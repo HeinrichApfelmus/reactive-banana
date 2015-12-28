@@ -30,13 +30,11 @@ module Reactive.Banana.Frameworks (
     -- ** Utility functions
     -- | This section collects a few convience functions
     -- built from the core functions.
-    newEvent, mapEventIO, newBehavior,
+    interpretFrameworks, newEvent, mapEventIO, newBehavior,
 
     -- * Running event networks
     EventNetwork, actuate, pause,
 
-    -- * Internal
-    interpretFrameworks,
     ) where
 
 import           Control.Event.Handler
@@ -371,30 +369,36 @@ mapEventIO f e1 = do
 {-----------------------------------------------------------------------------
     Simple use
 ------------------------------------------------------------------------------}
--- | Interpret by using a framework internally.
--- Only useful for testing library internals.
-interpretFrameworks :: (Event a -> Event b) -> [a] -> IO [[b]]
+-- | Interpret an event processing function by building an 'EventNetwork'
+-- and running it. Useful for testing, but uses 'IO'.
+-- See 'interpret' for a pure variant.
+interpretFrameworks :: (Event a -> MomentIO (Event b)) -> [Maybe a] -> IO [Maybe b]
 interpretFrameworks f xs = do
-    output                    <- newIORef []
+    output                    <- newIORef Nothing
     (addHandler, runHandlers) <- newAddHandler
     network                   <- compile $ do
-        e <- fromAddHandler addHandler
-        reactimate $ fmap (\b -> modifyIORef output (++[b])) (f e)
+        e1 <- fromAddHandler addHandler
+        e2 <- f e1
+        reactimate $ writeIORef output . Just <$> e2
 
     actuate network
     bs <- forM xs $ \x -> do
-        runHandlers x
-        bs <- readIORef output
-        writeIORef output []
-        return bs
+        case x of
+            Nothing -> return Nothing
+            Just x  -> do
+                runHandlers x
+                b <- readIORef output
+                writeIORef output Nothing
+                return b
     return bs
 
 -- | Simple way to write a single event handler with
 -- functional reactive programming.
-interpretAsHandler :: (Event a -> Event b) -> AddHandler a -> AddHandler b
+interpretAsHandler :: (Event a -> Moment (Event b)) -> AddHandler a -> AddHandler b
 interpretAsHandler f addHandlerA = AddHandler $ \handlerB -> do
     network <- compile $ do
-        e <- fromAddHandler addHandlerA
-        reactimate $ handlerB <$> f e
+        e1 <- fromAddHandler addHandlerA
+        e2 <- liftMoment (f e1)
+        reactimate $ handlerB <$> e2
     actuate network
     return (pause network)

@@ -3,7 +3,8 @@ Changelog for the `reactive-banana` package
 
 **version 1.1.0.0**
 
-* Remove `showNetwork` function
+* Update type signatures of the `interpret*` functions to make it easier to try FRP functions in the REPL.
+* Remove `showNetwork` function.
 
 **version 1.0.0.1**
 

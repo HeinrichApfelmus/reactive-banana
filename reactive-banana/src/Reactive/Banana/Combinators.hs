@@ -46,6 +46,7 @@ import Control.Applicative
 import Control.Monad
 import Data.Maybe          (isJust, catMaybes)
 import Data.Monoid         (Monoid(..))
+import System.IO.Unsafe    (unsafePerformIO)
 
 import qualified Reactive.Banana.Internal.Combinators as Prim
 import           Reactive.Banana.Types
@@ -72,8 +73,8 @@ which is necessary for the higher-order combinators.
 ------------------------------------------------------------------------------}
 -- | Interpret an event processing function.
 -- Useful for testing.
-interpret :: (Event a -> Event b) -> [Maybe a] -> IO [Maybe b]
-interpret f = Prim.interpret (return . unE . f . E)
+interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
+interpret f xs = unsafePerformIO $ Prim.interpret (fmap unE . unM . f . E) xs
 
 {-----------------------------------------------------------------------------
     Core combinators
