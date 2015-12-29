@@ -1,32 +1,33 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE RecursiveDo #-}
 module Reactive.Banana.Model (
     -- * Synopsis
     -- | Model implementation for learning and testing.
 
     -- * Overview
-    -- $model
+    -- $overview
 
-    -- * Combinators
-    -- ** Data types
-    Time, Event, Behavior, Moment,
-    -- ** Basic
-    never, filterJust, unionWith, mapE, accumE, applyE,
-    stepperB, pureB, applyB, mapB,
-    -- ** Dynamic event switching
-    valueB, observeE, switchE, switchB,
-
-    -- * Interpretation
+    -- * Core Combinators
+    -- ** Event and Behavior
+    Nat, Time,
+    Event(..), Behavior(..),
     interpret,
+    -- ** First-order
+    module Control.Applicative,
+    never, unionWith, filterJust, apply,
+    -- ** Moment and accumulation
+    Moment(..), accumE, stepper,
+    -- ** Higher-order
+    valueB, observeE, switchE, switchB,
     ) where
 
 import Control.Applicative
-import Control.Monad (join)
-import Data.List     (splitAt)
+import Control.Monad
+import Control.Monad.Fix
 
-{-$model
+{-$overview
 
 This module reimplements the key FRP types and functions from the module
 "Reactive.Banana.Combinators" in a way that is hopefully easier to understand.
@@ -37,151 +38,133 @@ To understand the model in detail, look at the source code!
 (If there is no link to the source code at every type signature,
 then you have to run cabal with --hyperlink-source flag.)
 
-This model is /authoritative/: when observed with the 'interpretModel' function,
-both the actual implementation and its model /must/ agree on the result.
-Note that this must also hold for recursive and partial definitions
+This model is /authoritative/:
+Event functions that have been constructed using the same combinators
+/must/ give the same results when run with the @interpret@ function
+from either the module "Reactive.Banana.Combinators"
+or the module "Reactive.Banana.Model".
+This must also hold for recursive and partial definitions
 (at least in spirit, I'm not going to split hairs over @_|_@ vs @\\_ -> _|_@).
 
 -}
 
 {-----------------------------------------------------------------------------
-    Types
+    Event and Behavior
 ------------------------------------------------------------------------------}
+-- | Natural numbers (poorly represented).
+type Nat = Int
+
 -- | The FRP model used in this library is actually a model with continuous time.
 --
 -- However, it can be shown that this model is observationally
 -- equivalent to a particular model with (seemingly) discrete time steps,
 -- which is implemented here.
+-- The main reason for doing this is to be able to handle recursion correctly.
 -- Details will be explained elsewhere.
-type Time = Int
+type Time = Nat -- begins at t = 0
 
-data Event    a = E Time [Maybe a]  -- starting time, event values (always infinite)
-    deriving (Show)
-data Behavior a = B Time a [a]      -- starting time, old value, new values (always infinite)
-    deriving (Show)
-type Moment   a = Time -> a         -- should be abstract
+-- | Event is modeled by an /infinite/ list of 'Maybe' values.
+-- It is isomorphic to @Time -> Maybe a@.
+--
+-- 'Nothing' indicates that no occurrence happens,
+-- while 'Just' indicates that an occurrence happens.
+newtype Event a = E { unE :: [Maybe a] } deriving (Show)
 
-epoch :: Time
-epoch = 0
+-- | Behavior is modeled by an /infinite/ list of values.
+-- It is isomorphic to @Time -> a@.
+newtype Behavior a = B { unB :: [a] } deriving (Show)
 
--- | Set the starting time of an Event.
-trimE :: Event a -> Moment (Event a)
-trimE (E t xs) s
-    | s <= t = E s $ replicate (t-s) Nothing ++ xs
-    | s >  t = E s $ drop (s-t) xs
-
--- | Set the starting time of a Behavior.
-trimB :: Behavior a -> Moment (Behavior a)
-trimB (B t x xs) s
-    | s <= t = B s x $ replicate (t-s) x ++ xs
-    | s >  t = B s (last ys) zs
-        where
-        (ys,zs) = splitAt (s-t) xs
-
--- Synchronize two entities
-syncEE ~ex@(E tx _)   ~ey@(E ty _)   = (ex `trimE` t, ey `trimE` t)
-    where t = min tx ty
-syncBE ~bx@(B tx _ _) ~ey@(E ty _)   = (bx `trimB` t, ey `trimE` t)
-    where t = min tx ty
-syncBB ~bx@(B tx _ _) ~by@(B ty _ _) = (bx `trimB` t, by `trimB` t)
-    where t = min tx ty
+interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
+interpret f as =
+    take (length as) . unE . (\m -> unM m 0) . f . E $ (as ++ repeat Nothing)
 
 {-----------------------------------------------------------------------------
-    Basic Combinators
+    First-order
 ------------------------------------------------------------------------------}
-interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
-interpret f as = zipWith const bs as
-    where
-    input  = E epoch (as ++ repeat Nothing)
-    output = f input (epoch-7) `trimE` epoch
-    E _ bs = output
-    -- build network before epoch, but start external event at epoch
+instance Functor Event where
+    fmap f (E xs) = E (fmap (fmap f) xs)
+
+instance Functor Behavior where
+    fmap f (B xs) = B (fmap f xs)
+
+instance Applicative Behavior where
+    pure x          = B $ repeat x
+    (B f) <*> (B x) = B $ zipWith ($) f x
 
 never :: Event a
-never = E epoch (repeat Nothing)
-
-filterJust :: Event (Maybe a) -> Event a
-filterJust (E t xs) = E t (map join xs)
+never = E $ repeat Nothing
 
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
-unionWith f ex ey = E t $ zipWith g xs ys
+unionWith f (E xs) (E ys) = E $ zipWith combine xs ys
     where
-    (E t xs, E _ ys) = syncEE ex ey
+    combine (Just x) (Just y) = Just $ f x y
+    combine (Just x) Nothing  = Just x
+    combine Nothing  (Just y) = Just y
+    combine Nothing  Nothing  = Nothing
 
-    g (Just x) (Just y) = Just $ f x y
-    g (Just x) Nothing  = Just x
-    g Nothing  (Just y) = Just y
-    g Nothing  Nothing  = Nothing
+filterJust :: Event (Maybe a) -> Event a
+filterJust = E . fmap join . unE
 
-mapE f = applyE (pureB f)
-
-applyE :: Behavior (a -> b) -> Event a -> Event b
-applyE bf ex = E t $ zipWith (\f x -> fmap f x) (f:fs) xs
-    where
-    (B t f fs, E _ xs) = syncBE bf ex
-
--- applicative functor
-pureB x = B epoch x (repeat x)
-
-applyB :: Behavior (a -> b) -> Behavior a -> Behavior b
-applyB bf bx = B t (f x) $ zipWith ($) fs xs
-    where
-    (B t f fs, B _ x xs) = syncBB bf bx
-
-mapB f = applyB (pureB f)
+apply :: Behavior (a -> b) -> Event a -> Event b
+apply (B fs) = E . zipWith (\f mx -> fmap f mx) fs . unE
 
 {-----------------------------------------------------------------------------
-    Accumulation
+    Moment and accumulation
 ------------------------------------------------------------------------------}
--- Turn first occurence into `Nothing`.
-smotherFirst :: Event a -> Event a
-smotherFirst (E t (_:xs)) = E t (Nothing:xs)
+newtype Moment a = M { unM :: Time -> a }
 
-accumE :: a -> Event (a -> a) -> Moment (Event a)
-accumE x e time = E time $ go x xs
-    where
-    E _ xs = smotherFirst $ e `trimE` time
-
-    go x (Nothing:fs) = Nothing : go x fs
-    go x (Just f :fs) = let y = f x in y `seq` (Just y:go y fs)
-
-stepperB :: a -> Event a -> Moment (Behavior a)
-stepperB x e time = B time x $ go x xs
-    where
-    E _ xs = smotherFirst $ e `trimE` time
-
-    go x (Nothing:ys) = x : go x ys
-    go x (Just y :ys) = y : go y ys
-
-{-----------------------------------------------------------------------------
-    Dynamic Event Switching
-------------------------------------------------------------------------------}
-{-
+instance Functor     Moment where fmap f = M . fmap f . unM
+instance Applicative Moment where
+    pure   = M . const
+    (<*>)  = ap
 instance Monad Moment where
-    return  = const
-    m >>= g = \time -> g (m time) time
--}
+    return = pure
+    (M m) >>= k = M $ \time -> unM (k $ m time) time
 
+instance MonadFix Moment where
+    mfix f = M $ mfix (unM . f)
+
+-- Forget all event occurences before a particular time
+forgetE :: Time -> Event a -> [Maybe a]
+forgetE time (E xs) = drop time xs
+
+stepper :: a -> Event a -> Moment (Behavior a)
+stepper i e = M $ \time -> B $ replicate time i ++ step i (forgetE time e)
+    where
+    step i ~(x:xs) = i : step next xs
+        where next = case x of
+                        Just i  -> i
+                        Nothing -> i
+
+-- Expressed using recursion and the other primitives
+-- FIXME: Strictness!
+accumE :: a -> Event (a -> a) -> Moment (Event a)
+accumE a e1 = mdo
+    let e2 = ((\a f -> f a) <$> b) `apply` e1
+    b <- stepper a e2
+    return e2
+
+{-----------------------------------------------------------------------------
+    Higher-order
+------------------------------------------------------------------------------}
 valueB :: Behavior a -> Moment a
-valueB b time = x
-    where B _ x _ = b `trimB` time
+valueB (B b) = M $ \time -> b !! time
 
 observeE :: Event (Moment a) -> Event a
-observeE (E t xs) = E t $ zipWith (\time -> fmap ($ time)) [t..] xs
+observeE = E . zipWith (\time -> fmap (\m -> unM m time)) [0..] . unE
 
-switchE :: Event (Event a) -> Event a
-switchE (E t xs) = E t $ go t (repeat Nothing) xs
+switchE :: Event (Event a) -> Moment (Event a)
+switchE es = M $ \t -> E $
+    replicate t Nothing ++ switch (unE never) (forgetE t (forgetDiagonalE es))
     where
-    go time (y:ys) (Nothing:es) = y : go (time+1) ys es
-    go time (y:ys) (Just e :es) = y : go (time+1) zs es
-        where
-        E _ zs = e `trimE` (time + 1)
+    switch (x:xs) (Nothing : ys) = x : switch xs ys
+    switch (x: _) (Just xs : ys) = x : switch (tail xs) ys
+
+forgetDiagonalE :: Event (Event a) -> Event [Maybe a]
+forgetDiagonalE = E . zipWith (\time -> fmap (forgetE time)) [0..] . unE
 
 switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
-switchB b x time0 = B t y $ go t ys es
-    where
-    (B t y ys, E _ es) = syncBE (trimB b time0) x
+switchB b e = diagonalB <$> stepper b e
 
-    go time (y:ys) (Nothing:es) = y : go (time+1) ys es
-    go time _      (Just b :es) = z : go (time+1) zs es
-        where B _ z zs = b `trimB` (time+1)
+diagonalB :: Behavior (Behavior a) -> Behavior a
+diagonalB = B . zipWith (\time xs -> xs !! time) [0..] . map unB . unB

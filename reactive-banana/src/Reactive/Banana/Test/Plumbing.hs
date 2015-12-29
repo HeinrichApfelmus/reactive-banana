@@ -44,14 +44,14 @@ interpretGraph f = Y.interpret (fmap sndE . sndM . f . ey)
 never                           = E X.never Y.never
 filterJust (E x y)              = E (X.filterJust x) (Y.filterJust y)
 unionWith f (E x1 y1) (E x2 y2) = E (X.unionWith f x1 x2) (Y.unionWith f y1 y2)
-mapE f (E x y)                  = E (X.mapE f x) (Y.mapE f y)
-applyE ~(B x1 y1) (E x2 y2)     = E (X.applyE x1 x2) (Y.applyE y1 y2)
+mapE f (E x y)                  = E (fmap f x) (Y.mapE f y)
+applyE ~(B x1 y1) (E x2 y2)     = E (X.apply x1 x2) (Y.applyE y1 y2)
 
 instance Functor Event where fmap = mapE
 
-pureB a                         = B (X.pureB a) (Y.pureB a)
-applyB (B x1 y1) (B x2 y2)      = B (X.applyB x1 x2) (Y.applyB y1 y2)
-mapB f (B x y)                  = B (X.mapB f x) (Y.mapB f y)
+pureB a                         = B (pure a) (Y.pureB a)
+applyB (B x1 y1) (B x2 y2)      = B (x1 <*> x2) (Y.applyB y1 y2)
+mapB f (B x y)                  = B (fmap f x) (Y.mapB f y)
 
 instance Functor     Behavior where fmap = mapB
 instance Applicative Behavior where pure = pureB; (<*>) = applyB
@@ -74,23 +74,23 @@ accumE   a ~(E x y) = M
     (fmap ex $ X.accumE a x)
     (fmap ey $ Y.accumE a y)
 stepperB a ~(E x y) = M
-    (fmap bx $ X.stepperB a x)
+    (fmap bx $ X.stepper  a x)
     (fmap by $ Y.stepperB a y)
 stepper            = stepperB
 
 valueB ~(B x y) = M (X.valueB x) (Y.valueB y)
 
 observeE :: Event (Moment a) -> Event a
-observeE (E x y) = E (X.observeE $ X.mapE fstM x) (Y.observeE $ Y.mapE sndM y)
+observeE (E x y) = E (X.observeE $ fmap fstM x) (Y.observeE $ Y.mapE sndM y)
 
 switchE :: Event (Event a) -> Event a
 switchE (E x y) = E
-    (X.switchE $ X.mapE (fstE) x)
+    undefined -- (X.switchE $ X.mapE (fstE) x)
     (Y.switchE $ Y.mapE (sndE) y)
 
 switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
 switchB (B x y) (E xe ye) = M
-    (fmap bx $ X.switchB x $ X.mapE (fstB) xe)
+    (fmap bx $ X.switchB x $   fmap (fstB) xe)
     (fmap by $ Y.switchB y $ Y.mapE (sndB) ye)
 
 {-----------------------------------------------------------------------------

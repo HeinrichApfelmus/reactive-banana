@@ -4,6 +4,7 @@ Changelog for the `reactive-banana` package
 **version 1.1.0.0**
 
 * Fix bug: Type of `switchB` needs to be in the `Moment` monad.
+* Clean up and simplify model implementation in the `Reactive.Banana.Model` module.
 * Update type signatures of the `interpret*` functions to make it easier to try FRP functions in the REPL.
 * Remove `showNetwork` function.
 
