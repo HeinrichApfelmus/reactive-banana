@@ -370,8 +370,8 @@ mapEventIO f e1 = do
     Simple use
 ------------------------------------------------------------------------------}
 -- | Interpret an event processing function by building an 'EventNetwork'
--- and running it. Useful for testing, but uses 'IO'.
--- See 'interpret' for a pure variant.
+-- and running it. Useful for testing, but uses 'MomentIO'.
+-- See 'interpret' for a plain variant.
 interpretFrameworks :: (Event a -> MomentIO (Event b)) -> [Maybe a] -> IO [Maybe b]
 interpretFrameworks f xs = do
     output                    <- newIORef Nothing

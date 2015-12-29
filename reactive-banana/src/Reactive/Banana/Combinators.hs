@@ -46,7 +46,6 @@ import Control.Applicative
 import Control.Monad
 import Data.Maybe          (isJust, catMaybes)
 import Data.Monoid         (Monoid(..))
-import System.IO.Unsafe    (unsafePerformIO)
 
 import qualified Reactive.Banana.Internal.Combinators as Prim
 import           Reactive.Banana.Types
@@ -73,8 +72,24 @@ which is necessary for the higher-order combinators.
 ------------------------------------------------------------------------------}
 -- | Interpret an event processing function.
 -- Useful for testing.
-interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> [Maybe b]
-interpret f xs = unsafePerformIO $ Prim.interpret (fmap unE . unM . f . E) xs
+--
+-- Note: You can safely assume that this function is pure,
+-- even though the type seems to suggest otherwise.
+-- I'm really sorry about the extra 'IO', but it can't be helped.
+-- See source code for the sordid details.
+interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
+interpret f xs = Prim.interpret (fmap unE . unM . f . E) xs
+-- FIXME: I would love to remove the 'IO' from the type signature,
+-- but unfortunately, it is possible that the argument to interpret
+-- returns an Event that was created in the context of an existing network, e.g.
+--
+-- >   eBad <- fromAddHandler ...
+-- >   ...
+-- >   let ys = interpret (\_ -> return eBad ) xs
+--
+-- Doing this is a big no-no and will break a lot of things,
+-- but if we remove the 'IO' here, then we will also break referential
+-- transparency, and I think that takes it too far.
 
 {-----------------------------------------------------------------------------
     Core combinators
