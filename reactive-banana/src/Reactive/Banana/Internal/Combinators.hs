@@ -193,11 +193,13 @@ executeE e = do
     p <- liftBuildFun Prim.buildLaterReadNow $ executeP =<< runCached e
     return $ fromPure p
 
-switchE :: Event (Event a) -> Event a
-switchE = liftCached1 $ \p1 -> do
-    p2 <- liftBuild $ Prim.mapP (runCached) p1
-    p3 <- executeP p2
-    liftBuild $ Prim.switchP p3
+switchE :: Event (Event a) -> Moment (Event a)
+switchE e = ask >>= \r -> cacheAndSchedule $ do
+    p1 <- runCached e
+    liftBuild $ do
+        p2 <- Prim.mapP (runReaderT . runCached) p1
+        p3 <- Prim.executeP p2 r
+        Prim.switchP p3
 
 switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
 switchB b e = ask >>= \r -> cacheAndSchedule $ do

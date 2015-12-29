@@ -248,8 +248,8 @@ observeE = E . Prim.observeE . Prim.mapE unM . unE
 -- >     intervals e        = [(time1, time2, x) | ((time1,x),(time2,_)) <- zip e (tail e)]
 -- >     trim time1 time2 e = [x | (timex,x) <- e, time1 < timex, timex <= time2]
 
-switchE :: Event (Event a) -> Event a
-switchE = E . Prim.switchE . Prim.mapE (unE) . unE
+switchE :: MonadMoment m => Event (Event a) -> m (Event a)
+switchE = liftMoment . M . fmap E . Prim.switchE . Prim.mapE (unE) . unE
 
 -- | Dynamically switch between 'Behavior'.
 -- Semantically,

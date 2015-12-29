@@ -49,7 +49,7 @@ main = defaultMain
         -- , testModelMatchM "valueB_recursive1" valueB_recursive1
         -- , testModelMatchM "valueB_recursive2" valueB_recursive2
         , testModelMatchM "dynamic_apply"       dynamic_apply
-        , testModelMatch  "switchE1"            switchE1
+        , testModelMatchM "switchE1"            switchE1
         , testModelMatchM "switchB1"            switchB1
         , testModelMatchM "switchB2"            switchB2
         ]

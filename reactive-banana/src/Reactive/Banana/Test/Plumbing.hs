@@ -83,10 +83,10 @@ valueB ~(B x y) = M (X.valueB x) (Y.valueB y)
 observeE :: Event (Moment a) -> Event a
 observeE (E x y) = E (X.observeE $ fmap fstM x) (Y.observeE $ Y.mapE sndM y)
 
-switchE :: Event (Event a) -> Event a
-switchE (E x y) = E
-    undefined -- (X.switchE $ X.mapE (fstE) x)
-    (Y.switchE $ Y.mapE (sndE) y)
+switchE :: Event (Event a) -> Moment (Event a)
+switchE (E x y) = M
+    (fmap ex $ X.switchE $   fmap (fstE) x)
+    (fmap ey $ Y.switchE $ Y.mapE (sndE) y)
 
 switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
 switchB (B x y) (E xe ye) = M
