@@ -69,9 +69,9 @@ main = start $ do
                     [row 10 [widget add, widget remove]] ++ map widget entries
                     ++ [row 10 [widget msg, minsize (sz 40 20) $ widget total]]
 
-                bTotal :: Behavior Number
-                bTotal = switchB (pure Nothing) $
-                            (fmap sum . sequenceA) <$> ePrices
+            (bTotal :: Behavior Number)
+                <- switchB (pure Nothing) $
+                    (fmap sum . sequenceA) <$> ePrices
 
             sink total [text   :== showNumber <$> bTotal]
             sink f     [layout :== bLayout]
