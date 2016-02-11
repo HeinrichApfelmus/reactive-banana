@@ -1,6 +1,10 @@
 Changelog for the `reactive-banana-wx` package
 ----------------------------------------------
 
+**version 0.9.0.3**
+
+* Add convenience stack.yml file to reactive-banana-wx. #129
+
 **version 0.9.0.2**
 
 * Allow newer dependencies (including `array`, `process`, `wx`, `wxcore`).
