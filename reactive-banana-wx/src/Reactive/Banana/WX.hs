@@ -11,6 +11,7 @@ module Reactive.Banana.WX (
     -- * General
     event1, event0, behavior,
     Prop'(..), sink,
+    paintB,
     module Reactive.Banana.Frameworks,
     
     -- * Specific widgets
@@ -65,6 +66,14 @@ sink widget = mapM_ sink1
         liftIOLater $ set widget [attr := x]
         e <- changes b
         reactimate' $ (fmap $ \x -> set widget [attr := x]) <$> e
+
+-- | Repaint a widget with a behavior whenever the behavior changes.
+paintB :: Paint w => w -> Behavior (DC () -> Rect -> IO ()) -> MomentIO ()
+paintB w b = do
+    x <- valueBLater b
+    liftIOLater $ set w [on paint := x]
+    e <- changes b
+    reactimate' $ (fmap $ \y -> set w [on paint := y] >> repaint w) <$> e
 
 {-----------------------------------------------------------------------------
     Specific widgets
