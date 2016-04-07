@@ -16,6 +16,14 @@ module Reactive.Banana.WX (
     -- * Specific widgets
     eventText, behaviorText, eventSelection,
 
+    -- * Mouse events
+    filterModifiers,
+    eventMouseMotion, eventMouseEnter, eventMouseLeave,
+    eventLeftDown, eventLeftUp, eventLeftDClick, eventLeftDrag,
+    eventRightDown, eventRightUp, eventRightDClick, eventRightDrag,
+    eventMiddleDown, eventMiddleUp, eventMiddleDClick, eventMiddleDrag,
+    eventMouseWheelDown, eventMouseWheelUp,
+
     -- * Utilities
     event1ToAddHandler, event0ToEvent1,
     ) where
@@ -108,6 +116,140 @@ fixSelectionEvent listbox =
         s <- get listbox selection
         when (s == -1) $ get listbox (on select) >>= id
 
+{-----------------------------------------------------------------------------
+    Mouse events
+------------------------------------------------------------------------------}
+
+-- | Filter for events matching the given predicate on the 'WX.Modifiers'.
+filterModifiers :: (WX.Modifiers -> Bool) -> Event (a, WX.Modifiers) -> Event a
+filterModifiers f = fmap fst . filterE (f . snd)
+
+-- | Event that occurs when the mouse moves.
+eventMouseMotion :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventMouseMotion = eventMouse f
+    where
+    f MouseMotion{} = True
+    f _ = False
+
+-- | Event that occurs when the mouse enters the boundary.
+eventMouseEnter :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventMouseEnter = eventMouse f
+    where
+    f MouseEnter{} = True
+    f _ = False
+
+-- | Event that occurs when the mouse leaves the boundary.
+eventMouseLeave :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventMouseLeave = eventMouse f
+    where
+    f MouseLeave{} = True
+    f _ = False
+
+-- | Event that occurs when the left mouse button is pressed.
+eventLeftDown :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventLeftDown = eventMouse f
+    where
+    f MouseLeftDown{} = True
+    f _ = False
+
+-- | Event that occurs when the left mouse button is released.
+eventLeftUp :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventLeftUp = eventMouse f
+    where
+    f MouseLeftUp{} = True
+    f _ = False
+
+-- | Event that occurs when the left mouse button is double-clicked.
+eventLeftDClick :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventLeftDClick = eventMouse f
+    where
+    f MouseLeftDClick{} = True
+    f _ = False
+
+-- | Event that occurs when the mouse is dragged around with the left button
+-- pressed.
+eventLeftDrag :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventLeftDrag = eventMouse f
+    where
+    f MouseLeftDClick{} = True
+    f _ = False
+
+-- | Event that occurs when the right mouse button is pressed.
+eventRightDown :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventRightDown = eventMouse f
+    where
+    f MouseRightDown{} = True
+    f _ = False
+
+-- | Event that occurs when the right mouse button is released.
+eventRightUp :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventRightUp = eventMouse f
+    where
+    f MouseRightUp{} = True
+    f _ = False
+
+-- | Event that occurs when the right mouse button is double-clicked.
+eventRightDClick :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventRightDClick = eventMouse f
+    where
+    f MouseRightDClick{} = True
+    f _ = False
+
+-- | Event that occurs when the mouse is dragged around with the right button
+-- pressed.
+eventRightDrag :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventRightDrag = eventMouse f
+    where
+    f MouseRightDClick{} = True
+    f _ = False
+
+-- | Event that occurs when the middle mouse button is pressed.
+eventMiddleDown :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventMiddleDown = eventMouse f
+    where
+    f MouseMiddleDown{} = True
+    f _ = False
+
+-- | Event that occurs when the middle mouse button is released.
+eventMiddleUp :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventMiddleUp = eventMouse f
+    where
+    f MouseMiddleUp{} = True
+    f _ = False
+
+-- | Event that occurs when the middle mouse button is double-clicked.
+eventMiddleDClick :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventMiddleDClick = eventMouse f
+    where
+    f MouseMiddleDClick{} = True
+    f _ = False
+
+-- | Event that occurs when the mouse is dragged around with the middle button
+-- pressed.
+eventMiddleDrag :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventMiddleDrag = eventMouse f
+    where
+    f MouseMiddleDClick{} = True
+    f _ = False
+
+-- | Event that occurs when the mouse wheel is scrolled downward.
+eventMouseWheelDown :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventMouseWheelDown = eventMouse f
+    where
+    f (MouseWheel down _ _) = down
+    f _ = False
+
+-- | Event that occurs when the mouse wheel is scrolled upward.
+eventMouseWheelUp :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventMouseWheelUp = eventMouse f
+    where
+    f (MouseWheel down _ _) = not down
+    f _ = False
+
+eventMouse :: Reactive w => (WX.EventMouse -> Bool) -> w -> MomentIO (Event (WX.Point, WX.Modifiers))
+eventMouse f w = do
+    event <- event1 w mouse
+    return $ (\x -> (WX.mousePos x, WX.mouseModifiers x)) <$> filterE f event
 
 {-----------------------------------------------------------------------------
     Utilities
