@@ -16,13 +16,12 @@ module Reactive.Banana.WX (
     -- * Specific widgets
     eventText, behaviorText, eventSelection,
 
-    -- * Mouse events
-    filterModifiers,
-    eventMouseMotion, eventMouseEnter, eventMouseLeave,
-    eventLeftDown, eventLeftUp, eventLeftDClick, eventLeftDrag,
-    eventRightDown, eventRightUp, eventRightDClick, eventRightDrag,
-    eventMiddleDown, eventMiddleUp, eventMiddleDClick, eventMiddleDrag,
-    eventMouseWheelDown, eventMouseWheelUp,
+    -- * Mouse event helpers
+    mouseMotion, mouseEnter, mouseLeave,
+    leftDown, leftUp, leftDClick, leftDrag,
+    rightDown, rightUp, rightDClick, rightDrag,
+    middleDown, middleUp, middleDClick, middleDrag,
+    mouseWheel, mouseWheelDown, mouseWheelUp,
 
     -- * Utilities
     event1ToAddHandler, event0ToEvent1,
@@ -117,139 +116,101 @@ fixSelectionEvent listbox =
         when (s == -1) $ get listbox (on select) >>= id
 
 {-----------------------------------------------------------------------------
-    Mouse events
+    Mouse event helpers
 ------------------------------------------------------------------------------}
 
--- | Filter for events matching the given predicate on the 'WX.Modifiers'.
-filterModifiers :: (WX.Modifiers -> Bool) -> Event (a, WX.Modifiers) -> Event a
-filterModifiers f = fmap fst . filterE (f . snd)
-
 -- | Event that occurs when the mouse moves.
-eventMouseMotion :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventMouseMotion = eventMouse f
-    where
-    f MouseMotion{} = True
-    f _ = False
+mouseMotion :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+mouseMotion (MouseMotion point mod) = Just (point, mod)
+mouseMotion _ = Nothing
 
 -- | Event that occurs when the mouse enters the boundary.
-eventMouseEnter :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventMouseEnter = eventMouse f
-    where
-    f MouseEnter{} = True
-    f _ = False
+mouseEnter :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+mouseEnter (MouseEnter point mod) = Just (point, mod)
+mouseEnter _ = Nothing
 
 -- | Event that occurs when the mouse leaves the boundary.
-eventMouseLeave :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventMouseLeave = eventMouse f
-    where
-    f MouseLeave{} = True
-    f _ = False
+mouseLeave :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+mouseLeave (MouseLeave point mod) = Just (point, mod)
+mouseLeave _ = Nothing
 
 -- | Event that occurs when the left mouse button is pressed.
-eventLeftDown :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventLeftDown = eventMouse f
-    where
-    f MouseLeftDown{} = True
-    f _ = False
+leftDown :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+leftDown (MouseLeftDown point mod) = Just (point, mod)
+leftDown _ = Nothing
 
 -- | Event that occurs when the left mouse button is released.
-eventLeftUp :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventLeftUp = eventMouse f
-    where
-    f MouseLeftUp{} = True
-    f _ = False
+leftUp :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+leftUp (MouseLeftUp point mod) = Just (point, mod)
+leftUp _ = Nothing
 
 -- | Event that occurs when the left mouse button is double-clicked.
-eventLeftDClick :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventLeftDClick = eventMouse f
-    where
-    f MouseLeftDClick{} = True
-    f _ = False
+leftDClick :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+leftDClick (MouseLeftDClick point mod) = Just (point, mod)
+leftDClick _ = Nothing
 
 -- | Event that occurs when the mouse is dragged around with the left button
 -- pressed.
-eventLeftDrag :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventLeftDrag = eventMouse f
-    where
-    f MouseLeftDClick{} = True
-    f _ = False
+leftDrag :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+leftDrag (MouseLeftDrag point mod) = Just (point, mod)
+leftDrag _ = Nothing
 
 -- | Event that occurs when the right mouse button is pressed.
-eventRightDown :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventRightDown = eventMouse f
-    where
-    f MouseRightDown{} = True
-    f _ = False
+rightDown :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+rightDown (MouseRightDown point mod) = Just (point, mod)
+rightDown _ = Nothing
 
 -- | Event that occurs when the right mouse button is released.
-eventRightUp :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventRightUp = eventMouse f
-    where
-    f MouseRightUp{} = True
-    f _ = False
+rightUp :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+rightUp (MouseRightUp point mod) = Just (point, mod)
+rightUp _ = Nothing
 
 -- | Event that occurs when the right mouse button is double-clicked.
-eventRightDClick :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventRightDClick = eventMouse f
-    where
-    f MouseRightDClick{} = True
-    f _ = False
+rightDClick :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+rightDClick (MouseRightDClick point mod) = Just (point, mod)
+rightDClick _ = Nothing
 
 -- | Event that occurs when the mouse is dragged around with the right button
 -- pressed.
-eventRightDrag :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventRightDrag = eventMouse f
-    where
-    f MouseRightDClick{} = True
-    f _ = False
+rightDrag :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+rightDrag (MouseRightDrag point mod) = Just (point, mod)
+rightDrag _ = Nothing
 
 -- | Event that occurs when the middle mouse button is pressed.
-eventMiddleDown :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventMiddleDown = eventMouse f
-    where
-    f MouseMiddleDown{} = True
-    f _ = False
+middleDown :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+middleDown (MouseMiddleDown point mod) = Just (point, mod)
+middleDown _ = Nothing
 
 -- | Event that occurs when the middle mouse button is released.
-eventMiddleUp :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventMiddleUp = eventMouse f
-    where
-    f MouseMiddleUp{} = True
-    f _ = False
+middleUp :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+middleUp (MouseMiddleUp point mod) = Just (point, mod)
+middleUp _ = Nothing
 
 -- | Event that occurs when the middle mouse button is double-clicked.
-eventMiddleDClick :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventMiddleDClick = eventMouse f
-    where
-    f MouseMiddleDClick{} = True
-    f _ = False
+middleDClick :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+middleDClick (MouseMiddleDClick point mod) = Just (point, mod)
+middleDClick _ = Nothing
 
 -- | Event that occurs when the mouse is dragged around with the middle button
 -- pressed.
-eventMiddleDrag :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventMiddleDrag = eventMouse f
-    where
-    f MouseMiddleDClick{} = True
-    f _ = False
+middleDrag :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+middleDrag (MouseMiddleDrag point mod) = Just (point, mod)
+middleDrag _ = Nothing
+
+-- | Event that occurs when the mouse wheel is scrolled.
+mouseWheel :: WX.EventMouse -> Maybe (Bool, WX.Point, WX.Modifiers)
+mouseWheel (MouseWheel down point mod) = Just (down, point, mod)
+mouseWheel _ = Nothing
 
 -- | Event that occurs when the mouse wheel is scrolled downward.
-eventMouseWheelDown :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventMouseWheelDown = eventMouse f
-    where
-    f (MouseWheel down _ _) = down
-    f _ = False
+mouseWheelDown :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+mouseWheelDown (MouseWheel True point mod) = Just (point, mod)
+mouseWheelDown _ = Nothing
 
 -- | Event that occurs when the mouse wheel is scrolled upward.
-eventMouseWheelUp :: Reactive w => w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventMouseWheelUp = eventMouse f
-    where
-    f (MouseWheel down _ _) = not down
-    f _ = False
-
-eventMouse :: Reactive w => (WX.EventMouse -> Bool) -> w -> MomentIO (Event (WX.Point, WX.Modifiers))
-eventMouse f w = do
-    event <- event1 w mouse
-    return $ (\x -> (WX.mousePos x, WX.mouseModifiers x)) <$> filterE f event
+mouseWheelUp :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+mouseWheelUp (MouseWheel False point mod) = Just (point, mod)
+mouseWheelUp _ = Nothing
 
 {-----------------------------------------------------------------------------
     Utilities
