@@ -66,6 +66,14 @@ sink widget = mapM_ sink1
         e <- changes b
         reactimate' $ (fmap $ \x -> set widget [attr := x]) <$> e
 
+-- | Use a time-varying paint function for a widget,
+-- but also make sure that the widget is redrawn whenever said function changes.
+sinkPaint :: Paint w => w -> Behavior (DC () -> Rect -> IO ()) -> MomentIO ()
+sinkPaint w b = do
+    sink w [on paint :== b]
+    e <- changes b
+    reactimate $ repaint w <$ e
+
 {-----------------------------------------------------------------------------
     Specific widgets
 ------------------------------------------------------------------------------}
