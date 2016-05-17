@@ -4,6 +4,7 @@ Changelog for the `reactive-banana-wx` package
 **version 1.1.1.0**
 
 * Add function `sinkPaint` for time-varying paint functions. #133
+* Add mouse event helpers. #132
 * Add convenience stack.yml file to reactive-banana-wx. #129
 
 **version 1.1.0.0**
