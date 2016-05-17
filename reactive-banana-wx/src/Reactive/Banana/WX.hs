@@ -16,6 +16,13 @@ module Reactive.Banana.WX (
     -- * Specific widgets
     eventText, behaviorText, eventSelection,
 
+    -- * Mouse event helpers
+    mouseMotion, mouseEnter, mouseLeave,
+    leftDown, leftUp, leftDClick, leftDrag,
+    rightDown, rightUp, rightDClick, rightDrag,
+    middleDown, middleUp, middleDClick, middleDrag,
+    mouseWheel, mouseWheelDown, mouseWheelUp,
+
     -- * Utilities
     event1ToAddHandler, event0ToEvent1,
     ) where
@@ -116,6 +123,102 @@ fixSelectionEvent listbox =
         s <- get listbox selection
         when (s == -1) $ get listbox (on select) >>= id
 
+{-----------------------------------------------------------------------------
+    Mouse event helpers
+------------------------------------------------------------------------------}
+
+-- | Event that occurs when the mouse moves.
+mouseMotion :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+mouseMotion (MouseMotion point mod) = Just (point, mod)
+mouseMotion _ = Nothing
+
+-- | Event that occurs when the mouse enters the boundary.
+mouseEnter :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+mouseEnter (MouseEnter point mod) = Just (point, mod)
+mouseEnter _ = Nothing
+
+-- | Event that occurs when the mouse leaves the boundary.
+mouseLeave :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+mouseLeave (MouseLeave point mod) = Just (point, mod)
+mouseLeave _ = Nothing
+
+-- | Event that occurs when the left mouse button is pressed.
+leftDown :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+leftDown (MouseLeftDown point mod) = Just (point, mod)
+leftDown _ = Nothing
+
+-- | Event that occurs when the left mouse button is released.
+leftUp :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+leftUp (MouseLeftUp point mod) = Just (point, mod)
+leftUp _ = Nothing
+
+-- | Event that occurs when the left mouse button is double-clicked.
+leftDClick :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+leftDClick (MouseLeftDClick point mod) = Just (point, mod)
+leftDClick _ = Nothing
+
+-- | Event that occurs when the mouse is dragged around with the left button
+-- pressed.
+leftDrag :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+leftDrag (MouseLeftDrag point mod) = Just (point, mod)
+leftDrag _ = Nothing
+
+-- | Event that occurs when the right mouse button is pressed.
+rightDown :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+rightDown (MouseRightDown point mod) = Just (point, mod)
+rightDown _ = Nothing
+
+-- | Event that occurs when the right mouse button is released.
+rightUp :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+rightUp (MouseRightUp point mod) = Just (point, mod)
+rightUp _ = Nothing
+
+-- | Event that occurs when the right mouse button is double-clicked.
+rightDClick :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+rightDClick (MouseRightDClick point mod) = Just (point, mod)
+rightDClick _ = Nothing
+
+-- | Event that occurs when the mouse is dragged around with the right button
+-- pressed.
+rightDrag :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+rightDrag (MouseRightDrag point mod) = Just (point, mod)
+rightDrag _ = Nothing
+
+-- | Event that occurs when the middle mouse button is pressed.
+middleDown :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+middleDown (MouseMiddleDown point mod) = Just (point, mod)
+middleDown _ = Nothing
+
+-- | Event that occurs when the middle mouse button is released.
+middleUp :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+middleUp (MouseMiddleUp point mod) = Just (point, mod)
+middleUp _ = Nothing
+
+-- | Event that occurs when the middle mouse button is double-clicked.
+middleDClick :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+middleDClick (MouseMiddleDClick point mod) = Just (point, mod)
+middleDClick _ = Nothing
+
+-- | Event that occurs when the mouse is dragged around with the middle button
+-- pressed.
+middleDrag :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+middleDrag (MouseMiddleDrag point mod) = Just (point, mod)
+middleDrag _ = Nothing
+
+-- | Event that occurs when the mouse wheel is scrolled.
+mouseWheel :: WX.EventMouse -> Maybe (Bool, WX.Point, WX.Modifiers)
+mouseWheel (MouseWheel down point mod) = Just (down, point, mod)
+mouseWheel _ = Nothing
+
+-- | Event that occurs when the mouse wheel is scrolled downward.
+mouseWheelDown :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+mouseWheelDown (MouseWheel True point mod) = Just (point, mod)
+mouseWheelDown _ = Nothing
+
+-- | Event that occurs when the mouse wheel is scrolled upward.
+mouseWheelUp :: WX.EventMouse -> Maybe (WX.Point, WX.Modifiers)
+mouseWheelUp (MouseWheel False point mod) = Just (point, mod)
+mouseWheelUp _ = Nothing
 
 {-----------------------------------------------------------------------------
     Utilities
