@@ -23,7 +23,7 @@ License-file:        LICENSE
 Author:              Heinrich Apfelmus
 Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Category:            FRP
-Cabal-version:       >= 1.18
+Cabal-version:       >= 1.16
 Build-type:          Simple
 
 extra-source-files:     CHANGELOG.md,
