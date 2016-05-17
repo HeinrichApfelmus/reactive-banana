@@ -1,9 +1,17 @@
 Changelog for the `reactive-banana-wx` package
 ----------------------------------------------
 
-**version 0.9.0.3**
+**version 1.1.0.1**
 
 * Add convenience stack.yml file to reactive-banana-wx. #129
+
+**version 1.1.0.0**
+
+* Adjust to `reactive-banana` version `== 1.1.*`.
+
+**version 1.0.0.0**
+
+* Adjust to `reactive-banana` version `== 1.0.*`.
 
 **version 0.9.0.2**
 
