@@ -1,6 +1,10 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 1.1.0.1**
+
+* Adapt library to work with GHC-8.0.1.
+
 **version 1.1.0.0**
 
 * Fix bug: Types of `switchB` and `switchE` need to be in the `Moment` monad.
