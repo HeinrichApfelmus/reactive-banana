@@ -1,0 +1,52 @@
+% reactivebanana-Hr.tex
+\begin{hcarentry}{reactive-banana}
+\report{Heinrich Apfelmus}%11/16
+\status{active development}
+\makeheader
+
+%**<img width=200 src="./banana.jpg">
+%*ignore
+\begin{center}
+\includegraphics[width=0.2\textwidth]{html/banana.jpg}
+\end{center}
+%*endignore
+
+Reactive-banana is a library for functional reactive programming (FRP).
+
+FRP offers an elegant and concise way to express interactive programs such as
+graphical user interfaces, animations, computer music or robot controllers. It
+promises to avoid the spaghetti code that is all too common in traditional
+approaches to GUI programming.
+
+The goal of the library is to provide a solid foundation.
+\begin{compactitem}
+\item Programmers interested in implementing FRP will have a \emph{reference}
+  for a \emph{simple semantics} with a working implementation. The library
+  stays close to the semantics pioneered by Conal Elliott.
+\item The library features an \emph{efficient implementation}. No more spooky
+  time leaks, predicting space \& time usage should be straightforward.
+\end{compactitem}
+
+The library is meant to be used in conjunction with existing libraries that
+are specific to your problem domain. For instance, you can hook it into any
+event-based GUI framework, like wxHaskell or Gtk2Hs. Several helper packages
+like reactive-banana-wx provide a small amount of glue code that can make life
+easier.
+
+\emph{Current status.}
+Having reached the milestone of version \verb!1.0!,
+I consider the library API to be stable and feature complete.
+
+However, compared to the previous report, it was necessary to deprecate version \verb!1.0.*! of the package and release version \verb!1.1.*! instead. This was due to an unfortunate semantic bug in the API. Other than that, the documentation has been expanded, and the library has been updated to be compatible with the current Haskell ecosystem.
+
+\emph{Future development.}
+Since I consider this FRP implementation to be complete in functionality, my focus will shift towards applications of FRP. In particular, I intend to use this library in my \verb`threepenny-gui` project, which is a library for writing graphical user interfaces in Haskell \cref{threepenny-gui}.
+
+That said, there still remains some work to be done to improve the constant factor performance of the Reactive-banana library.
+
+\FurtherReading
+\begin{compactitem}
+\item Project homepage: \url{http://wiki.haskell.org/Reactive-banana}
+\item Example code: \url{http://wiki.haskell.org/Reactive-banana/Examples}
+\end{compactitem}
+\end{hcarentry}
