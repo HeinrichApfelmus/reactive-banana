@@ -1,6 +1,8 @@
 [![Build Status](https://travis-ci.org/HeinrichApfelmus/reactive-banana.png)](https://travis-ci.org/HeinrichApfelmus/reactive-banana) 
 
-## What is reactive-banana?
+# Reactive-banana
+
+### Whats this?
 
 <div style="float:left;"><img src="https://github.com/HeinrichApfelmus/reactive-banana/raw/master/banana.png" /></div>
 
@@ -11,7 +13,9 @@ See the **[project homepage][homepage]** for **documentation**, **examples** and
   [homepage]: http://wiki.haskell.org/Reactive-banana
   [frp]: http://wiki.haskell.org/Functional_Reactive_Programming
 
-## Compilation from the repository
+# Installation
+
+### Compilation from the repository
 
 To build and install the core library from the source repository, simply type
 
@@ -33,7 +37,10 @@ To build the wx examples, type
     cabal configure -fbuildExamples && cabal build
     cd ..
 
-## How is the source code structured?
+
+# Technical overview
+
+### How is the source code structured?
 
 The project contains several directories:
 
@@ -51,7 +58,7 @@ The reactive-banana library actually contains *two* FRP implementations:
   [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Model.hs
   [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Prim.hs
 
-## License
+### License
 
 The source code is distributed under a BSD3 license. See the `LICENSE` files in the corresponding subdirectories.
 
@@ -60,12 +67,11 @@ The reactive-banana mascot [[png]][mascot] is licensed under a <a rel="license" 
   [mascot]: https://github.com/HeinrichApfelmus/reactive-banana/raw/master/banana.png
 
 
-## Contribute
+# Contributors
 
-Send me your examples, bindings, problems, suggestions, etc!
+Many thanks to everyone who contributed, provided feedback or simply wrote an application using Reactive-Banana! In particular, many thanks to:
 
-Many thanks to
+Alexander Berntsen, Oliver Charles, Samuel Gélineau, Vladimir Lopatin, Atze van der Ploeg, [*and many others*](CONTRIBUTORS).
 
-Alexander Berntsen, Oliver Charles, Samuel Gélineau, Vladimir Lopatin, Atze van der Ploeg *and also* Abu Alam, Markus Barenhoff, Vincent Berthoux, Kevin Cantu, Gregory Crosswhite, Peter Hillerström, Joseph Heinemeyer, Elliott Hird, Matt Kraai, John Lato, Michael Litchard, Peter Minten, Gideon Sireling, Michael Smith, Henning Thielemann, Alexey Vagarenko, Daniel Werner
+Special thanks to *Oliver Charles* for co-maintaining this project.
 
-for their contributions!
