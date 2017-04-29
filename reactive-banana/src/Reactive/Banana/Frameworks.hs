@@ -258,17 +258,31 @@ in this context. Still, it is useful in some cases.
 imposeChanges :: Behavior a -> Event () -> Behavior a
 imposeChanges b e = B $ Prim.imposeChanges (unB b) (Prim.mapE (const ()) (unE e))
 
--- | Dynamically add input and output to an existing event network.
---
--- Note: You can even do 'IO' actions here,
--- which is useful if you want to register additional event handlers
--- dynamically.
--- However, there is no
--- guarantee about the order in which the actions are executed.
--- If the result 'Event' of this function is garbage collected,
--- it may also happen that the actions are not executed at all.
--- If you want a reliable way to turn events into 'IO' actions
--- use the 'reactimate' and 'reactimate'' functions.
+{- | Dynamically add input and output to an existing event network.
+
+
+Note: You can perform 'IO' actions here, which is useful if you want
+to register additional event handlers dynamically.
+
+However, if two arguments to 'execute' occur simultaneously,
+then the order in which the 'IO' therein are executed is unspecified.
+For instance, in the following code
+
+> example e = do
+>       e1 <- execute (liftIO (putStrLn "A") <$ e)
+>       e2 <- execute (liftIO (putStrLn "B") <$ e)
+>       return (e1,e2)
+
+it is unspecified whether @A@ or @B@ are printed first.
+
+Moreover, if the result 'Event' of this function has been garbage collected,
+it may also happen that the actions are not executed at all.
+In the example above, if the events `e1` and `e2` are not used any further,
+then it can be that neither @A@ nor @B@ will be printed.
+
+If your main goal is to reliably turn events into 'IO' actions,
+use the 'reactimate' and 'reactimate'' functions instead.
+-}
 execute :: Event (MomentIO a) -> MomentIO (Event a)
 execute = MIO . fmap E . Prim.executeE . Prim.mapE unMIO . unE
 
