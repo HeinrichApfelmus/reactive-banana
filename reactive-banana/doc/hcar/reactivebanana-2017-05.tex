@@ -1,0 +1,55 @@
+% reactivebanana-Hr.tex
+\begin{hcarentry}[updated]{reactive-banana}
+\members{Heinrich Apfelmus, Oliver Charles}
+\report{Heinrich Apfelmus}%05/17
+\release{1.1.0.1}
+\status{stable}
+\makeheader
+
+%**<img width=200 src="./banana.jpg">
+%*ignore
+\begin{center}
+\includegraphics[width=0.2\columnwidth]{html/banana.jpg}
+\end{center}
+%*endignore
+
+Reactive-banana is a library for functional reactive programming (FRP).
+%
+FRP offers an elegant and concise way to express interactive programs such as
+graphical user interfaces, animations, computer music or robot controllers.
+It promises to avoid the spaghetti code that is all too common in traditional
+approaches to GUI programming.
+
+The goal of the library is to provide a solid foundation.
+
+\begin{compactitem}
+\item Programmers interested in implementing FRP will have a \emph{reference}
+  for a \emph{simple semantics} with a working implementation. The library
+  stays close to the semantics pioneered by Conal Elliott.
+\item The library features an \emph{efficient implementation}. No more spooky
+  time leaks, predicting space \& time usage should be straightforward.
+\end{compactitem}
+
+The library is meant to be used in conjunction with existing libraries that
+are specific to your problem domain. For instance, you can hook it into any
+event-based GUI framework, like wxHaskell or Gtk2Hs. Several helper packages
+like reactive-banana-wx provide a small amount of glue code that can make life
+easier.
+
+\subsubsection*{Status}
+
+Having reached the milestone of version \verb!1.*!, I consider the library API
+to be stable and feature complete. Compared to the previous report, thanks to the efforts of our new co-maintainer Oliver Charles, the library is now available on Stackage~\cref{Stackage}.
+
+\subsubsection*{Future development}
+
+There still remains some work to be done to improve the constant factor performance of the library.
+
+Also, the library does not yet compile well to JavaScript with GHCJS, as there are some issues with garbage collection.
+
+\FurtherReading
+\begin{compactitem}
+\item Project homepage: \url{http://wiki.haskell.org/Reactive-banana}
+\item Example code: \url{http://wiki.haskell.org/Reactive-banana/Examples}
+\end{compactitem}
+\end{hcarentry}
