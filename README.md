@@ -1,8 +1,8 @@
-[![Build Status](https://travis-ci.org/HeinrichApfelmus/reactive-banana.png)](https://travis-ci.org/HeinrichApfelmus/reactive-banana) 
+[![Build Status](https://travis-ci.org/HeinrichApfelmus/reactive-banana.svg)](https://travis-ci.org/HeinrichApfelmus/reactive-banana) 
 
 # Reactive-banana
 
-### Whats this?
+### What's this?
 
 <div style="float:left;"><img src="https://github.com/HeinrichApfelmus/reactive-banana/raw/master/banana.png" /></div>
 
