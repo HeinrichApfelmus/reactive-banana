@@ -15,10 +15,10 @@ module Reactive.Banana.Combinators (
 
     -- ** First-order
     -- | This subsections lists the primitive first-order combinators for FRP.
-    -- The 'Functor' and 'Applicative' instances are also part of this,
+    -- The 'Functor', 'Applicative' and 'Monoid' instances are also part of this,
     -- but they are documented at the types 'Event' and 'Behavior'.
     module Control.Applicative,
-    module Data.Monoid,
+    module Data.Semigroup,
     never, unionWith, filterE,
     apply,
 
@@ -45,7 +45,7 @@ module Reactive.Banana.Combinators (
 import Control.Applicative
 import Control.Monad
 import Data.Maybe          (isJust, catMaybes)
-import Data.Monoid         (Monoid(..))
+import Data.Semigroup
 
 import qualified Reactive.Banana.Internal.Combinators as Prim
 import           Reactive.Banana.Types

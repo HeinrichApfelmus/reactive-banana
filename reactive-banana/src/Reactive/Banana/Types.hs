@@ -8,6 +8,7 @@ module Reactive.Banana.Types (
     Future(..),
     ) where
 
+import Data.Semigroup
 import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
@@ -41,6 +42,25 @@ newtype Event a = E { unE :: Prim.Event a }
 -- > fmap f e = [(time, f a) | (time, a) <- e]
 instance Functor Event where
     fmap f = E . Prim.mapE f . unE
+
+-- | The combinator '<>' merges two event streams of the same type.
+-- In case of simultaneous occurrences,
+-- the events are combined with the underlying 'Semigroup' operation.
+-- Semantically,
+--
+-- > (<>) :: Event a -> Event a -> Event a
+-- > (<>) ex ey = unionWith (<>) ex ey
+instance Semigroup a => Semigroup (Event a) where
+    x <> y = E $ Prim.unionWith (<>) (unE x) (unE y)
+
+-- | The combinator 'mempty' represents an event that never occurs.
+-- It is a synonym,
+--
+-- > mempty :: Event a
+-- > mempty = never
+instance Semigroup a => Monoid (Event a) where
+    mempty  = E $ Prim.never
+    mappend = (<>)
 
 
 {-| @Behavior a@ represents a value that varies in time.
