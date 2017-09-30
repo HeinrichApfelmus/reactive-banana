@@ -110,7 +110,17 @@ never = E Prim.never
 -- >    | timex >  timey = (timey,y)     : unionWith f ((timex,x):xs) ys
 -- >    | timex == timey = (timex,f x y) : unionWith f xs ys
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
-unionWith f e1 e2 = E $ Prim.unionWith f (unE e1) (unE e2)
+unionWith f = mergeWith Just Just (\x y -> Just (f x y))
+
+-- | The most general form of merging two 'Event's.
+mergeWith
+  :: (a -> Maybe c) -- ^ The function called when only the first 'Event' emits a value.
+  -> (b -> Maybe c) -- ^ The function called when only the second 'Event' emits a value.
+  -> (a -> b -> Maybe c) -- ^ The function called when both 'Event's emit values simultaneously.
+  -> Event a
+  -> Event b
+  -> Event c
+mergeWith f g h e1 e2 = E $ Prim.mergeWith f g h (unE e1) (unE e2)
 
 -- | Allow all event occurrences that are 'Just' values, discard the rest.
 -- Variant of 'filterE'.

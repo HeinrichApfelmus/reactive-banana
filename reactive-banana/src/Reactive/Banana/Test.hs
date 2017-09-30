@@ -33,7 +33,7 @@ main = defaultMain
         [ testModelMatchM "counter"     counter
         , testModelMatch "double"      double
         , testModelMatch "sharing"     sharing
-        , testModelMatch "unionFilter" unionFilter
+        , testModelMatch "mergeFilter" mergeFilter
         , testModelMatchM "recursive1A"  recursive1A
         , testModelMatchM "recursive1B"  recursive1B
         , testModelMatchM "recursive2"  recursive2
@@ -111,14 +111,14 @@ counter e = do
     bcounter <- accumB 0 $ fmap (\_ -> (+1)) e
     return $ applyE (pure const <*> bcounter) e
 
-merge e1 e2 = unionWith (++) (list e1) (list e2)
+merge e1 e2 = mergeWith Just Just (\x y -> Just (x ++ y)) (list e1) (list e2)
     where list = fmap (:[])
 
 double e  = merge e e
 sharing e = merge e1 e1
     where e1 = filterE (< 3) e
 
-unionFilter e1 = unionWith (+) e2 e3
+mergeFilter e1 = mergeWith Just Just (\x y -> Just (x + y)) e2 e3
     where
     e3 = fmap (+1) $ filterE even e1
     e2 = fmap (+1) $ filterE odd  e1
@@ -245,9 +245,9 @@ issue79 inputEvent = mdo
         fmappedEvent  = fmap id (filteredEvent)
     lastValue <- stepper 1 $ fmappedEvent
 
-    let outputEvent = unionWith (++)
+    let outputEvent = mergeWith Just Just (\x y -> Just (x ++ y))
             (const "filtered event" <$> filteredEvent)
-            (((" and " ++) . show) <$> unionWith (+) appliedEvent fmappedEvent)
+            (((" and " ++) . show) <$> mergeWith Just Just (\x y -> Just (x + y)) appliedEvent fmappedEvent)
 
     return $ outputEvent
 

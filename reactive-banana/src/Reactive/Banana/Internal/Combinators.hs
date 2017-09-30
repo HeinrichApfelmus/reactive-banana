@@ -115,8 +115,14 @@ imposeChanges = liftCached2 $ \(l1,_) p2 -> return (l1,p2)
 never :: Event a
 never = don'tCache  $ liftBuild $ Prim.neverP
 
-unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
-unionWith f = liftCached2 $ (liftBuild .) . Prim.unionWithP f
+mergeWith
+  :: (a -> Maybe c)
+  -> (b -> Maybe c)
+  -> (a -> b -> Maybe c)
+  -> Event a
+  -> Event b
+  -> Event c
+mergeWith f g h = liftCached2 $ (liftBuild .) . Prim.mergeWithP f g h
 
 filterJust :: Event (Maybe a) -> Event a
 filterJust  = liftCached1 $ liftBuild . Prim.filterJustP
@@ -137,7 +143,7 @@ pureB a = cache $ do
 
 applyB :: Behavior (a -> b) -> Behavior a -> Behavior b
 applyB = liftCached2 $ \(~(l1,p1)) (~(l2,p2)) -> liftBuild $ do
-    p3 <- Prim.unionWithP const p1 p2
+    p3 <- Prim.mergeWithP Just Just (const . Just) p1 p2
     let l3 = Prim.applyL l1 l2
     return (l3,p3)
 
@@ -235,4 +241,4 @@ switchB b e = ask >>= \r -> cacheAndSchedule $ do
         return (lr, pr)
 
 merge :: Pulse () -> Pulse () -> Build (Pulse ())
-merge = Prim.unionWithP (\_ _ -> ())
+merge = Prim.mergeWithP Just Just (\_ _ -> Just ())
