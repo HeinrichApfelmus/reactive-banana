@@ -153,9 +153,9 @@ valueB (B b) = M $ \time -> b !! time
 observeE :: Event (Moment a) -> Event a
 observeE = E . zipWith (\time -> fmap (\m -> unM m time)) [0..] . unE
 
-switchE :: Event (Event a) -> Moment (Event a)
-switchE es = M $ \t -> E $
-    replicate t Nothing ++ switch (unE never) (forgetE t (forgetDiagonalE es))
+switchE :: Event a -> Event (Event a) -> Moment (Event a)
+switchE e es = M $ \t -> E $
+    replicate t Nothing ++ switch (unE e) (forgetE t (forgetDiagonalE es))
     where
     switch (x:xs) (Nothing : ys) = x : switch xs ys
     switch (x: _) (Just xs : ys) = x : switch (tail xs) ys

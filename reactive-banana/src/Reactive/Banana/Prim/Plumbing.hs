@@ -85,7 +85,7 @@ newLatch a = mdo
     let
         err        = error "incorrect Latch write"
         updateOn p = do
-            w  <- liftIO $ mkWeakRefValue latch latch 
+            w  <- liftIO $ mkWeakRefValue latch latch
             lw <- liftIO $ newRef $ LatchWrite
                 { _evalLW  = maybe err id <$> readPulseP p
                 , _latchLW = w
@@ -93,7 +93,7 @@ newLatch a = mdo
             -- writer is alive only as long as the latch is alive
             _  <- liftIO $ mkWeakRefValue latch lw
             (P p) `addChild` (L lw)
-    
+
     return (updateOn, latch)
 
 -- | Make a new 'Latch' that caches a previous computation.
