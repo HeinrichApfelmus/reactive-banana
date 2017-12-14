@@ -21,7 +21,7 @@ License-file:        LICENSE
 Author:              Heinrich Apfelmus
 Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Category:            FRP, GUI
-Cabal-version:       >= 1.8
+Cabal-version:       >= 1.24
 
 
 Build-type:          Custom
@@ -31,6 +31,12 @@ Extra-source-files:  CHANGELOG.md,
 data-dir:            data
 data-files:          *.ico, *.wav, *.png
 
+custom-setup
+  setup-depends:
+    cabal-macosx >= 0.1 && < 0.3,
+    base >= 4.2 && < 5,
+    Cabal
+
 flag buildExamples
   description: Build example executables
   default:     False
@@ -38,7 +44,6 @@ flag buildExamples
 Library
     hs-source-dirs:  src
     build-depends:   base >= 4.2 && < 5,
-                     cabal-macosx >= 0.1 && < 0.3,
                      reactive-banana >= 1.1 && < 1.2,
                      wxcore (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.93),
                      wx (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.93)
