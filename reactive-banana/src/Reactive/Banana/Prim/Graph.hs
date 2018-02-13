@@ -1,15 +1,15 @@
 {-----------------------------------------------------------------------------
     reactive-banana
-    
+
     Implementation of graph-related functionality
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Prim.Graph where
 
 import           Control.Monad
 import           Data.Functor.Identity
+import           Data.Hashable
 import qualified Data.HashMap.Strict   as Map
 import qualified Data.HashSet          as Set
-import           Data.Hashable
 import           Data.Maybe
 
 {-----------------------------------------------------------------------------
@@ -35,11 +35,11 @@ insertEdge (x,y) gr = gr
 
 -- | Get all immediate children of a node in a graph.
 getChildren :: (Eq a, Hashable a) => Graph a -> a -> [a]
-getChildren gr x = maybe [] id . Map.lookup x . children $ gr
+getChildren gr x = fromMaybe [] . Map.lookup x . children $ gr
 
 -- | Get all immediate parents of a node in a graph.
 getParents :: (Eq a, Hashable a) => Graph a -> a -> [a]
-getParents gr x = maybe [] id . Map.lookup x . parents $ gr
+getParents gr x = fromMaybe [] . Map.lookup x . parents $ gr
 
 -- | List all nodes such that each parent is listed before all of its children.
 listParents :: (Eq a, Hashable a) => Graph a -> [a]
@@ -48,7 +48,7 @@ listParents gr = list
     -- all nodes without children
     ancestors = [x | x <- Set.toList $ nodes gr, null (getParents gr x)]
     -- all nodes in topological order "parents before children"
-    list      = runIdentity $ dfs' ancestors (Identity . getChildren gr)
+    list      = runIdentity $ reversePostOrder' ancestors (Identity . getChildren gr)
 
 {-----------------------------------------------------------------------------
     Graph traversal
@@ -56,22 +56,23 @@ listParents gr = list
 -- | Graph represented as map of successors.
 type GraphM m a = a -> m [a]
 
--- | Depth-first search. List all transitive successors of a node.
+-- | Computes the reverse post-order by listing all transitive successors of a node.
 -- A node is listed *before* all its successors have been listed.
-dfs :: (Eq a, Hashable a, Monad m) => a -> GraphM m a -> m [a]
-dfs x = dfs' [x]
+reversePostOrder :: (Eq a, Hashable a, Monad m) => a -> GraphM m a -> m [a]
+reversePostOrder seed = reversePostOrder' [seed]
 
--- | Depth-first serach, refined version.
--- INVARIANT: None of the nodes in the initial list have a predecessor.
-dfs' :: (Eq a, Hashable a, Monad m) => [a] -> GraphM m a -> m [a]
-dfs' xs succs = liftM fst $ go xs [] Set.empty
+-- | Reverse post-order from multiple seeds.
+-- INVARIANT: For this to be a valid topological order, none of the seeds
+-- may have a predecessor.
+reversePostOrder' :: (Eq a, Hashable a, Monad m) => [a] -> GraphM m a -> m [a]
+reversePostOrder' seeds successors = liftM fst $ go seeds [] Set.empty
     where
-    go []     ys seen            = return (ys, seen)    -- all nodes seen
-    go (x:xs) ys seen
-        | x `Set.member` seen    = go xs ys seen
-        | otherwise              = do
-            xs' <- succs x
-            -- visit all children
-            (ys', seen') <- go xs' ys (Set.insert x seen)
-            -- list this node as all successors have been seen
-            go xs (x:ys') seen'
+    go []           rpo visited     = return (rpo, visited)
+    go (seed:seeds) rpo visited
+        | seed `Set.member` visited = go seeds rpo visited
+        | otherwise                 = do
+            succs <- successors seed
+            -- visit all successors
+            (rpo', visited') <- go succs rpo (Set.insert seed visited)
+            -- prepend this node as all successors have been visited
+            go seeds (seed:rpo') visited'
