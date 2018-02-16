@@ -11,6 +11,7 @@ import           Control.Monad.Trans.ReaderWriterIO
 import           Data.Functor
 import           Data.Hashable
 import           Data.Monoid
+import           Data.Semigroup
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
 import           System.Mem.Weak
@@ -51,9 +52,12 @@ newtype BuildW = BuildW (DependencyBuilder, [Output], Action, Maybe (Build ()))
     --          , late build actions
     --          )
 
+instance Semigroup BuildW where
+    BuildW x <> BuildW y = BuildW (x <> y)
+
 instance Monoid BuildW where
-    mempty                          = BuildW mempty
-    (BuildW x) `mappend` (BuildW y) = BuildW (x `mappend` y)
+    mempty  = BuildW mempty
+    mappend = (<>)
 
 type BuildIO = Build
 
@@ -70,9 +74,11 @@ ground = 0
 
 -- | 'IO' actions as a monoid with respect to sequencing.
 newtype Action = Action { doit :: IO () }
+instance Semigroup Action where
+    Action x <> Action y = Action (x >> y)
 instance Monoid Action where
     mempty = Action $ return ()
-    (Action x) `mappend` (Action y) = Action (x >> y)
+    mappend = (<>)
 
 -- | Lens-like functionality.
 data Lens s a = Lens (s -> a) (a -> s -> s)
@@ -185,9 +191,12 @@ beginning = T 0
 next :: Time -> Time
 next (T n) = T (n+1)
 
+instance Semigroup Time where
+    T x <> T y = T (max x y)
+
 instance Monoid Time where
-    mappend (T x) (T y) = T (max x y)
-    mempty              = beginning
+    mappend = (<>)
+    mempty  = beginning
 
 {-----------------------------------------------------------------------------
     Notes
