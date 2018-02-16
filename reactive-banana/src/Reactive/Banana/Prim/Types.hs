@@ -10,7 +10,7 @@ import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.ReaderWriterIO
 import           Data.Functor
 import           Data.Hashable
-import           Data.Monoid
+import           Data.Monoid (Monoid, mempty, mappend)
 import           Data.Semigroup
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
