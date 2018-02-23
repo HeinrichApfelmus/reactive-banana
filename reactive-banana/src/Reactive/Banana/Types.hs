@@ -140,7 +140,7 @@ instance MonadIO MomentIO where liftIO = MIO . liftIO
 that happens at one particular moment in time.
 Unlike the 'Moment' monad, it need not be pure anymore.
 -}
-class Monad m => MonadMoment m where
+class MonadFix m => MonadMoment m where
     liftMoment :: Moment a -> m a
 
 instance MonadMoment Moment   where liftMoment = id
