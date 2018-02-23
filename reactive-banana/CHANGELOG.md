@@ -1,6 +1,14 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**version 1.2.0.0**
+
+* Make `MonadFix` superclass of `MonadMoment`. [#128][]
+* Add `Semigroup` and `Monoid` instances for `Event`. [#104][]
+
+  [#128]: https://github.com/HeinrichApfelmus/reactive-banana/pull/128
+  [#104]: https://github.com/HeinrichApfelmus/reactive-banana/issues/104
+
 **version 1.1.0.1**
 
 * Adapt library to work with GHC-8.0.1.
