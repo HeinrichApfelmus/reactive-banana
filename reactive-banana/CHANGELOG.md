@@ -1,13 +1,16 @@
-Changelog for the `reactive-banana` package
+Changelog for the `reactive-banana** package
 -------------------------------------------
 
 **version 1.2.0.0**
 
 * Make `MonadFix` superclass of `MonadMoment`. [#128][]
 * Add `Semigroup` and `Monoid` instances for `Event`. [#104][]
+* Semigroup compatibility with GHC 8.4.1 [#168][]
+* Increased upper-bound on `pqueue`.
 
   [#128]: https://github.com/HeinrichApfelmus/reactive-banana/pull/128
   [#104]: https://github.com/HeinrichApfelmus/reactive-banana/issues/104
+  [#168]: https://github.com/HeinrichApfelmus/reactive-banana/pull/168
 
 **version 1.1.0.1**
 
