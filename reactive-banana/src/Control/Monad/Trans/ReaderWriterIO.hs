@@ -15,6 +15,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Data.IORef
 import Data.Monoid
+import Data.Semigroup
 
 {-----------------------------------------------------------------------------
     Type and class instances
@@ -34,6 +35,9 @@ instance Monad m => Monad (ReaderWriterIOT r w m) where
 instance MonadFix m => MonadFix (ReaderWriterIOT r w m) where mfix = mfixR
 instance MonadIO m => MonadIO (ReaderWriterIOT r w m)   where liftIO = liftIOR
 instance MonadTrans (ReaderWriterIOT r w)               where lift = liftR
+
+instance (Monad m, a ~ ()) => Semigroup (ReaderWriterIOT r w m a) where
+    mx <> my = mx >> my
 
 instance (Monad m, a ~ ()) => Monoid (ReaderWriterIOT r w m a) where
     mempty          = return ()
