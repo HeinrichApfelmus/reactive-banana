@@ -1,16 +1,17 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns  #-}
+{-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Prim.Dependencies (
     -- | Utilities for operating on node dependencies.
     addChild, changeParent, buildDependencies,
     ) where
 
-import Control.Monad
-import Data.Functor
-import Data.Monoid
-import System.Mem.Weak
+import           Control.Monad
+import           Data.Functor
+import           Data.Monoid
+import           System.Mem.Weak
 
 import qualified Reactive.Banana.Prim.Graph as Graph
 import           Reactive.Banana.Prim.Types
@@ -91,7 +92,7 @@ doChangeParent child parent = do
 
     -- lower all parents of the node if the parent was higher than the node
     when (d > 0) $ do
-        parents <- Graph.dfs (P parent) getParents
+        parents <- Graph.reversePostOrder (P parent) getParents
         forM_ parents $ \(P node) -> do
             modify' node $ update levelP (subtract d)
 
