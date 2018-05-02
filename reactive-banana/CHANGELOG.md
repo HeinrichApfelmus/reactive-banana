@@ -4,8 +4,10 @@ Changelog for the `reactive-banana** package
 **unreleased**
 
 * Add `mergeWith` combinator. [#163][]
+* Register handlers on actuate instead of imediately and unregister them on pause. [#173][]
 
   [#163] https://github.com/HeinrichApfelmus/reactive-banana/pull/163
+  [#173] https://github.com/HeinrichApfelmus/reactive-banana/pull/173
 
 **version 1.2.1.0**
 
