@@ -2,6 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Reactive.Banana.Prim.IO where
 
 import           Control.Monad.IO.Class
@@ -24,7 +25,7 @@ debug s = id
 --
 -- Together with 'addHandler', this function can be used to operate with
 -- pulses as with standard callback-based events.
-newInput :: Build (Pulse a, a -> Step)
+newInput :: forall a. Build (Pulse a, a -> Step)
 newInput = mdo
     always <- alwaysP
     key    <- liftIO $ Lazy.newKey
@@ -38,7 +39,8 @@ newInput = mdo
         , _nameP     = "newInput"
         }
     -- Also add the  alwaysP  pulse to the inputs.
-    let run a = step ([P pulse, P always], Lazy.insert key (Just a) Lazy.empty)
+    let run :: a -> Step
+        run a = step ([P pulse, P always], Lazy.insert key (Just a) Lazy.empty)
     return (pulse, run)
 
 -- | Register a handler to be executed whenever a pulse occurs.

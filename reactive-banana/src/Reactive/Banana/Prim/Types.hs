@@ -34,6 +34,7 @@ type Inputs        = ([SomeNode], Lazy.Vault)
 type EvalNetwork a = Network -> IO (a, Network)
 type Step          = EvalNetwork (IO ())
 
+emptyNetwork :: Network
 emptyNetwork = Network
     { nTime    = next beginning
     , nOutputs = OB.empty
@@ -82,7 +83,11 @@ instance Monoid Action where
 
 -- | Lens-like functionality.
 data Lens s a = Lens (s -> a) (a -> s -> s)
-set    (Lens _   set)   = set
+
+set :: Lens s a -> a -> s -> s
+set (Lens _   set)   = set
+
+update :: Lens s a -> (a -> a) -> s -> s
 update (Lens get set) f = \s -> set (f $ get s) s
 
 {-----------------------------------------------------------------------------
@@ -142,11 +147,22 @@ mkWeakNodeValue (L x) = mkWeakRefValue x
 mkWeakNodeValue (O x) = mkWeakRefValue x
 
 -- Lenses for various parameters
-seenP  = Lens _seenP  (\a s -> s { _seenP = a })
-seenL  = Lens _seenL  (\a s -> s { _seenL = a })
+seenP :: Lens (Pulse' a) Time
+seenP = Lens _seenP  (\a s -> s { _seenP = a })
+
+seenL :: Lens (Latch' a) Time
+seenL = Lens _seenL  (\a s -> s { _seenL = a })
+
+valueL :: Lens (Latch' a) a
 valueL = Lens _valueL (\a s -> s { _valueL = a })
-parentsP  = Lens _parentsP (\a s -> s { _parentsP = a })
+
+parentsP :: Lens (Pulse' a) [Weak SomeNode]
+parentsP = Lens _parentsP (\a s -> s { _parentsP = a })
+
+childrenP :: Lens (Pulse' a) [Weak SomeNode]
 childrenP = Lens _childrenP (\a s -> s { _childrenP = a })
+
+levelP :: Lens (Pulse' a) Int
 levelP = Lens _levelP (\a s -> s { _levelP = a })
 
 -- | Evaluation monads.

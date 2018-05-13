@@ -3,7 +3,7 @@ module Control.Monad.Trans.ReaderWriterIO (
     -- * Synopsis
     -- | An implementation of the reader/writer monad transformer
     -- using an 'IORef' for the writer.
-    
+
     -- * Documentation
     ReaderWriterIOT, readerWriterIOT, runReaderWriterIOT, tell, listen, ask, local,
     ) where
@@ -27,7 +27,7 @@ instance Functor m => Functor (ReaderWriterIOT r w m)   where fmap = fmapR
 instance Applicative m => Applicative (ReaderWriterIOT r w m) where
     pure  = pureR
     (<*>) = apR
-    
+
 instance Monad m => Monad (ReaderWriterIOT r w m) where
     return = returnR
     (>>=)  = bindR
@@ -46,20 +46,28 @@ instance (Monad m, a ~ ()) => Monoid (ReaderWriterIOT r w m a) where
 {-----------------------------------------------------------------------------
     Functions
 ------------------------------------------------------------------------------}
+liftIOR :: MonadIO m => IO a -> ReaderWriterIOT r w m a
 liftIOR m = ReaderWriterIOT $ \x y -> liftIO m
 
+liftR :: m a -> ReaderWriterIOT r w m a
 liftR m = ReaderWriterIOT $ \x y -> m
 
+fmapR :: Functor m => (a -> b) -> ReaderWriterIOT r w m a -> ReaderWriterIOT r w m b
 fmapR f m = ReaderWriterIOT $ \x y -> fmap f (run m x y)
 
+returnR :: Monad m => a -> ReaderWriterIOT r w m a
 returnR a = ReaderWriterIOT $ \_ _ -> return a
 
+bindR :: Monad m => ReaderWriterIOT r w m a -> (a -> ReaderWriterIOT r w m b) -> ReaderWriterIOT r w m b
 bindR m k = ReaderWriterIOT $ \x y -> run m x y >>= \a -> run (k a) x y
 
+mfixR :: MonadFix m => (a -> ReaderWriterIOT r w m a) -> ReaderWriterIOT r w m a
 mfixR f = ReaderWriterIOT $ \x y -> mfix (\a -> run (f a) x y)
 
+pureR :: Applicative m => a -> ReaderWriterIOT r w m a
 pureR a = ReaderWriterIOT $ \_ _ -> pure a
 
+apR :: Applicative m => ReaderWriterIOT r w m (a -> b) -> ReaderWriterIOT r w m a -> ReaderWriterIOT r w m b
 apR f a = ReaderWriterIOT $ \x y -> run f x y <*> run a x y
 
 readerWriterIOT :: (MonadIO m, Monoid w) =>

@@ -320,8 +320,11 @@ whenE bf = filterApply (const <$> bf)
 split :: Event (Either a b) -> (Event a, Event b)
 split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     where
+    fromLeft :: Either a b -> Maybe a
     fromLeft  (Left  a) = Just a
     fromLeft  (Right b) = Nothing
+
+    fromRight :: Either a b -> Maybe b
     fromRight (Left  a) = Nothing
     fromRight (Right b) = Just b
 

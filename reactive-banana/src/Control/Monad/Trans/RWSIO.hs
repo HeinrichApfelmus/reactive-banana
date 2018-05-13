@@ -2,7 +2,7 @@ module Control.Monad.Trans.RWSIO (
     -- * Synopsis
     -- | An implementation of the reader/writer/state monad transformer
     -- using an 'IORef'.
-    
+
     -- * Documentation
     RWSIOT(..), Tuple(..), rwsT, runRWSIOT, tell, ask, get, put,
     ) where
@@ -27,7 +27,7 @@ instance Functor m => Functor (RWSIOT r w s m) where fmap = fmapR
 instance Applicative m => Applicative (RWSIOT r w s m) where
     pure  = pureR
     (<*>) = apR
-    
+
 instance Monad m => Monad (RWSIOT r w s m) where
     return = returnR
     (>>=)  = bindR
@@ -39,13 +39,28 @@ instance MonadTrans (RWSIOT r w s)               where lift = liftR
 {-----------------------------------------------------------------------------
     Functions
 ------------------------------------------------------------------------------}
+liftIOR :: MonadIO m => IO a -> RWSIOT r w s m a
 liftIOR m = R $ \_ -> liftIO m
+
+liftR :: m a -> RWSIOT r w s m a
 liftR   m = R $ \_ -> m
+
+fmapR :: Functor m => (a -> b) -> RWSIOT r w s m a -> RWSIOT r w s m b
 fmapR f m = R $ \x -> fmap f (run m x)
+
+returnR :: Monad m => a -> RWSIOT r w s m a
 returnR a = R $ \_ -> return a
+
+bindR :: Monad m => RWSIOT r w s m a -> (a -> RWSIOT r w s m b) -> RWSIOT r w s m b
 bindR m k = R $ \x -> run m x >>= \a -> run (k a) x
+
+mfixR :: MonadFix m => (a -> RWSIOT r w s m a) -> RWSIOT r w s m a
 mfixR f   = R $ \x -> mfix (\a -> run (f a) x)
+
+pureR :: Applicative m => a -> RWSIOT r w s m a
 pureR a   = R $ \_ -> pure a
+
+apR :: Applicative m => RWSIOT r w s m (a -> b) -> RWSIOT r w s m a -> RWSIOT r w s m b
 apR f a   = R $ \x -> run f x <*> run a x
 
 rwsT :: (MonadIO m, Monoid w) => (r -> s -> IO (a, s, w)) -> RWSIOT r w s m a
@@ -60,7 +75,7 @@ rwsT f = do
 runRWSIOT :: (MonadIO m, Monoid w) => RWSIOT r w s m a -> (r -> s -> m (a,s,w))
 runRWSIOT m r s = do
     w' <- liftIO $ newIORef mempty
-    s' <- liftIO $ newIORef s 
+    s' <- liftIO $ newIORef s
     a  <- run m (Tuple r w' s')
     s  <- liftIO $ readIORef s'
     w  <- liftIO $ readIORef w'

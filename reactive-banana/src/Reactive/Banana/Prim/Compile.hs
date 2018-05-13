@@ -18,7 +18,7 @@ import           Reactive.Banana.Prim.Types
 {-----------------------------------------------------------------------------
    Compilation
 ------------------------------------------------------------------------------}
--- | Change a 'Network' of pulses and latches by 
+-- | Change a 'Network' of pulses and latches by
 -- executing a 'BuildIO' action.
 compile :: BuildIO a -> Network -> IO (a, Network)
 compile m state1 = do
@@ -59,7 +59,7 @@ interpret f xs = do
             pout       <- liftBuild $ mapP return pmid
             liftBuild $ addHandler pout (writeIORef o . Just)
             return sin
-    
+
     -- compile initial network
     (sin, state) <- compile network emptyNetwork
 
@@ -70,13 +70,13 @@ interpret f xs = do
             ma <- readIORef o       -- read output
             writeIORef o Nothing
             return (ma,s2)
-    
+
     mapAccumM go state xs         -- run several steps
 
 -- | Execute an FRP network with a sequence of inputs.
 -- Make sure that outputs are evaluated, but don't display their values.
--- 
--- Mainly useful for testing whether there are space leaks. 
+--
+-- Mainly useful for testing whether there are space leaks.
 runSpaceProfile :: Show b => (Pulse a -> BuildIO (Pulse b)) -> [a] -> IO ()
 runSpaceProfile f xs = do
     let g = do
@@ -91,7 +91,7 @@ runSpaceProfile f xs = do
             (outputs, s2) <- step x s1
             outputs                     -- don't forget to execute outputs
             return ((), s2)
-    
+
     mapAccumM_ fire network xs
 
 -- | 'mapAccum' for a monad.
@@ -108,4 +108,3 @@ mapAccumM_ _ _   []     = return ()
 mapAccumM_ f !s0 (x:xs) = do
     (_,s1) <- f x s0
     mapAccumM_ f s1 xs
-
