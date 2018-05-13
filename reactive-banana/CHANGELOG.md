@@ -1,6 +1,12 @@
 Changelog for the `reactive-banana** package
 -------------------------------------------
 
+**unreleased**
+
+* Add `Num`, `Floating`, `Fractional`, and `IsString` instances for `Behavior`. [#34][]
+
+  [#34]: https://github.com/HeinrichApfelmus/reactive-banana/pull/34
+
 **version 1.2.0.0**
 
 * Make `MonadFix` superclass of `MonadMoment`. [#128][]

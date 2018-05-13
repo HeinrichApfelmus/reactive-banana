@@ -13,6 +13,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Fix
+import Data.String (IsString(..))
 
 import qualified Reactive.Banana.Internal.Combinators as Prim
 
@@ -93,6 +94,40 @@ instance Applicative Behavior where
 instance Functor Behavior where
     fmap = liftA
 
+instance Num a => Num (Behavior a) where
+    (+) = liftA2 (+)
+    (-) = liftA2 (-)
+    (*) = liftA2 (*)
+    abs = fmap abs
+    signum = fmap signum
+    fromInteger = pure . fromInteger
+    negate = fmap negate
+
+instance Fractional a => Fractional (Behavior a) where
+    (/) = liftA2 (/)
+    fromRational = pure . fromRational
+    recip = fmap recip
+
+instance Floating a => Floating (Behavior a) where
+    (**) = liftA2 (**)
+    acos = fmap acos
+    acosh = fmap acosh
+    asin = fmap asin
+    asinh = fmap asinh
+    atan = fmap atan
+    atanh = fmap atanh
+    cos = fmap cos
+    cosh = fmap cosh
+    exp = fmap exp
+    log = fmap log
+    logBase = liftA2 logBase
+    pi = pure pi
+    sin = fmap sin
+    sinh = fmap sinh
+    sqrt = fmap sqrt
+
+instance IsString a => IsString (Behavior a) where
+    fromString = pure . fromString
 
 -- | The 'Future' monad is just a helper type for the 'changes' function.
 --
