@@ -1,8 +1,10 @@
 {-----------------------------------------------------------------------------
     reactive-banana
-    
+
     Implementation of graph-related functionality
 ------------------------------------------------------------------------------}
+{-# language ScopedTypeVariables#-}
+
 module Reactive.Banana.Prim.Graph where
 
 import           Control.Monad
@@ -42,13 +44,15 @@ getParents :: (Eq a, Hashable a) => Graph a -> a -> [a]
 getParents gr x = maybe [] id . Map.lookup x . parents $ gr
 
 -- | List all nodes such that each parent is listed before all of its children.
-listParents :: (Eq a, Hashable a) => Graph a -> [a]
+listParents :: forall a. (Eq a, Hashable a) => Graph a -> [a]
 listParents gr = list
     where
     -- all nodes without children
+    ancestors :: [a]
     ancestors = [x | x <- Set.toList $ nodes gr, null (getParents gr x)]
     -- all nodes in topological order "parents before children"
-    list      = runIdentity $ dfs' ancestors (Identity . getChildren gr)
+    list :: [a]
+    list = runIdentity $ dfs' ancestors (Identity . getChildren gr)
 
 {-----------------------------------------------------------------------------
     Graph traversal
@@ -63,9 +67,10 @@ dfs x = dfs' [x]
 
 -- | Depth-first serach, refined version.
 -- INVARIANT: None of the nodes in the initial list have a predecessor.
-dfs' :: (Eq a, Hashable a, Monad m) => [a] -> GraphM m a -> m [a]
+dfs' :: forall a m. (Eq a, Hashable a, Monad m) => [a] -> GraphM m a -> m [a]
 dfs' xs succs = liftM fst $ go xs [] Set.empty
     where
+    go :: [a] -> [a] -> Set.HashSet a -> m ([a], Set.HashSet a)
     go []     ys seen            = return (ys, seen)    -- all nodes seen
     go (x:xs) ys seen
         | x `Set.member` seen    = go xs ys seen

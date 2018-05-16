@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards, RecursiveDo, BangPatterns #-}
+{-# LANGUAGE RecordWildCards, RecursiveDo, BangPatterns, ScopedTypeVariables #-}
 module Reactive.Banana.Prim.Plumbing where
 
 import           Control.Monad                                (join)
@@ -72,7 +72,7 @@ pureL a = unsafePerformIO $ newRef $ Latch
     }
 
 -- | Make new 'Latch' that can be updated by a 'Pulse'
-newLatch :: a -> Build (Pulse a -> Build (), Latch a)
+newLatch :: forall a. a -> Build (Pulse a -> Build (), Latch a)
 newLatch a = mdo
     latch <- liftIO $ newRef $ Latch
         { _seenL  = beginning
@@ -84,8 +84,10 @@ newLatch a = mdo
         }
     let
         err        = error "incorrect Latch write"
+
+        updateOn :: Pulse a -> Build ()
         updateOn p = do
-            w  <- liftIO $ mkWeakRefValue latch latch 
+            w  <- liftIO $ mkWeakRefValue latch latch
             lw <- liftIO $ newRef $ LatchWrite
                 { _evalLW  = maybe err id <$> readPulseP p
                 , _latchLW = w
@@ -93,7 +95,7 @@ newLatch a = mdo
             -- writer is alive only as long as the latch is alive
             _  <- liftIO $ mkWeakRefValue latch lw
             (P p) `addChild` (L lw)
-    
+
     return (updateOn, latch)
 
 -- | Make a new 'Latch' that caches a previous computation.
@@ -245,5 +247,8 @@ rememberOutput :: (Output, EvalO) -> EvalP ()
 rememberOutput x = RWS.tell ((mempty,[x]),mempty)
 
 -- worker wrapper to break sharing and support better inlining
+unwrapEvalP :: RWS.Tuple r w s -> RWS.RWSIOT r w s m a -> m a
 unwrapEvalP r m = RWS.run m r
-wrapEvalP   m   = RWS.R m
+
+wrapEvalP :: (RWS.Tuple r w s -> m a) -> RWS.RWSIOT r w s m a
+wrapEvalP m = RWS.R m

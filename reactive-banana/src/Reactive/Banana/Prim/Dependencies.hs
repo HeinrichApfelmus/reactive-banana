@@ -35,6 +35,7 @@ buildDependencies (Endo f, parents) = do
     sequence_ [x `doAddChild` y | x <- Graph.listParents gr, y <- Graph.getChildren gr x]
     sequence_ [x `doChangeParent` y | (P x, P y) <- parents]
     where
+    gr :: Graph.Graph SomeNode
     gr = f Graph.emptyGraph
 
 {-----------------------------------------------------------------------------

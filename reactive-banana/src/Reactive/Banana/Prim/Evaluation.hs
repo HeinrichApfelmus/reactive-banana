@@ -46,7 +46,10 @@ step (inputs,pulses)
 
     doit latchUpdates                           -- update latch values from pulses
     doit topologyUpdates                        -- rearrange graph topology
-    let actions = OB.inOrder outputs outputs1   -- EvalO actions in proper order
+    let actions :: [(Output, EvalO)]
+        actions = OB.inOrder outputs outputs1   -- EvalO actions in proper order
+
+        state2 :: Network
         state2  = Network
             { nTime    = next time1
             , nOutputs = OB.inserts outputs1 os
@@ -64,7 +67,7 @@ runEvalOs = sequence_ . map join
 evaluatePulses :: [SomeNode] -> EvalP ()
 evaluatePulses roots = wrapEvalP $ \r -> go r =<< insertNodes r roots Q.empty
     where
-    -- go :: Queue SomeNode -> EvalP ()
+    go :: RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> Queue SomeNode -> IO ()
     go r q = {-# SCC go #-}
         case ({-# SCC minView #-} Q.minView q) of
             Nothing         -> return ()
@@ -104,9 +107,10 @@ evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
     return []
 
 -- | Insert nodes into the queue
--- insertNode :: [SomeNode] -> Queue SomeNode -> EvalP (Queue SomeNode)
+insertNodes :: RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> [SomeNode] -> Queue SomeNode -> IO (Queue SomeNode)
 insertNodes (RWS.Tuple (time,_) _ _) = {-# SCC insertNodes #-} go
     where
+    go :: [SomeNode] -> Queue SomeNode -> IO (Queue SomeNode)
     go []              q = return q
     go (node@(P p):xs) q = do
         Pulse{..} <- readRef p
