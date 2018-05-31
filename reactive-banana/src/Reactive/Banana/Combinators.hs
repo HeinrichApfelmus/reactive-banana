@@ -276,20 +276,6 @@ switchB b = liftMoment . M . fmap B . Prim.switchB (unB b) . Prim.mapE (unB) . u
 {-----------------------------------------------------------------------------
     Derived Combinators
 ------------------------------------------------------------------------------}
-{-
-
-Unfortunately, we can't make a  Num  instance because that would
-require  Eq  and  Show .
-
-instance Num a => Num (Behavior t a) where
-    (+) = liftA2 (+)
-    (-) = liftA2 (-)
-    (*) = liftA2 (*)
-    negate = fmap negate
-    abs    = fmap abs
-    signum = fmap signum
-    fromInteger = pure . fromInteger
--}
 infixl 4 <@>, <@
 
 -- | Infix synonym for the 'apply' combinator. Similar to '<*>'.
