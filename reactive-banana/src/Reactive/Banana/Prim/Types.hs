@@ -99,7 +99,7 @@ data Pulse' a = Pulse
     , _seenP     :: !Time              -- See note [Timestamp].
     , _evalP     :: EvalP (Maybe a)    -- Calculate current value.
     , _childrenP :: [Weak SomeNode]    -- Weak references to child nodes.
-    , _parentsP  :: [Weak SomeNode]    -- Weak reference to parent nodes.
+    , _parentsP  :: [SomeNode]         -- References to parent nodes. Invariant: they are all pulses.
     , _levelP    :: !Level             -- Priority in evaluation order.
     , _nameP     :: String             -- Name for debugging.
     }
@@ -156,7 +156,7 @@ seenL = Lens _seenL  (\a s -> s { _seenL = a })
 valueL :: Lens (Latch' a) a
 valueL = Lens _valueL (\a s -> s { _valueL = a })
 
-parentsP :: Lens (Pulse' a) [Weak SomeNode]
+parentsP :: Lens (Pulse' a) [SomeNode]
 parentsP = Lens _parentsP (\a s -> s { _parentsP = a })
 
 childrenP :: Lens (Pulse' a) [Weak SomeNode]
