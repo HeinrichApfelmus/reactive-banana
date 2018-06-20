@@ -133,12 +133,13 @@ changesB = liftCached1 $ \(~(lx,px)) -> liftBuild $ Prim.tagFuture lx px
 pureB :: a -> Behavior a
 pureB a = cache $ do
     p <- runCached never
-    return (Prim.pureL a, p)
+    l <- Prim.pureL a
+    return (l, p)
 
 applyB :: Behavior (a -> b) -> Behavior a -> Behavior b
 applyB = liftCached2 $ \(~(l1,p1)) (~(l2,p2)) -> liftBuild $ do
     p3 <- Prim.unionWithP const p1 p2
-    let l3 = Prim.applyL l1 l2
+    l3 <- Prim.applyL l1 l2
     return (l3,p3)
 
 mapB :: (a -> b) -> Behavior a -> Behavior b

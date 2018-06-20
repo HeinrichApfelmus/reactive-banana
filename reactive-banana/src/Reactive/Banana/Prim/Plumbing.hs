@@ -64,8 +64,8 @@ neverP = liftIO $ do
         }
 
 -- | Return a 'Latch' that has a constant value
-pureL :: a -> Latch a
-pureL a = unsafePerformIO $ newRef $ Latch
+pureL :: MonadIO m => a -> m (Latch a)
+pureL a = newRef Latch
     { _seenL  = beginning
     , _valueL = a
     , _evalL  = return a
@@ -99,8 +99,8 @@ newLatch a = mdo
     return (updateOn, latch)
 
 -- | Make a new 'Latch' that caches a previous computation.
-cachedLatch :: EvalL a -> Latch a
-cachedLatch eval = unsafePerformIO $ mdo
+cachedLatch :: EvalL a -> Build (Latch a)
+cachedLatch eval = mdo
     latch <- newRef $ Latch
         { _seenL  = agesAgo
         , _valueL = error "Undefined value of a cached latch."

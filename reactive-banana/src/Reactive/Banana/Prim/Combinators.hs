@@ -80,21 +80,19 @@ applyP f x = do
     p `dependOn` x
     return p
 
-pureL :: a -> Latch a
-pureL = Reactive.Banana.Prim.Plumbing.pureL
-
 -- specialization of   mapL f = applyL (pureL f)
-mapL :: (a -> b) -> Latch a -> Latch b
+mapL :: (a -> b) -> Latch a -> Build (Latch b)
 mapL f lx = cachedLatch $ {-# SCC mapL #-} f <$> getValueL lx
 
-applyL :: Latch (a -> b) -> Latch a -> Latch b
+applyL :: Latch (a -> b) -> Latch a -> Build (Latch b)
 applyL lf lx = cachedLatch $
     {-# SCC applyL #-} getValueL lf <*> getValueL lx
 
 accumL :: a -> Pulse (a -> a) -> Build (Latch a, Pulse a)
 accumL a p1 = do
     (updateOn, x) <- newLatch a
-    p2 <- applyP (mapL (\x f -> f x) x) p1
+    l <- mapL (\x f -> f x) x
+    p2 <- applyP l p1
     updateOn p2
     return (x,p2)
 
@@ -111,7 +109,7 @@ stepperL a p = do
 switchL :: Latch a -> Pulse (Latch a) -> Build (Latch a)
 switchL l pl = mdo
     x <- stepperL l pl
-    return $ cachedLatch $ getValueL x >>= getValueL
+    cachedLatch $ getValueL x >>= getValueL
 
 executeP :: forall a b. Pulse (b -> Build a) -> b -> Build (Pulse a)
 executeP p1 b = do
