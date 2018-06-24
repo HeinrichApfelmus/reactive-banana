@@ -94,6 +94,13 @@ instance Applicative Behavior where
 instance Functor Behavior where
     fmap = liftA
 
+instance Semigroup a => Semigroup (Behavior a) where
+  (<>) = liftA2 (<>)
+
+instance (Semigroup a, Monoid a) => Monoid (Behavior a) where
+  mempty = pure mempty
+  mappend = (<>)
+
 instance Num a => Num (Behavior a) where
     (+) = liftA2 (+)
     (-) = liftA2 (-)
