@@ -2,7 +2,9 @@
 /Experiments/
 /haddocks.html
 dist/
+dist-newstyle/
 *.cabal-sandbox
 *.DS_Store
 *.tmproj
+.ghc.environment.*
 .stack-work
