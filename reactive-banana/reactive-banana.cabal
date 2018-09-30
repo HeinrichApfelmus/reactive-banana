@@ -43,7 +43,7 @@ Library
 
     build-depends:      base >= 4.2 && < 5,
                         semigroups >= 0.13 && < 0.19,
-                        containers >= 0.5 && < 0.6,
+                        containers >= 0.5 && < 0.7,
                         transformers >= 0.2 && < 0.6,
                         vault == 0.3.*,
                         unordered-containers >= 0.2.1.0 && < 0.3,
@@ -58,7 +58,7 @@ Library
                         Reactive.Banana.Model,
                         Reactive.Banana.Prim,
                         Reactive.Banana.Prim.Cached
-    
+
     other-modules:
                         Control.Monad.Trans.ReaderWriterIO,
                         Control.Monad.Trans.RWSIO,
