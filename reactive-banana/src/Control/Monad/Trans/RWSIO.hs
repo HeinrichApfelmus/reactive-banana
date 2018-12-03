@@ -11,6 +11,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.IO.Class
+import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Class
 import Data.IORef
 import Data.Monoid
@@ -35,6 +36,17 @@ instance Monad m => Monad (RWSIOT r w s m) where
 instance MonadFix m => MonadFix (RWSIOT r w s m) where mfix = mfixR
 instance MonadIO m => MonadIO (RWSIOT r w s m)   where liftIO = liftIOR
 instance MonadTrans (RWSIOT r w s)               where lift = liftR
+
+instance MonadUnliftIO m => MonadUnliftIO (RWSIOT r w s m) where
+    {-# INLINE askUnliftIO #-}
+    askUnliftIO = R $ \t ->
+        withUnliftIO $ \u ->
+        return (UnliftIO (unliftIO u . flip run t))
+    {-# INLINE withRunInIO #-}
+    withRunInIO inner =
+        R $ \t ->
+        withRunInIO $ \run' ->
+        inner (run' . flip run t)
 
 {-----------------------------------------------------------------------------
     Functions

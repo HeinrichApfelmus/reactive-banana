@@ -12,6 +12,7 @@ import Data.Semigroup
 import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.IO.Unlift
 import Control.Monad.Fix
 import Data.String (IsString(..))
 
@@ -170,6 +171,15 @@ to an event network.
 newtype MomentIO a = MIO { unMIO :: Prim.Moment a }
 
 instance MonadIO MomentIO where liftIO = MIO . liftIO
+
+instance MonadUnliftIO MomentIO where
+    {-# INLINE askUnliftIO #-}
+    askUnliftIO = MIO $
+        withUnliftIO $ \u ->
+        pure $ UnliftIO $ unliftIO u . unMIO
+    {-# INLINE withRunInIO #-}
+    withRunInIO inner = MIO $ 
+        withRunInIO $ \run' -> inner (run' . unMIO)
 
 {-| An instance of the 'MonadMoment' class denotes a computation
 that happens at one particular moment in time.
