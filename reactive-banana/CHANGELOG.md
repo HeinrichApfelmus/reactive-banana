@@ -1,11 +1,13 @@
 Changelog for the `reactive-banana** package
 -------------------------------------------
 
-**unreleased**
+**version 1.2.1.0**
 
 * Add `Num`, `Floating`, `Fractional`, and `IsString` instances for `Behavior`. [#34][]
+* Support `containers-0.6`. [#191][]
 
   [#34]: https://github.com/HeinrichApfelmus/reactive-banana/pull/34
+  [#191]: https://github.com/HeinrichApfelmus/reactive-banana/pull/191
 
 **version 1.2.0.0**
 
