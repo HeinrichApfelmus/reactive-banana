@@ -12,6 +12,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.IO.Class
+import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Class
 import Data.IORef
 import Data.Monoid
@@ -35,6 +36,17 @@ instance Monad m => Monad (ReaderWriterIOT r w m) where
 instance MonadFix m => MonadFix (ReaderWriterIOT r w m) where mfix = mfixR
 instance MonadIO m => MonadIO (ReaderWriterIOT r w m)   where liftIO = liftIOR
 instance MonadTrans (ReaderWriterIOT r w)               where lift = liftR
+
+instance MonadUnliftIO m => MonadUnliftIO (ReaderWriterIOT r w m) where
+    {-# INLINE askUnliftIO #-}
+    askUnliftIO = ReaderWriterIOT $ \r w -> 
+        withUnliftIO $ \u ->
+        pure $ UnliftIO $ unliftIO u . (\m -> run m r w)
+    {-# INLINE withRunInIO #-}
+    withRunInIO inner =
+        ReaderWriterIOT $ \r w ->
+        withRunInIO $ \run' ->
+        inner $ run' . (\m -> run m r w)
 
 instance (Monad m, a ~ ()) => Semigroup (ReaderWriterIOT r w m a) where
     mx <> my = mx >> my
