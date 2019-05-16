@@ -19,7 +19,7 @@ module Reactive.Banana.Combinators (
     -- but they are documented at the types 'Event' and 'Behavior'.
     module Control.Applicative,
     module Data.Semigroup,
-    never, unionWith, filterE,
+    never, unionWith, mergeWith, filterE,
     apply,
 
     -- ** Moment and accumulation
@@ -112,11 +112,14 @@ never = E Prim.never
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
 unionWith f = mergeWith Just Just (\x y -> Just (f x y))
 
--- | The most general form of merging two 'Event's.
+-- | Merge two event streams of any type.
+--
+-- This function generalizes 'unionWith', and can be used to filter event
+-- occurrences as well.
 mergeWith
-  :: (a -> Maybe c) -- ^ The function called when only the first 'Event' emits a value.
-  -> (b -> Maybe c) -- ^ The function called when only the second 'Event' emits a value.
-  -> (a -> b -> Maybe c) -- ^ The function called when both 'Event's emit values simultaneously.
+  :: (a -> Maybe c) -- ^ The function called when only the first event emits a value.
+  -> (b -> Maybe c) -- ^ The function called when only the second event emits a value.
+  -> (a -> b -> Maybe c) -- ^ The function called when both events emit values simultaneously.
   -> Event a
   -> Event b
   -> Event c
