@@ -40,6 +40,7 @@ module Reactive.Banana.Frameworks (
 import           Control.Event.Handler
 import           Control.Monad
 import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Reader
 import           Data.IORef
 import           Reactive.Banana.Combinators
 import qualified Reactive.Banana.Internal.Combinators as Prim
@@ -150,7 +151,23 @@ Your event-based framework will have to handle this situation.
 
 -}
 reactimate :: Event (IO ()) -> MomentIO ()
-reactimate = MIO . Prim.addReactimate . Prim.mapE return . unE
+reactimate = MIO . return . const () . Prim.addReactimate . Prim.mapE return . unE
+
+
+-- | Like "reactimate", but this returns an IO action which, when run, stops the event triggering
+-- actions in the future.
+--
+-- This is useful when an event passed to "execute" calls "reactimate". For instance if the
+-- event creates a GUI widget which is then updated using "reactimate" then the updates will carry
+-- on being executed even if the widget is no longer displayed. By making the result of this
+-- function into a callback for widget destruction you can ensure that the widget updates stop
+-- once they are no longer required.
+reactimate1 :: Event (IO ()) -> MomentIO (IO ())
+reactimate1 ev = MIO $ do
+   eNet <- ask
+   s <- Prim.addReactimate $ Prim.mapE return $ unE ev
+   return $ Prim.runStep eNet s
+
 
 -- | Output.
 -- Execute the 'IO' action whenever the event occurs.
@@ -158,7 +175,16 @@ reactimate = MIO . Prim.addReactimate . Prim.mapE return . unE
 -- This version of 'reactimate' can deal with values obtained
 -- from the 'changes' function.
 reactimate' :: Event (Future (IO ())) -> MomentIO ()
-reactimate' = MIO . Prim.addReactimate . Prim.mapE unF . unE
+reactimate' = MIO . return . const () . Prim.addReactimate . Prim.mapE unF . unE
+
+
+-- | As for "reactimate'", but also returns a function to cancel the event actions. See
+-- "reactimate1" for details.
+reactimate1' :: Event (Future (IO ())) -> MomentIO (IO ())
+reactimate1' ev = MIO $ do
+   eNet <- ask
+   s <- Prim.addReactimate $ Prim.mapE unF $ unE ev
+   return $ Prim.runStep eNet s
 
 
 -- | Input,
