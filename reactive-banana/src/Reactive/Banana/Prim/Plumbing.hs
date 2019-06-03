@@ -120,10 +120,10 @@ cachedLatch eval = unsafePerformIO $ mdo
 
 -- | Add a new output that depends on a 'Pulse'.
 --
--- TODO: Return function to unregister the output again.
-addOutput :: Pulse EvalO -> Build ()
-addOutput p = do
-    o <- liftIO $ newRef $ Output
+-- The "Output" argument is overwritten with the "Pulse"
+addOutput :: Output -> Pulse EvalO -> Build ()
+addOutput o p = do
+    liftIO $ put o $ Output
         { _evalO = maybe (return $ debug "nop") id <$> readPulseP p
         }
     (P p) `addChild` (O o)

@@ -16,6 +16,9 @@ import           Data.Functor.Identity
 import           Data.IORef
 import qualified Reactive.Banana.Prim        as Prim
 import           Reactive.Banana.Prim.Cached
+import           Reactive.Banana.Prim.Types          (Output, Output' (..))
+import qualified Reactive.Banana.Prim.Util   as Prim
+
 
 type Build   = Prim.Build
 type Latch a = Prim.Latch a
@@ -51,6 +54,7 @@ data EventNetwork = EventNetwork
     , pause   :: IO ()
     }
 
+
 -- | Compile to an event network.
 compile :: Moment () -> IO EventNetwork
 compile setup = do
@@ -84,13 +88,24 @@ fromAddHandler addHandler = do
     liftIO $ register addHandler $ runStep network . fire
     return $ Prim.fromPure p
 
+-- Add an output action. The returned "Moment", when executed, will remove this output.
 addReactimate :: Event (Future (IO ())) -> Moment ()
 addReactimate e = do
+    o <- liftIO $ Prim.newRef $ Output {_evalO = error "addReactimate: dummy value"}
+        -- Will be overwritten later.
     network   <- ask
     liftBuild $ Prim.buildLater $ do
         -- Run cached computation later to allow more recursion with `Moment`
         p <- runReaderT (runCached e) network
-        Prim.addHandler p id
+        Prim.addHandler o p id
+
+{- Design note:
+The Output "o" is passed down the call stack via "buildLater" and will eventually be added to
+the Network nOutputs ordered bag. It is created here because we need to return a function that
+removes it from the bag, but the result cannot be passed back to us from the future.
+-}
+
+
 
 fromPoll :: IO a -> Moment (Behavior a)
 fromPoll poll = do
