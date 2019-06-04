@@ -18,6 +18,7 @@ import Test.HUnit (assert, Assertion)
 
 import Control.Applicative
 import Reactive.Banana.Test.Plumbing
+import Reactive.Banana.Test.Execute
 
 
 main = defaultMain
@@ -52,6 +53,12 @@ main = defaultMain
         , testModelMatchM "switchE1"            switchE1
         , testModelMatchM "switchB1"            switchB1
         , testModelMatchM "switchB2"            switchB2
+        ]
+    , testGroup "Reactimate tests"
+        [ reactimateCase
+        , reactimateCase1
+        , reactimate'Case
+        , reactimate'Case1
         ]
     , testGroup "Regression tests"
         [ testModelMatchM "issue79" issue79
@@ -250,4 +257,3 @@ issue79 inputEvent = mdo
             (((" and " ++) . show) <$> unionWith (+) appliedEvent fmappedEvent)
 
     return $ outputEvent
-

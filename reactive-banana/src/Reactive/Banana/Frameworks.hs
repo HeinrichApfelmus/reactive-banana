@@ -19,7 +19,7 @@ module Reactive.Banana.Frameworks (
     compile, MomentIO,
     module Control.Event.Handler,
     fromAddHandler, fromChanges, fromPoll,
-    reactimate, Future, reactimate',
+    reactimate, reactimate1, Future, reactimate', reactimate1',
     changes,
     -- $changes
     imposeChanges,
@@ -151,7 +151,7 @@ Your event-based framework will have to handle this situation.
 
 -}
 reactimate :: Event (IO ()) -> MomentIO ()
-reactimate = MIO . return . const () . Prim.addReactimate . Prim.mapE return . unE
+reactimate = MIO . fmap (const ()) . Prim.addReactimate . Prim.mapE return . unE
 
 
 -- | Like "reactimate", but this returns an IO action which, when run, stops the event triggering
@@ -175,7 +175,7 @@ reactimate1 ev = MIO $ do
 -- This version of 'reactimate' can deal with values obtained
 -- from the 'changes' function.
 reactimate' :: Event (Future (IO ())) -> MomentIO ()
-reactimate' = MIO . return . const () . Prim.addReactimate . Prim.mapE unF . unE
+reactimate' = MIO . fmap (const ()) . Prim.addReactimate . Prim.mapE unF . unE
 
 
 -- | As for "reactimate'", but also returns a function to cancel the event actions. See
