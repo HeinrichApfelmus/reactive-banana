@@ -154,14 +154,22 @@ reactimate :: Event (IO ()) -> MomentIO ()
 reactimate = MIO . fmap (const ()) . Prim.addReactimate . Prim.mapE return . unE
 
 
--- | Like "reactimate", but this returns an IO action which, when run, stops the event triggering
--- actions in the future.
+-- | Like "reactimate", but this returns an IO action which will cancel the event
+-- actions.
 --
 -- This is useful when an event passed to "execute" calls "reactimate". For instance if the
 -- event creates a GUI widget which is then updated using "reactimate" then the updates will carry
 -- on being executed even if the widget is no longer displayed. By making the result of this
 -- function into a callback for widget destruction you can ensure that the widget updates stop
 -- once they are no longer required.
+--
+-- If the cancellation function is called from within "execute" then it will block. Should this
+-- occur then fork the cancellation off as a separate thread using @Control.Concurrent.forkIO@:
+--
+-- > stop <- reactimate1 myEvent
+-- > onUpdateNotNeeded $ forkIO stop
+--
+-- However in this case there is no guarantee that the event will be cancelled immediately.
 reactimate1 :: Event (IO ()) -> MomentIO (IO ())
 reactimate1 ev = MIO $ do
    eNet <- ask
