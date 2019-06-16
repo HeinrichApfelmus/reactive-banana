@@ -37,6 +37,7 @@ module Reactive.Banana.Frameworks (
 
     ) where
 
+import           Control.Concurrent
 import           Control.Event.Handler
 import           Control.Monad
 import           Control.Monad.IO.Class
@@ -163,18 +164,13 @@ reactimate = MIO . fmap (const ()) . Prim.addReactimate . Prim.mapE return . unE
 -- function into a callback for widget destruction you can ensure that the widget updates stop
 -- once they are no longer required.
 --
--- If the cancellation function is called from within "execute" then it will block. Should this
--- occur then fork the cancellation off as a separate thread using @Control.Concurrent.forkIO@:
---
--- > stop <- reactimate1 myEvent
--- > onUpdateNotNeeded $ forkIO stop
---
--- However in this case there is no guarantee that the event will be cancelled immediately.
+-- The cancellation function is performed using forkIO to prevent it blocking. The downside is
+-- that there is no guarantee that it will be executed promptly.
 reactimate1 :: Event (IO ()) -> MomentIO (IO ())
 reactimate1 ev = MIO $ do
    eNet <- ask
    s <- Prim.addReactimate $ Prim.mapE return $ unE ev
-   return $ Prim.runStep eNet s
+   return $ void $ forkIO $ Prim.runStep eNet s
 
 
 -- | Output.
@@ -192,7 +188,7 @@ reactimate1' :: Event (Future (IO ())) -> MomentIO (IO ())
 reactimate1' ev = MIO $ do
    eNet <- ask
    s <- Prim.addReactimate $ Prim.mapE unF $ unE ev
-   return $ Prim.runStep eNet s
+   return $ void $ forkIO $ Prim.runStep eNet s
 
 
 -- | Input,
