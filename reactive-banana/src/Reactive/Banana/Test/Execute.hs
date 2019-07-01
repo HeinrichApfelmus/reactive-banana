@@ -9,6 +9,8 @@ Testing "execute", "reactimate" and its relatives.
 
 module Reactive.Banana.Test.Execute where
 
+import Control.Concurrent
+import Control.Monad
 import Data.IORef
 import Reactive.Banana.Combinators
 import Reactive.Banana.Frameworks
@@ -44,9 +46,11 @@ reactimateTest ref prefix xs = reactimate $ addResult prefix ref <$> xs
 
 
 -- Add the events to a "TestResult" until the first zero is encountered, then stop.
-reactimateTest1 :: ReactTest
-reactimateTest1 ref prefix xs = mdo
-   stop <- reactimate1 $ (\x -> if x /= 0 then addResult prefix ref x else stop) <$> xs
+reactimate_Test :: ReactTest
+reactimate_Test ref prefix xs = mdo
+   net <- getEventNetwork
+   stop <- reactimate_ $
+         (\x -> if x /= 0 then addResult prefix ref x else runMomentIO_ net stop) <$> xs
    return ()
 
 -- Add the value to a "TestResult" every time a Behavior changes.
@@ -57,11 +61,12 @@ reactimate'Test ref prefix xs = do
    reactimate' $ fmap (addResult prefix ref) <$> xs1
 
 -- Add the value to a "TestResult" every time a Behavior changes until it equals zero, then stop.
-reactimate'Test1 :: ReactTest
-reactimate'Test1 ref prefix xs = mdo
+reactimate_'Test :: ReactTest
+reactimate_'Test ref prefix xs = mdo
+      net <- getEventNetwork
       xB <- stepper 1 xs
       xs1 <- changes xB
-      stop <- reactimate1' $ fmap (addResult1 stop) <$> xs1
+      stop <- reactimate_' $ fmap (addResult1 (runMomentIO_ net stop)) <$> xs1
       return ()
    where
       addResult1 stop x = if x /= 0 then addResult prefix ref x else stop
@@ -99,11 +104,11 @@ runSimpleTest prefix expectF script = do
 reactimateCase :: Test
 reactimateCase = testCase "reactimate" $ runSimpleTest "Foo" expectedAll reactimateTest
 
-reactimateCase1 :: Test
-reactimateCase1 = testCase "reactimate1" $ runSimpleTest "Foo" expectedSome reactimateTest1
+reactimate_Case :: Test
+reactimate_Case = testCase "reactimate_" $ runSimpleTest "Foo" expectedSome reactimate_Test
 
 reactimate'Case :: Test
 reactimate'Case = testCase "reactimate'" $ runSimpleTest "Foo" expectedAll reactimate'Test
 
-reactimate'Case1 :: Test
-reactimate'Case1 = testCase "reactimate1'" $ runSimpleTest "Foo" expectedSome reactimate'Test1
+reactimate_'Case :: Test
+reactimate_'Case = testCase "reactimate_'" $ runSimpleTest "Foo" expectedSome reactimate_'Test

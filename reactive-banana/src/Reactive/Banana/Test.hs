@@ -56,9 +56,9 @@ main = defaultMain
         ]
     , testGroup "Reactimate tests"
         [ reactimateCase
-        , reactimateCase1
+        , reactimate_Case
         , reactimate'Case
-        , reactimate'Case1
+        , reactimate_'Case
         ]
     , testGroup "Regression tests"
         [ testModelMatchM "issue79" issue79

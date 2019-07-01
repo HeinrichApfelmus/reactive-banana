@@ -14,6 +14,7 @@ import           Control.Monad.Trans.Reader
 import           Data.Functor
 import           Data.Functor.Identity
 import           Data.IORef
+import           Data.Monoid
 import qualified Reactive.Banana.Prim        as Prim
 import           Reactive.Banana.Prim.Cached
 import qualified Reactive.Banana.Prim.OrderedBag as OB
@@ -90,21 +91,21 @@ fromAddHandler addHandler = do
     return $ Prim.fromPure p
 
 -- Add an output action. The returned function will remove the output.
-addReactimate :: Event (Future (IO ())) -> Moment Prim.Step
+addReactimate :: Event (Future (IO ())) -> Moment (Endo (OB.OrderedBag Prim.Output))
 addReactimate e = do
     o <- liftIO $ Prim.newRef $ Prim.Output {Prim._evalO = error "addReactimate: dummy value"}
         -- Will be overwritten later.
-    network   <- ask
+    network <- ask
     liftBuild $ Prim.buildLater $ do
         -- Run cached computation later to allow more recursion with `Moment`
         p <- runReaderT (runCached e) network
         Prim.addHandler o p id
-    return $ \n -> return (return (), removeReactimate o n)
+    return $ Endo $ flip OB.delete o
 
 
 -- | Remove an output from the network.
-removeReactimate :: Prim.Output -> Prim.Network -> Prim.Network
-removeReactimate o n = n {Prim.nOutputs = OB.delete (Prim.nOutputs n) o}
+-- removeReactimate :: Prim.Output -> Prim.Network -> Prim.Network
+-- removeReactimate o n = n {Prim.nOutputs = OB.delete (Prim.nOutputs n) o}
 
 
 {- Design note:

@@ -45,10 +45,10 @@ type Build  = ReaderWriterIOT BuildR BuildW IO
 type BuildR = (Time, Pulse ())
     -- ( current time
     -- , pulse that always fires)
-newtype BuildW = BuildW (DependencyBuilder, [Output], Action, Maybe (Build ()))
+newtype BuildW = BuildW (DependencyBuilder, Endo (OrderedBag Output), Action, Maybe (Build ()))
     -- reader : current timestamp
     -- writer : ( actions that change the network topology
-    --          , outputs to be added to the network
+    --          , outputs to be added to or removed from the network
     --          , late IO actions
     --          , late build actions
     --          )

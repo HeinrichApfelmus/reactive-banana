@@ -8,6 +8,7 @@ import Control.Exception (evaluate)
 import Control.Monad     (void)
 import Data.Functor
 import Data.IORef
+import Data.Monoid
 
 import           Reactive.Banana.Prim.Combinators
 import           Reactive.Banana.Prim.IO
@@ -37,7 +38,7 @@ compile m state1 = do
 
     let state2 = Network
             { nTime    = next time1
-            , nOutputs = OB.inserts outputs1 os
+            , nOutputs = appEndo os outputs1
             , nAlwaysP = Just theAlwaysP
             }
     return (a,state2)
