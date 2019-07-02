@@ -103,11 +103,6 @@ addReactimate e = do
     return $ Endo $ flip OB.delete o
 
 
--- | Remove an output from the network.
--- removeReactimate :: Prim.Output -> Prim.Network -> Prim.Network
--- removeReactimate o n = n {Prim.nOutputs = OB.delete (Prim.nOutputs n) o}
-
-
 {- Design note:
 The Output "o" is passed down the call stack via "buildLater" and will eventually be added to
 the Network nOutputs ordered bag. It is created here because we need to return a function that
