@@ -58,10 +58,10 @@ Source-repository    head
 Executable Animation
     if flag(buildExamples)
         build-depends:
-            process >= 1.0 && < 1.4,
+            process >= 1.0 && < 1.7,
             random >= 1.0 && <= 1.1,
             executable-path == 0.0.*,
-            filepath >= 1.1 && <= 1.4.0.0,
+            filepath >= 1.1 && < 1.5.0.0,
             reactive-banana, wx, wxcore, base
         cpp-options: -DbuildExamples
     else
@@ -83,7 +83,7 @@ Executable Asteroids
         build-depends:
             random >= 1.0 && <= 1.1,
             executable-path == 0.0.*,
-            filepath >= 1.1 && <= 1.4.0.0,
+            filepath >= 1.1 && < 1.5.0.0,
             reactive-banana, wx, wxcore, base
         cpp-options: -DbuildExamples
     else
@@ -118,7 +118,7 @@ Executable CurrencyConverter
 
 Executable CRUD
     if flag(buildExamples)
-        build-depends: containers >= 0.3 && < 0.6,
+        build-depends: containers >= 0.3 && < 0.7,
                        reactive-banana, wx, wxcore, base
     else
         buildable: False
@@ -128,7 +128,7 @@ Executable CRUD
 
 Executable NetMonitor
     if flag(buildExamples)
-        build-depends: process >= 1.0 && < 1.4,
+        build-depends: process >= 1.0 && < 1.7,
                        reactive-banana, wx, wxcore, base
     else
         buildable: False
