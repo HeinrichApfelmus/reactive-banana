@@ -67,7 +67,7 @@ Executable Animation
     else
         buildable: False
     hs-source-dirs:  src
-    other-modules:   Paths_reactive_banana_wx, Paths
+    other-modules:   Paths_reactive_banana_wx, Paths, Reactive.Banana.WX
     main-is:         Animation.hs
 
 Executable Arithmetic
@@ -76,6 +76,7 @@ Executable Arithmetic
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         Arithmetic.hs
 
 Executable Asteroids
@@ -89,7 +90,7 @@ Executable Asteroids
     else
         buildable: False
     hs-source-dirs:  src
-    other-modules:   Paths_reactive_banana_wx, Paths
+    other-modules:   Paths_reactive_banana_wx, Paths, Reactive.Banana.WX
     main-is:         Asteroids.hs
 
 Executable BarTab
@@ -98,6 +99,7 @@ Executable BarTab
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         BarTab.hs
 
 Executable Counter
@@ -106,6 +108,7 @@ Executable Counter
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         Counter.hs
 
 Executable CurrencyConverter
@@ -114,6 +117,7 @@ Executable CurrencyConverter
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         CurrencyConverter.hs
 
 Executable CRUD
@@ -123,6 +127,7 @@ Executable CRUD
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         CRUD.hs
     other-modules:   Tidings
 
@@ -133,6 +138,7 @@ Executable NetMonitor
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         NetMonitor.hs
 
 Executable TicTacToe
@@ -142,6 +148,7 @@ Executable TicTacToe
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         TicTacToe.hs
 
 Executable TwoCounters
@@ -150,6 +157,7 @@ Executable TwoCounters
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         TwoCounters.hs
 
 Executable Wave
@@ -158,4 +166,5 @@ Executable Wave
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         Wave.hs
