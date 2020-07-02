@@ -13,6 +13,7 @@ import           Data.Hashable
 import           Data.Monoid (Monoid, mempty, mappend)
 import           Data.Semigroup
 import qualified Data.Vault.Lazy                    as Lazy
+import           Data.Int
 import           System.IO.Unsafe
 import           System.Mem.Weak
 
@@ -196,7 +197,7 @@ printNode (O o) = return "O"
 -- | A timestamp local to this program run.
 --
 -- Useful e.g. for controlling cache validity.
-newtype Time = T Integer deriving (Eq, Ord, Show, Read)
+newtype Time = T Int64 deriving (Eq, Ord, Show, Read)
 
 -- | Before the beginning of time. See Note [TimeStamp]
 agesAgo :: Time
