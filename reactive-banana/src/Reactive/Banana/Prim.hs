@@ -8,34 +8,34 @@ module Reactive.Banana.Prim (
     -- implemented your own FRP library.
     -- If you just want to use FRP in your project,
     -- have a look at "Reactive.Banana" instead.
-    
+
     -- * Evaluation
     Step, Network, emptyNetwork,
-    
+
     -- * Build FRP networks
     Build, liftIOLater, BuildIO, liftBuild, buildLater, buildLaterReadNow, compile,
     module Control.Monad.IO.Class,
-    
+
     -- * Caching
     module Reactive.Banana.Prim.Cached,
-    
+
     -- * Testing
     interpret, mapAccumM, mapAccumM_, runSpaceProfile,
-    
+
     -- * IO
     newInput, addHandler, readLatch,
-    
+
     -- * Pulse
     Pulse,
     neverP, alwaysP, mapP, Future, tagFuture, unsafeMapIOP, filterJustP, unionWithP,
-    
+
     -- * Latch
     Latch,
     pureL, mapL, applyL, accumL, applyP,
-    
+
     -- * Dynamic event switching
-    switchL, executeP, switchP
-    
+    switchL, executeP, switchP, switchP1
+
     -- * Notes
     -- $recursion
   ) where

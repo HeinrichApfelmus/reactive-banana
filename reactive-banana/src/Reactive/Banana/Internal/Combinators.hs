@@ -237,6 +237,15 @@ switchE e = ask >>= \r -> cacheAndSchedule $ do
         p3 <- Prim.executeP p2 r
         Prim.switchP p3
 
+switchE1 :: Event a -> Event (Event a) -> Moment (Event a)
+switchE1 initial ees = ask >>= \r -> cacheAndSchedule $ do
+    p0 <- runCached initial
+    p1 <- runCached ees
+    liftBuild $ do
+        p2 <- Prim.mapP (runReaderT . runCached) p1
+        p3 <- Prim.executeP p2 r
+        Prim.switchP1 p0 p3
+
 switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
 switchB b e = ask >>= \r -> cacheAndSchedule $ do
     ~(l0,p0) <- runCached b
@@ -246,11 +255,11 @@ switchB b e = ask >>= \r -> cacheAndSchedule $ do
         p3 <- Prim.executeP p2 r
 
         lr <- Prim.switchL l0 =<< Prim.mapP fst p3
-        -- TODO: switch away the initial behavior
+        -- Use switchP1 to switch away the initial behavior
         let c1 = p0                              -- initial behavior changes
         c2 <- Prim.mapP (const ()) p3            -- or switch happens
-        c3 <- Prim.switchP =<< Prim.mapP snd p3  -- or current behavior changes
-        pr <- merge c1 =<< merge c2 c3
+        c3 <- Prim.switchP1 c1 =<< Prim.mapP snd p3  -- or current behavior changes
+        pr <- merge c2 c3
         return (lr, pr)
 
 merge :: Pulse () -> Pulse () -> Build (Pulse ())
