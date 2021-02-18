@@ -8,12 +8,14 @@ import Control.Exception (evaluate)
 import Control.Monad     (void)
 import Data.Functor
 import Data.IORef
+import Data.Monoid
 
 import           Reactive.Banana.Prim.Combinators
 import           Reactive.Banana.Prim.IO
 import qualified Reactive.Banana.Prim.OrderedBag  as OB
 import           Reactive.Banana.Prim.Plumbing
 import           Reactive.Banana.Prim.Types
+import           Reactive.Banana.Prim.Util
 
 {-----------------------------------------------------------------------------
    Compilation
@@ -36,7 +38,7 @@ compile m state1 = do
 
     let state2 = Network
             { nTime    = next time1
-            , nOutputs = OB.inserts outputs1 os
+            , nOutputs = appEndo os outputs1
             , nAlwaysP = Just theAlwaysP
             }
     return (a,state2)
@@ -53,11 +55,12 @@ compile m state1 = do
 interpret :: (Pulse a -> BuildIO (Pulse b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
     o   <- newIORef Nothing
+    o2 <- newRef $ Output {_evalO = error "interpret: dummy value"}
     let network = do
             (pin, sin) <- liftBuild $ newInput
             pmid       <- f pin
             pout       <- liftBuild $ mapP return pmid
-            liftBuild $ addHandler pout (writeIORef o . Just)
+            liftBuild $ addHandler o2 pout (writeIORef o . Just)
             return sin
 
     -- compile initial network
@@ -79,11 +82,12 @@ interpret f xs = do
 -- Mainly useful for testing whether there are space leaks.
 runSpaceProfile :: Show b => (Pulse a -> BuildIO (Pulse b)) -> [a] -> IO ()
 runSpaceProfile f xs = do
+    o <- newRef $ Output {_evalO = error "runSpaceProfile: dummy value"}
     let g = do
         (p1, fire) <- liftBuild $ newInput
         p2 <- f p1
         p3 <- mapP return p2                -- wrap into Future
-        addHandler p3 (\b -> void $ evaluate b)
+        addHandler o p3 (\b -> void $ evaluate b)
         return fire
     (step,network) <- compile g emptyNetwork
 

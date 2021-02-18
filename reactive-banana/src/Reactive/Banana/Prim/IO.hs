@@ -12,6 +12,7 @@ import qualified Data.Vault.Lazy        as Lazy
 
 import Reactive.Banana.Prim.Combinators (mapP)
 import Reactive.Banana.Prim.Evaluation  (step)
+import Reactive.Banana.Prim.OrderedBag (OrderedBag)
 import Reactive.Banana.Prim.Plumbing
 import Reactive.Banana.Prim.Types
 import Reactive.Banana.Prim.Util
@@ -45,11 +46,11 @@ newInput = mdo
 
 -- | Register a handler to be executed whenever a pulse occurs.
 --
--- The pulse may refer to future latch values.
-addHandler :: Pulse (Future a) -> (a -> IO ()) -> Build ()
-addHandler p1 f = do
+-- The pulse may refer to future latch values. The "Output" will be overwritten with the pulse.
+addHandler ::  Output -> Pulse (Future a) -> (a -> IO ()) -> Build ()
+addHandler o p1 f = do
     p2 <- mapP (fmap f) p1
-    addOutput p2
+    addOutput o p2
 
 -- | Read the value of a 'Latch' at a particular moment in time.
 readLatch :: Latch a -> Build a

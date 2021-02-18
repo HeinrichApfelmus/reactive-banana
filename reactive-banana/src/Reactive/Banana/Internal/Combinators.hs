@@ -14,8 +14,13 @@ import           Control.Monad.Trans.Reader
 import           Data.Functor
 import           Data.Functor.Identity
 import           Data.IORef
+import           Data.Monoid
 import qualified Reactive.Banana.Prim        as Prim
 import           Reactive.Banana.Prim.Cached
+import qualified Reactive.Banana.Prim.OrderedBag as OB
+import qualified Reactive.Banana.Prim.Types  as Prim
+import qualified Reactive.Banana.Prim.Util   as Prim
+
 
 type Build   = Prim.Build
 type Latch a = Prim.Latch a
@@ -51,6 +56,7 @@ data EventNetwork = EventNetwork
     , pause   :: IO ()
     }
 
+
 -- | Compile to an event network.
 compile :: Moment () -> IO EventNetwork
 compile setup = do
@@ -84,13 +90,26 @@ fromAddHandler addHandler = do
     liftIO $ register addHandler $ runStep network . fire
     return $ Prim.fromPure p
 
-addReactimate :: Event (Future (IO ())) -> Moment ()
+-- Add an output action. The returned function will remove the output.
+addReactimate :: Event (Future (IO ())) -> Moment (Endo (OB.OrderedBag Prim.Output))
 addReactimate e = do
-    network   <- ask
+    o <- liftIO $ Prim.newRef $ Prim.Output {Prim._evalO = error "addReactimate: dummy value"}
+        -- Will be overwritten later.
+    network <- ask
     liftBuild $ Prim.buildLater $ do
         -- Run cached computation later to allow more recursion with `Moment`
         p <- runReaderT (runCached e) network
-        Prim.addHandler p id
+        Prim.addHandler o p id
+    return $ Endo $ flip OB.delete o
+
+
+{- Design note:
+The Output "o" is passed down the call stack via "buildLater" and will eventually be added to
+the Network nOutputs ordered bag. It is created here because we need to return a function that
+removes it from the bag, but the result cannot be passed back to us from the future.
+-}
+
+
 
 fromPoll :: IO a -> Moment (Behavior a)
 fromPoll poll = do
@@ -218,6 +237,15 @@ switchE e = ask >>= \r -> cacheAndSchedule $ do
         p3 <- Prim.executeP p2 r
         Prim.switchP p3
 
+switchE1 :: Event a -> Event (Event a) -> Moment (Event a)
+switchE1 initial ees = ask >>= \r -> cacheAndSchedule $ do
+    p0 <- runCached initial
+    p1 <- runCached ees
+    liftBuild $ do
+        p2 <- Prim.mapP (runReaderT . runCached) p1
+        p3 <- Prim.executeP p2 r
+        Prim.switchP1 p0 p3
+
 switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
 switchB b e = ask >>= \r -> cacheAndSchedule $ do
     ~(l0,p0) <- runCached b
@@ -227,11 +255,11 @@ switchB b e = ask >>= \r -> cacheAndSchedule $ do
         p3 <- Prim.executeP p2 r
 
         lr <- Prim.switchL l0 =<< Prim.mapP fst p3
-        -- TODO: switch away the initial behavior
+        -- Use switchP1 to switch away the initial behavior
         let c1 = p0                              -- initial behavior changes
         c2 <- Prim.mapP (const ()) p3            -- or switch happens
-        c3 <- Prim.switchP =<< Prim.mapP snd p3  -- or current behavior changes
-        pr <- merge c1 =<< merge c2 c3
+        c3 <- Prim.switchP1 c1 =<< Prim.mapP snd p3  -- or current behavior changes
+        pr <- merge c2 c3
         return (lr, pr)
 
 merge :: Pulse () -> Pulse () -> Build (Pulse ())

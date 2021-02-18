@@ -13,6 +13,7 @@ import           Data.Hashable
 import           Data.Monoid (Monoid, mempty, mappend)
 import           Data.Semigroup
 import qualified Data.Vault.Lazy                    as Lazy
+import           Data.Int
 import           System.IO.Unsafe
 import           System.Mem.Weak
 
@@ -45,10 +46,10 @@ type Build  = ReaderWriterIOT BuildR BuildW IO
 type BuildR = (Time, Pulse ())
     -- ( current time
     -- , pulse that always fires)
-newtype BuildW = BuildW (DependencyBuilder, [Output], Action, Maybe (Build ()))
+newtype BuildW = BuildW (DependencyBuilder, Endo (OrderedBag Output), Action, Maybe (Build ()))
     -- reader : current timestamp
     -- writer : ( actions that change the network topology
-    --          , outputs to be added to the network
+    --          , outputs to be added to or removed from the network
     --          , late IO actions
     --          , late build actions
     --          )
@@ -139,6 +140,7 @@ instance Eq SomeNode where
     (P x) == (P y) = equalRef x y
     (L x) == (L y) = equalRef x y
     (O x) == (O y) = equalRef x y
+    _  == _  = False
 
 {-# INLINE mkWeakNodeValue #-}
 mkWeakNodeValue :: SomeNode -> v -> IO (Weak v)
@@ -195,7 +197,7 @@ printNode (O o) = return "O"
 -- | A timestamp local to this program run.
 --
 -- Useful e.g. for controlling cache validity.
-newtype Time = T Integer deriving (Eq, Ord, Show, Read)
+newtype Time = T Int64 deriving (Eq, Ord, Show, Read)
 
 -- | Before the beginning of time. See Note [TimeStamp]
 agesAgo :: Time

@@ -16,10 +16,10 @@ module Reactive.Banana.Frameworks (
 
     -- * Building event networks with input/output
     -- ** Core functions
-    compile, MomentIO,
+    compile, MomentIO, runMomentIO_, getEventNetwork,
     module Control.Event.Handler,
     fromAddHandler, fromChanges, fromPoll,
-    reactimate, Future, reactimate',
+    reactimate, reactimate_, Future, reactimate', reactimate_',
     changes,
     -- $changes
     imposeChanges,
@@ -37,12 +37,18 @@ module Reactive.Banana.Frameworks (
 
     ) where
 
+import           Control.Concurrent
 import           Control.Event.Handler
 import           Control.Monad
 import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Class
+import           Control.Monad.Trans.Reader
+import           Control.Monad.Trans.ReaderWriterIO (tell)
 import           Data.IORef
 import           Reactive.Banana.Combinators
 import qualified Reactive.Banana.Internal.Combinators as Prim
+import qualified Reactive.Banana.Prim.Compile as Compile
+import qualified Reactive.Banana.Prim.Types as Prim
 import           Reactive.Banana.Types
 
 
@@ -150,7 +156,22 @@ Your event-based framework will have to handle this situation.
 
 -}
 reactimate :: Event (IO ()) -> MomentIO ()
-reactimate = MIO . Prim.addReactimate . Prim.mapE return . unE
+reactimate = MIO . fmap (const ()) . Prim.addReactimate . Prim.mapE return . unE
+
+
+-- | Like "reactimate", but this returns a new action which will cancel the event
+-- actions.
+--
+-- This is useful when an event passed to "execute" calls "reactimate". For instance if the
+-- event creates a GUI widget which is then updated using "reactimate" then the updates will carry
+-- on being executed even if the widget is no longer displayed. By making the result of this
+-- function into a callback for widget destruction you can ensure that the widget updates stop
+-- once they are no longer required.
+reactimate_ :: Event (IO ()) -> MomentIO (MomentIO ())
+reactimate_ ev = MIO $ do
+   s <- Prim.addReactimate $ Prim.mapE return $ unE ev
+   return $ MIO $ lift $ tell $ Prim.BuildW (mempty, s, mempty, mempty)
+
 
 -- | Output.
 -- Execute the 'IO' action whenever the event occurs.
@@ -158,7 +179,15 @@ reactimate = MIO . Prim.addReactimate . Prim.mapE return . unE
 -- This version of 'reactimate' can deal with values obtained
 -- from the 'changes' function.
 reactimate' :: Event (Future (IO ())) -> MomentIO ()
-reactimate' = MIO . Prim.addReactimate . Prim.mapE unF . unE
+reactimate' = MIO . fmap (const ()) . Prim.addReactimate . Prim.mapE unF . unE
+
+
+-- | As for "reactimate'", but also returns a function to cancel the event actions. See
+-- "reactimate1" for details.
+reactimate_' :: Event (Future (IO ())) -> MomentIO (MomentIO ())
+reactimate_' ev = MIO $ do
+   s <- Prim.addReactimate $ Prim.mapE unF $ unE ev
+   return $ MIO $ lift $ tell $ Prim.BuildW (mempty, s, mempty, mempty)
 
 
 -- | Input,
@@ -331,6 +360,33 @@ actuate = Prim.actuate . unEN
 -- the current event has been processed completely.
 pause :: EventNetwork -> IO ()
 pause   = Prim.pause . unEN
+
+
+-- | Execute a MomentIO action in the context of a compiled event network.
+--
+-- If this is called from within "execute" then it will cause the program to hang. This can be a
+-- problem if, for instance, it gets used inside a widget callback which is then triggered by
+-- something done by @execute@. Two possible solutions for this are:
+--
+-- * Have the argument to @execute@ return an @IO ()@ alongside the desired result and then use
+-- "reactimate" to run it separately.
+--
+-- * Use @forkIO@ to run this function in a separate thread. However some GUI libraries cannot
+-- tolerate this.
+runMomentIO_ :: EventNetwork -> MomentIO a  -> IO ()
+runMomentIO_ network act = do
+   let
+      act2 = act >> return (return ())
+      step primNet = do
+         Compile.compile (runReaderT (unMIO act2) (unEN network)) primNet
+   Prim.runStep (unEN network) step
+
+
+-- | The "EventNetwork" within which this is being run.
+getEventNetwork :: MomentIO EventNetwork
+getEventNetwork = MIO $ EN <$> ask
+
+
 
 {-----------------------------------------------------------------------------
     Utilities

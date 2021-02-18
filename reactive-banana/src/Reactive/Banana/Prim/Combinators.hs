@@ -143,3 +143,25 @@ switchP pp = mdo
     p2 <- newPulse "switchP_out" eval
     p2 `keepAlive` p1
     return p2
+
+
+switchP1 :: Pulse a -> Pulse (Pulse a) -> Build (Pulse a)
+switchP1 p pp = mdo
+    lp    <- stepperL p pp
+    let
+        -- switch to a new parent
+        switch = do
+            mnew <- readPulseP pp
+            case mnew of
+                Nothing  -> return ()
+                Just new -> liftBuildP $ p2 `changeParent` new
+            return Nothing
+        -- fetch value from old parent
+        eval = readPulseP =<< readLatchP lp
+
+    p1 <- newPulse "switchP_in" switch :: Build (Pulse ())
+    p1 `dependOn` pp
+    p2 <- newPulse "switchP_out" eval
+    p2 `dependOn` p
+    p2 `keepAlive` p1
+    return p2

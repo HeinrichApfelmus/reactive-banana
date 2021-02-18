@@ -32,6 +32,7 @@ extra-source-files:     CHANGELOG.md,
                         doc/examples/*.hs,
                         src/Reactive/Banana/Test.hs,
                         src/Reactive/Banana/Test/Plumbing.hs
+                        src/Reactive/Banana/Test/Execute.hs
 extra-doc-files:        doc/*.png
 
 Source-repository head
@@ -42,7 +43,7 @@ Source-repository head
 Library
     default-language:   Haskell98
     hs-source-dirs:     src
-
+    ghc-options:        -O2
     build-depends:      base >= 4.2 && < 5,
                         semigroups >= 0.13 && < 0.20,
                         containers >= 0.5 && < 0.7,
@@ -90,3 +91,25 @@ Test-Suite tests
                         reactive-banana, vault, containers,
                         semigroups, transformers,
                         unordered-containers, hashable, psqueues, pqueue
+    other-modules:      Control.Event.Handler,
+                        Control.Monad.Trans.RWSIO,
+                        Control.Monad.Trans.ReaderWriterIO,
+                        Reactive.Banana.Internal.Combinators,
+                        Reactive.Banana.Model,
+                        Reactive.Banana.Prim,
+                        Reactive.Banana.Prim.Cached,
+                        Reactive.Banana.Prim.Combinators,
+                        Reactive.Banana.Prim.Compile,
+                        Reactive.Banana.Prim.Dependencies,
+                        Reactive.Banana.Prim.Evaluation,
+                        Reactive.Banana.Prim.Graph,
+                        Reactive.Banana.Prim.IO,
+                        Reactive.Banana.Prim.OrderedBag,
+                        Reactive.Banana.Prim.Plumbing,
+                        Reactive.Banana.Prim.Types,
+                        Reactive.Banana.Prim.Util,
+                        Reactive.Banana.Combinators,
+                        Reactive.Banana.Frameworks,
+                        Reactive.Banana.Types,
+                        Reactive.Banana.Test.Plumbing
+                        Reactive.Banana.Test.Execute

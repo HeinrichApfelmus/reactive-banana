@@ -30,7 +30,7 @@ module Reactive.Banana.Combinators (
     -- $recursion
 
     -- ** Higher-order
-    valueB, valueBLater, observeE, switchE, switchB,
+    valueB, valueBLater, observeE, switchE, switchE1, switchB,
 
     -- * Derived Combinators
     -- ** Infix operators
@@ -264,6 +264,12 @@ observeE = E . Prim.observeE . Prim.mapE unM . unE
 -- >     trim time1 time2 e = [x | (timex,x) <- e, time1 < timex, timex <= time2]
 switchE :: MonadMoment m => Event (Event a) -> m (Event a)
 switchE = liftMoment . M . fmap E . Prim.switchE . Prim.mapE (unE) . unE
+
+
+-- | Version of "switchE" which takes an initial event stream to start with.
+switchE1 :: MonadMoment m => Event a -> Event (Event a) -> m (Event a)
+switchE1 e = liftMoment . M . fmap E . Prim.switchE1 (unE e) . Prim.mapE (unE) . unE
+
 
 -- | Dynamically switch between 'Behavior'.
 -- Semantically,

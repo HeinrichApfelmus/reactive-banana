@@ -14,6 +14,7 @@ import qualified Control.Monad.Trans.RWSIO          as RWS
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
 import           Data.Functor
 import           Data.Maybe
+import           Data.Monoid
 import qualified Data.PQueue.Prio.Min               as Q
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.Mem.Weak
@@ -52,7 +53,7 @@ step (inputs,pulses)
         state2 :: Network
         state2  = Network
             { nTime    = next time1
-            , nOutputs = OB.inserts outputs1 os
+            , nOutputs = appEndo os outputs1
             , nAlwaysP = Just alwaysP
             }
     return (runEvalOs $ map snd actions, state2)

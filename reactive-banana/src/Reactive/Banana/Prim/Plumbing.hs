@@ -18,10 +18,10 @@ import           Data.Monoid
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
 
-import qualified Reactive.Banana.Prim.Dependencies as Deps
+import qualified Reactive.Banana.Prim.Dependencies  as Deps
+import qualified Reactive.Banana.Prim.OrderedBag    as OB
 import           Reactive.Banana.Prim.Types
 import           Reactive.Banana.Prim.Util
-
 {-----------------------------------------------------------------------------
     Build primitive pulses and latches
 ------------------------------------------------------------------------------}
@@ -120,19 +120,19 @@ cachedLatch eval = unsafePerformIO $ mdo
 
 -- | Add a new output that depends on a 'Pulse'.
 --
--- TODO: Return function to unregister the output again.
-addOutput :: Pulse EvalO -> Build ()
-addOutput p = do
-    o <- liftIO $ newRef $ Output
+-- The "Output" argument is overwritten with the "Pulse"
+addOutput :: Output -> Pulse EvalO -> Build ()
+addOutput o p = do
+    liftIO $ put o $ Output
         { _evalO = maybe (return $ debug "nop") id <$> readPulseP p
         }
     (P p) `addChild` (O o)
-    RW.tell $ BuildW (mempty, [o], mempty, mempty)
+    RW.tell $ BuildW (mempty, Endo $ flip OB.insert o, mempty, mempty)
 
 {-----------------------------------------------------------------------------
     Build monad
 ------------------------------------------------------------------------------}
-runBuildIO :: BuildR -> BuildIO a -> IO (a, Action, [Output])
+runBuildIO :: BuildR -> BuildIO a -> IO (a, Action, Endo (OB.OrderedBag Output))
 runBuildIO i m = {-# SCC runBuild #-} do
         (a, BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold mempty m
         doit $ liftIOLaters          -- execute late IOs
