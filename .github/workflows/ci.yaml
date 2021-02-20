@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  build:
+    name: ghc ${{matrix.ghc}}
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc:
+          # As of 2021-02-20, 9.0.1 build fails due to pqueue's upper bound on base
+          # - '9.0.1'
+          # As of 2021-02-20, ghcup can't install 8.10.4, so we just use 8.10.3 instead
+          # - '8.10.4'
+          - '8.10.3'
+          - '8.8.4'
+          - '8.6.5'
+          - '8.4.4'
+          - '8.2.2'
+          - '8.0.2'
+          # We get linker errors when building the test suite. They look like this:
+          # relocation R_X86_64_32S against symbol `stg_upd_frame_info' can not be used when making a PIE object; recompile with -fPIC
+          # - '7.10.3'
+
+    steps:
+      # Weird, the action runner fails with a 'missing -lnuma' error, but only on 8.4.4.
+      - name: Install libnuma-dev for ghc 8.4.4
+        if: matrix.ghc == '8.4.4'
+        run: sudo apt-get install libnuma-dev
+
+      - uses: actions/checkout@v2
+
+      # The random number towards the beginning of the cache keys below are meant to be bumped as a crude means to clear
+      # a cache. GitHub will automatically delete caches that haven't been accessed in 7 days, but there is no way to
+      # purge one manually.
+
+      # Cache ghc installed by ghcup
+      - uses: actions/cache@v2
+        name: Cache ghc installed by ghcup
+        id: cache-ghc
+        with:
+          path:
+            ~/.ghcup/bin/ghc-${{matrix.ghc}}
+            ~/.ghcup/ghc/${{matrix.ghc}}/bin/ghc
+          key: ghcup-0-${{matrix.ghc}}
+
+      # Cache dependencies stored in ~/.cabal/store
+      - uses: actions/cache@v2
+        name: Cache dependencies
+        with:
+          path: |
+            ~/.cabal/config
+            ~/.cabal/packages/hackage.haskell.org/
+            ~/.cabal/store
+          key: cabal-1-${{matrix.ghc}}-${{hashFiles('cabal.project')}}
+          restore-keys: cabal-1-${{matrix.ghc}}-
+
+      # Cache dist-newstyle/ for fast incremental builds in CI.
+      # The main cache key includes this commit hash, so we'll always fall back to the most recent build on this branch,
+      # or master.
+      - uses: actions/cache@v2
+        name: Cache build
+        with:
+          path: dist-newstyle
+          key: dist-0-${{matrix.ghc}}-${{github.sha}}
+          restore-keys: dist-0-${{matrix.ghc}}-
+
+      # Install ghcup
+      - name: Install ghcup
+        if: steps.cache-ghc.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          curl -L https://downloads.haskell.org/~ghcup/x86_64-linux-ghcup > "$HOME/.local/bin/ghcup"
+          chmod +x "$HOME/.local/bin/ghcup"
+
+      # Annoying that ghcup doesn't arrive at the latest version
+      - name: Upgrade ghcup
+        if: steps.cache-ghc.outputs.cache-hit != 'true'
+        run: ghcup upgrade --inplace
+
+      # Install ghc
+      - name: Install ghc
+        if: steps.cache-ghc.outputs.cache-hit != 'true'
+        run: ghcup install ghc ${{matrix.ghc}}
+
+      # Add ghc to path
+      - name: Add ghc to path
+        run: echo "$HOME/.ghcup/ghc/${{matrix.ghc}}/bin" >> $GITHUB_PATH
+
+      - name: Cabal update
+        run: cabal update
+
+      - name: Build dependencies
+        run: cabal build reactive-banana:lib:reactive-banana --disable-optimization --only-dependencies
+
+      - name: Build library
+        run: cabal build reactive-banana:lib:reactive-banana --disable-optimization
+
+      - name: Build tests
+        run: cabal build reactive-banana:test:tests --disable-optimization
+
+      - name: Run tests
+        run: cabal run reactive-banana:test:tests --disable-optimization
+
+      - name: Generate docs
+        run: cabal haddock reactive-banana --disable-optimization
+
+      - name: Cabal check
+        run: |
+          cd reactive-banana
+          cabal check
