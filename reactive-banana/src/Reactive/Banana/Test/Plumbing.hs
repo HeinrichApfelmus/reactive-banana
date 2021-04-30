@@ -41,11 +41,11 @@ interpretGraph f = Y.interpret (fmap sndE . sndM . f . ey)
 {-----------------------------------------------------------------------------
     Primitive combinators
 ------------------------------------------------------------------------------}
-never                           = E X.never Y.never
-filterJust (E x y)              = E (X.filterJust x) (Y.filterJust y)
-unionWith f (E x1 y1) (E x2 y2) = E (X.unionWith f x1 x2) (Y.unionWith f y1 y2)
-mapE f (E x y)                  = E (fmap f x) (Y.mapE f y)
-applyE ~(B x1 y1) (E x2 y2)     = E (X.apply x1 x2) (Y.applyE y1 y2)
+never                               = E X.never Y.never
+filterJust (E x y)                  = E (X.filterJust x) (Y.filterJust y)
+mergeWith f g h (E x1 y1) (E x2 y2) = E (X.mergeWith f g h x1 x2) (Y.mergeWith f g h y1 y2)
+mapE f (E x y)                      = E (fmap f x) (Y.mapE f y)
+applyE ~(B x1 y1) (E x2 y2)         = E (X.apply x1 x2) (Y.applyE y1 y2)
 
 instance Functor Event where fmap = mapE
 
