@@ -39,16 +39,6 @@ jobs:
       # a cache. GitHub will automatically delete caches that haven't been accessed in 7 days, but there is no way to
       # purge one manually.
 
-      # Cache ghc installed by ghcup
-      - uses: actions/cache@v2
-        name: Cache ghc installed by ghcup
-        id: cache-ghc
-        with:
-          path:
-            ~/.ghcup/bin/ghc-${{matrix.ghc}}
-            ~/.ghcup/ghc/${{matrix.ghc}}/bin/ghc
-          key: ghcup-0-${{matrix.ghc}}
-
       # Cache dependencies stored in ~/.cabal/store
       - uses: actions/cache@v2
         name: Cache dependencies
