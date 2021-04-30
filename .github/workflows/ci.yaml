@@ -39,15 +39,13 @@ jobs:
       # a cache. GitHub will automatically delete caches that haven't been accessed in 7 days, but there is no way to
       # purge one manually.
 
-      # Cache ghc installed by ghcup
+      # Cache ghcup
       - uses: actions/cache@v2
-        name: Cache ghc installed by ghcup
-        id: cache-ghc
+        name: Cache .ghcup ghcup
+        id: cache-ghcup
         with:
-          path:
-            ~/.ghcup/bin/ghc-${{matrix.ghc}}
-            ~/.ghcup/ghc/${{matrix.ghc}}/bin/ghc
-          key: ghcup-0-${{matrix.ghc}}
+          path: ~/.ghcup
+          key: zzz-ghcup-1-${{matrix.ghc}}
 
       # Cache dependencies stored in ~/.cabal/store
       - uses: actions/cache@v2
@@ -89,9 +87,20 @@ jobs:
         if: steps.cache-ghc.outputs.cache-hit != 'true'
         run: ghcup install ghc ${{matrix.ghc}}
 
+      - name: ls ~/.ghcup
+        run: |
+          ls ~/.ghcup
+          ls ~/.ghcup/ghc
+
+      - name: print ghc
+        run: which -a ghc
+
       # Add ghc to path
       - name: Add ghc to path
         run: echo "$HOME/.ghcup/ghc/${{matrix.ghc}}/bin" >> $GITHUB_PATH
+
+      - name: print ghc
+        run: which -a ghc
 
       - name: Cabal update
         run: cabal update
@@ -110,6 +119,11 @@ jobs:
 
       - name: Generate docs
         run: cabal haddock reactive-banana --disable-optimization
+
+      - name: ls ~/.ghcup
+        run: |
+          ls ~/.ghcup
+          ls ~/.ghcup/ghc
 
       - name: Cabal check
         run: |
