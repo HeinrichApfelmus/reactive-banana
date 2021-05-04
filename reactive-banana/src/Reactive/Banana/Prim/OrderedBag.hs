@@ -1,6 +1,6 @@
 {-----------------------------------------------------------------------------
     reactive-banana
-    
+
     Implementation of a bag whose elements are ordered by arrival time.
 ------------------------------------------------------------------------------}
 {-# LANGUAGE TupleSections #-}
@@ -34,7 +34,7 @@ insert (OB xs n) x = OB (Map.insertWith (\new old -> old) x n xs) (n+1)
 -- comes after all elements in the bag,
 -- but before the other elements in the sequence.
 inserts :: (Eq a, Hashable a) => OrderedBag a -> [a] -> OrderedBag a
-inserts bag xs = foldl insert bag xs
+inserts = foldl' insert
 
 -- | Reorder a list of elements to appear as they were inserted into the bag.
 -- Remove any elements from the list that do not appear in the bag.
