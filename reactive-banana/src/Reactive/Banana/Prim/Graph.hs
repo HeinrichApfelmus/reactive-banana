@@ -67,7 +67,9 @@ listParents gr = list
     where
     -- all nodes without parents
     ancestors :: [a]
-    ancestors = Map.keys (children gr `Map.difference` parents gr)
+    -- We can filter from `children`, because a node without incoming edges can only be in the graph if it has outgoing edges.
+    ancestors    = [x | x <- Map.keys (children gr), not (hasParents x)]
+    hasParents x = Map.member x (parents gr)
     -- all nodes in topological order "parents before children"
     list :: [a]
     list = runIdentity $ dfs' ancestors (Identity . getChildren gr)
