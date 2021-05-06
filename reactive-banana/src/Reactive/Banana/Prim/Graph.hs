@@ -5,7 +5,14 @@
 ------------------------------------------------------------------------------}
 {-# language ScopedTypeVariables#-}
 
-module Reactive.Banana.Prim.Graph where
+module Reactive.Banana.Prim.Graph
+  ( Graph
+  , emptyGraph
+  , insertEdge
+  , getChildren
+  , listParents
+  , dfs
+  ) where
 
 import           Control.Monad
 import           Data.Functor.Identity
@@ -18,8 +25,19 @@ import           Data.Maybe
     Graphs and topological sorting
 ------------------------------------------------------------------------------}
 data Graph a = Graph
-    { children :: Map.HashMap a [a]
+    { -- | The mapping from each node to the set of nodes reachable by an out-edge. If a node has no out-edges, it is
+      -- not a member of this map.
+      --
+      -- Invariant: the values are non-empty lists.
+      children :: Map.HashMap a [a]
+      -- | The Mapping from each node to the set of nodes reachable by an in-edge. If a node has no in-edges, it is not
+      -- a member of this map.
+      --
+      -- Invariant: the values are non-empty lists.
     , parents  :: Map.HashMap a [a]
+      -- | The set of nodes.
+      --
+      -- Invariant: equals (key children `union` keys parents)
     , nodes    :: Set.HashSet a
     }
 
@@ -47,9 +65,11 @@ getParents gr x = maybe [] id . Map.lookup x . parents $ gr
 listParents :: forall a. (Eq a, Hashable a) => Graph a -> [a]
 listParents gr = list
     where
-    -- all nodes without children
+    -- all nodes without parents
     ancestors :: [a]
-    ancestors = [x | x <- Set.toList $ nodes gr, null (getParents gr x)]
+    -- We can filter from `children`, because a node without incoming edges can only be in the graph if it has outgoing edges.
+    ancestors    = [x | x <- Map.keys (children gr), not (hasParents x)]
+    hasParents x = Map.member x (parents gr)
     -- all nodes in topological order "parents before children"
     list :: [a]
     list = runIdentity $ dfs' ancestors (Identity . getChildren gr)
