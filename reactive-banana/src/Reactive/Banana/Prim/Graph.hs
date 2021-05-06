@@ -48,8 +48,8 @@ emptyGraph = Graph Map.empty Map.empty Set.empty
 -- | Insert an edge from the first node to the second node into the graph.
 insertEdge :: (Eq a, Hashable a) => (a,a) -> Graph a -> Graph a
 insertEdge (x,y) gr = gr
-    { children = Map.insertWith (flip (++)) x [y] (children gr)
-    , parents  = Map.insertWith (flip (++)) y [x] (parents  gr)
+    { children = Map.insertWith (\new old -> new ++ old) x [y] (children gr)
+    , parents  = Map.insertWith (\new old -> new ++ old) y [x] (parents  gr)
     , nodes    = Set.insert x $ Set.insert y $ nodes gr
     }
 
