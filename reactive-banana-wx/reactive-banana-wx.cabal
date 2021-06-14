@@ -21,7 +21,7 @@ License-file:        LICENSE
 Author:              Heinrich Apfelmus
 Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Category:            FRP, GUI
-Cabal-version:       >= 1.8
+Cabal-version:       >= 1.24
 
 
 Build-type:          Custom
@@ -31,6 +31,12 @@ Extra-source-files:  CHANGELOG.md,
 data-dir:            data
 data-files:          *.ico, *.wav, *.png
 
+custom-setup
+  setup-depends:
+    cabal-macosx >= 0.1 && < 0.3,
+    base >= 4.2 && < 5,
+    Cabal
+
 flag buildExamples
   description: Build example executables
   default:     False
@@ -38,10 +44,9 @@ flag buildExamples
 Library
     hs-source-dirs:  src
     build-depends:   base >= 4.2 && < 5,
-                     cabal-macosx >= 0.1 && < 0.3,
-                     reactive-banana >= 1.1 && < 1.2,
-                     wxcore (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.93),
-                     wx (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.93)
+                     reactive-banana >= 1.1 && < 1.3,
+                     wxcore (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.94),
+                     wx (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.94)
     extensions:      ExistentialQuantification
     exposed-modules: Reactive.Banana.WX
 
@@ -53,16 +58,16 @@ Source-repository    head
 Executable Animation
     if flag(buildExamples)
         build-depends:
-            process >= 1.0 && < 1.4,
+            process >= 1.0 && < 1.7,
             random >= 1.0 && <= 1.1,
             executable-path == 0.0.*,
-            filepath >= 1.1 && <= 1.4.0.0,
+            filepath >= 1.1 && < 1.5.0.0,
             reactive-banana, wx, wxcore, base
         cpp-options: -DbuildExamples
     else
         buildable: False
     hs-source-dirs:  src
-    other-modules:   Paths_reactive_banana_wx, Paths
+    other-modules:   Paths_reactive_banana_wx, Paths, Reactive.Banana.WX
     main-is:         Animation.hs
 
 Executable Arithmetic
@@ -71,6 +76,7 @@ Executable Arithmetic
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         Arithmetic.hs
 
 Executable Asteroids
@@ -78,13 +84,13 @@ Executable Asteroids
         build-depends:
             random >= 1.0 && <= 1.1,
             executable-path == 0.0.*,
-            filepath >= 1.1 && <= 1.4.0.0,
+            filepath >= 1.1 && < 1.5.0.0,
             reactive-banana, wx, wxcore, base
         cpp-options: -DbuildExamples
     else
         buildable: False
     hs-source-dirs:  src
-    other-modules:   Paths_reactive_banana_wx, Paths
+    other-modules:   Paths_reactive_banana_wx, Paths, Reactive.Banana.WX
     main-is:         Asteroids.hs
 
 Executable BarTab
@@ -93,6 +99,7 @@ Executable BarTab
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         BarTab.hs
 
 Executable Counter
@@ -101,6 +108,7 @@ Executable Counter
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         Counter.hs
 
 Executable CurrencyConverter
@@ -109,25 +117,28 @@ Executable CurrencyConverter
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         CurrencyConverter.hs
 
 Executable CRUD
     if flag(buildExamples)
-        build-depends: containers >= 0.3 && < 0.6,
+        build-depends: containers >= 0.3 && < 0.7,
                        reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         CRUD.hs
     other-modules:   Tidings
 
 Executable NetMonitor
     if flag(buildExamples)
-        build-depends: process >= 1.0 && < 1.4,
+        build-depends: process >= 1.0 && < 1.7,
                        reactive-banana, wx, wxcore, base
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         NetMonitor.hs
 
 Executable TicTacToe
@@ -137,6 +148,7 @@ Executable TicTacToe
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         TicTacToe.hs
 
 Executable TwoCounters
@@ -145,6 +157,7 @@ Executable TwoCounters
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         TwoCounters.hs
 
 Executable Wave
@@ -153,4 +166,5 @@ Executable Wave
     else
         buildable: False
     hs-source-dirs:  src
+    other-modules:   Reactive.Banana.WX
     main-is:         Wave.hs
