@@ -4,6 +4,7 @@
 {-# LANGUAGE RecursiveDo, FlexibleInstances, NoMonomorphismRestriction #-}
 module Reactive.Banana.Internal.Combinators where
 
+import           Control.Applicative                 (liftA2)
 import           Control.Concurrent.MVar
 import           Control.Event.Handler
 import           Control.Monad
@@ -46,19 +47,48 @@ interpret f = Prim.interpret $ \pulse -> runReaderT (g pulse) undefined
 ------------------------------------------------------------------------------}
 -- | Data type representing an event network.
 data EventNetwork = EventNetwork
-    { runStep :: Prim.Step -> IO ()
-    , actuate :: IO ()
-    , pause   :: IO ()
+    { runStep           :: Prim.Step -> IO ()
+    , eventNetworkState :: MVar NetworkState
     }
+
+data NetworkState = NetworkState
+    { actuated           :: Bool
+    , registerHandlers   :: [IO (IO ())]
+    , unregisterHandlers :: [IO ()]
+    }
+
+initialNetworkState :: NetworkState
+initialNetworkState = NetworkState
+  { actuated           = False
+  , registerHandlers   = []
+  , unregisterHandlers = []
+  }
+
+actuate :: EventNetwork -> IO ()
+actuate network = modifyMVar_ (eventNetworkState network) $ \state ->
+  if actuated state
+  then pure state
+  else (\unregs -> state { actuated = True, unregisterHandlers = unregs })
+       -- Calls are made from right (first added) to left (last added)
+       . reverse <$> sequence (reverse (registerHandlers state))
+
+pause :: EventNetwork -> IO ()
+pause network = modifyMVar_ (eventNetworkState network) $ \state ->
+  state { actuated = False, unregisterHandlers = [] }
+  -- We use sequence_ here to unregister from left (registered last)
+  -- to right (registered first). The reversal of direction relative
+  -- to actuate is intentional to allow for bracket style dependencies
+  -- between registers and unregisters.
+  <$ when (actuated state) (sequence_ $ unregisterHandlers state)
 
 -- | Compile to an event network.
 compile :: Moment () -> IO EventNetwork
 compile setup = do
-    actuated <- newIORef False                   -- flag to set running status
-    s        <- newEmptyMVar                     -- setup callback machinery
+    networkState <- newMVar initialNetworkState -- Reference to the network state
+    s            <- newEmptyMVar                -- setup callback machinery
     let
-        whenFlag flag action = readIORef flag >>= \b -> when b action
-        runStep f            = whenFlag actuated $ do
+        whenM cond action = cond >>= \b -> when b action
+        runStep f         = whenM (actuated <$> readMVar networkState) $ do
             s1 <- takeMVar s                    -- read and take lock
             -- pollValues <- sequence polls     -- poll mutable data
             (output, s2) <- f s1                -- calculate new state
@@ -67,8 +97,7 @@ compile setup = do
 
         eventNetwork = EventNetwork
             { runStep = runStep
-            , actuate = writeIORef actuated True
-            , pause   = writeIORef actuated False
+            , eventNetworkState = networkState
             }
 
     (output, s0) <-                             -- compile initial graph
@@ -81,7 +110,23 @@ fromAddHandler :: AddHandler a -> Moment (Event a)
 fromAddHandler addHandler = do
     (p, fire) <- liftBuild $ Prim.newInput
     network   <- ask
-    liftIO $ register addHandler $ runStep network . fire
+    let doRegister = register addHandler $ runStep network . fire
+    liftIO $ modifyMVar_ (eventNetworkState network) $ \state -> do
+      -- registerer and unregisterers are always pushed onto the left
+      -- of their respective stack. This means handlers registered
+      -- later are further left than those registered earlier further
+      -- right. This is true for both stacks even though registerers
+      -- ar run from first registered (right) to last registered
+      -- (left) whereas unregisterers are run from last registered
+      -- (left) to first registered (right).
+      let registers' = doRegister : registerHandlers state
+      unregisters' <- if actuated state
+                      then (:unregisterHandlers state) <$> doRegister
+                      else pure $ unregisterHandlers state
+      pure $ state
+        { registerHandlers = registers'
+        , unregisterHandlers = unregisters'
+        }
     return $ Prim.fromPure p
 
 addReactimate :: Event (Future (IO ())) -> Moment ()
