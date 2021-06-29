@@ -18,7 +18,7 @@ module Reactive.Banana.Frameworks (
     -- ** Core functions
     compile, MomentIO,
     module Control.Event.Handler,
-    fromAddHandler, fromChanges, fromPoll,
+    fromAddHandler, fromChanges, fromPoll, fromPull,
     reactimate, Future, reactimate',
     changes,
     -- $changes
@@ -184,6 +184,9 @@ fromAddHandler = MIO . fmap E . Prim.fromAddHandler
 -- Neither should its side effects affect the event network significantly.
 fromPoll :: IO a -> MomentIO (Behavior a)
 fromPoll = MIO . fmap B . Prim.fromPoll
+
+fromPull :: IO a -> MomentIO (Behavior a)
+fromPull = MIO . fmap B . Prim.fromPull
 
 -- | Input,
 -- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
