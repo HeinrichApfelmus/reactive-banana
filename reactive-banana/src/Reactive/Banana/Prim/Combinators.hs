@@ -128,10 +128,9 @@ executeP p1 b = do
     eval (Just x) = Just <$> liftBuildP (x b)
     eval Nothing  = return Nothing
 
-switchP :: Pulse (Pulse a) -> Build (Pulse a)
-switchP pp = mdo
-    never <- neverP
-    lp    <- stepperL never pp
+switchP :: Pulse a -> Pulse (Pulse a) -> Build (Pulse a)
+switchP p pp = mdo
+    lp <- stepperL p pp
     let
         -- switch to a new parent
         switch = do
@@ -146,5 +145,6 @@ switchP pp = mdo
     p1 <- newPulse "switchP_in" switch :: Build (Pulse ())
     p1 `dependOn` pp
     p2 <- newPulse "switchP_out" eval
+    p2 `dependOn` p
     p2 `keepAlive` p1
     return p2
