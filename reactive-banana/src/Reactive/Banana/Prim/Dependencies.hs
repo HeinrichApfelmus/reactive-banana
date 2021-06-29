@@ -45,12 +45,10 @@ buildDependencies (Endo f, parents) = do
 connectChild
     :: Pulse a  -- ^ Parent node whose '_childP' field is to be updated.
     -> SomeNode -- ^ Child node to add.
-    -> IO (Weak SomeNode)
-                -- ^ Weak reference with the child as key and the parent as value.
+    -> IO ()
 connectChild parent child = do
     w <- mkWeakNodeValue child child
     modify' parent $ update childrenP (w:)
-    mkWeakNodeValue child (P parent)        -- child keeps parent alive
 
 -- | Add a child node to a parent node and update evaluation order.
 doAddChild :: SomeNode -> SomeNode -> IO ()
@@ -58,19 +56,20 @@ doAddChild (P parent) (P child) = do
     level1 <- _levelP <$> readRef child
     level2 <- _levelP <$> readRef parent
     let level = level1 `max` (level2 + 1)
-    w <- parent `connectChild` (P child)
-    modify' child $ set levelP level . update parentsP (w:)
-doAddChild (P parent) node = void $ parent `connectChild` node
+    parent `connectChild` (P child)
+    modify' child $ set levelP level . update parentsP (P parent :)
+doAddChild (P parent) node = do
+    parent `connectChild` node
+    void $ mkWeakNodeValue node (P parent) -- child keeps parent alive
 
--- | Remove a node from its parents and all parents from this node.
+-- | Remove a node from its parents' children and all parents from this node.
 removeParents :: Pulse a -> IO ()
 removeParents child = do
     c@Pulse{_parentsP} <- readRef child
     -- delete this child (and dead children) from all parent nodes
-    forM_ _parentsP $ \w -> do
-        Just (P parent) <- deRefWeak w  -- get parent node
-        finalize w                      -- severe connection in garbage collector
-        let isGoodChild w = not . maybe True (== P child) <$> deRefWeak w
+    forM_ _parentsP $ \(P parent) -> do
+        let isGoodChild :: Weak SomeNode -> IO Bool
+            isGoodChild w = maybe False (/= P child) <$> deRefWeak w
         new <- filterM isGoodChild . _childrenP =<< readRef parent
         modify' parent $ set childrenP new
     -- replace parents by empty list
@@ -81,8 +80,8 @@ doChangeParent :: Pulse a -> Pulse b -> IO ()
 doChangeParent child parent = do
     -- remove all previous parents and connect to new parent
     removeParents child
-    w <- parent `connectChild` (P child)
-    modify' child $ update parentsP (w:)
+    parent `connectChild` (P child)
+    modify' child $ update parentsP (P parent :)
 
     -- calculate level difference between parent and node
     levelParent <- _levelP <$> readRef parent
@@ -104,5 +103,5 @@ getChildren (P p) = deRefWeaks =<< fmap _childrenP (readRef p)
 getChildren _     = return []
 
 getParents :: SomeNode -> IO [SomeNode]
-getParents (P p) = deRefWeaks =<< fmap _parentsP (readRef p)
+getParents (P p) = fmap _parentsP (readRef p)
 getParents _     = return []
