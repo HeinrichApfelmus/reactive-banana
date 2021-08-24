@@ -44,33 +44,44 @@ benchmark netsize duration = measureTwo phase1 phase2
     phase1 = do
         (handlers, triggers) <- unzip <$> replicateM netsize newAddHandler
         (clock   , trigger ) <- newAddHandler
-            
-        let networkD :: forall t. Frameworks t => Moment t ()
+
+        let networkD :: MomentIO ()
             networkD = do
-                es <- mapM fromAddHandler handlers
-                e  <- fromAddHandler clock
-                let countBs = map count es
-                trimmedBs <- mapM trimB countBs
-                
-                {-
-                let step10E     = filterE (\cnt -> cnt `rem` 10 == 0) e
-                let selectedB_E = head <$> accumE trimmedBs (keepTail <$ step10E)
-                let selectedB   = switchB (head countBs) selectedB_E
-                let outputE     = (doSomething . show <$> selectedB) <@ step10E
-                -}
-                let outputE = doSomething (show . length $ trimmedBs) <$ e
+                es :: [Event ()] <-
+                  mapM fromAddHandler handlers
+
+                e :: Event Int <-
+                  fromAddHandler clock
+
+                countBs :: [Behavior Int] <-
+                  liftMoment (traverse count es)
+
+                let
+                  step10E :: Event Int
+                  step10E = filterE (\cnt -> cnt `rem` 10 == 0) e
+
+                selectedB_E :: Event (Behavior Int) <- do
+                  fmap head <$> accumE countBs (keepTail <$ step10E)
+
+                selectedB :: Behavior Int <-
+                  switchB (head countBs) selectedB_E
+
+                let outputE :: Event (IO ())
+                    outputE = (doSomething . show <$> selectedB) <@ step10E
+
+                -- let outputE = doSomething (show . length $ countBs) <$ e
                 reactimate $ outputE
 
-            count :: Event t () -> Behavior t Int
-            count e = accumB 0 $ (+1) <$ e
-        
+            count :: Event () -> Moment (Behavior Int)
+            count e = accumB 0 ((+1) <$ e)
+
         network <- compile networkD
         -- force network to get accurate timing
         -- evaluate . rnf =<< showNetwork network
         actuate network
-        
+
         return (triggers, trigger)
-    
+
     phase2 (triggers, clock) = do
         let trigMap = IM.fromList $ zip [0..netsize-1] triggers
         randGen <- Rand.create

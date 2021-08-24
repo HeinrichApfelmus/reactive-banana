@@ -15,9 +15,7 @@ jobs:
         ghc:
           # As of 2021-02-20, 9.0.1 build fails due to pqueue's upper bound on base
           # - '9.0.1'
-          # As of 2021-02-20, ghcup can't install 8.10.4, so we just use 8.10.3 instead
-          # - '8.10.4'
-          - '8.10.3'
+          - '8.10.4'
           - '8.8.4'
           - '8.6.5'
           - '8.4.4'
@@ -35,19 +33,16 @@ jobs:
 
       - uses: actions/checkout@v2
 
+      - uses: actions/cache@v2
+        id: cache-ghc
+        name: Cache GHC
+        with:
+          path: ~/.ghcup/*
+          key: ghcup-0-${{matrix.ghc}}
+
       # The random number towards the beginning of the cache keys below are meant to be bumped as a crude means to clear
       # a cache. GitHub will automatically delete caches that haven't been accessed in 7 days, but there is no way to
       # purge one manually.
-
-      # Cache ghc installed by ghcup
-      - uses: actions/cache@v2
-        name: Cache ghc installed by ghcup
-        id: cache-ghc
-        with:
-          path:
-            ~/.ghcup/bin/ghc-${{matrix.ghc}}
-            ~/.ghcup/ghc/${{matrix.ghc}}/bin/ghc
-          key: ghcup-0-${{matrix.ghc}}
 
       # Cache dependencies stored in ~/.cabal/store
       - uses: actions/cache@v2
@@ -70,46 +65,34 @@ jobs:
           key: dist-0-${{matrix.ghc}}-${{github.sha}}
           restore-keys: dist-0-${{matrix.ghc}}-
 
-      # Install ghcup
-      - name: Install ghcup
-        if: steps.cache-ghc.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          curl -L https://downloads.haskell.org/~ghcup/x86_64-linux-ghcup > "$HOME/.local/bin/ghcup"
-          chmod +x "$HOME/.local/bin/ghcup"
-
-      # Annoying that ghcup doesn't arrive at the latest version
-      - name: Upgrade ghcup
-        if: steps.cache-ghc.outputs.cache-hit != 'true'
-        run: ghcup upgrade --inplace
-
       # Install ghc
       - name: Install ghc
         if: steps.cache-ghc.outputs.cache-hit != 'true'
-        run: ghcup install ghc ${{matrix.ghc}}
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
+          ghcup install ghc ${{matrix.ghc}}
 
       # Add ghc to path
-      - name: Add ghc to path
-        run: echo "$HOME/.ghcup/ghc/${{matrix.ghc}}/bin" >> $GITHUB_PATH
+      - name: Add ~/.ghcup/bin to path
+        run: echo "$HOME/.ghcup/bin" >> $GITHUB_PATH
 
       - name: Cabal update
         run: cabal update
 
       - name: Build dependencies
-        run: cabal build reactive-banana:lib:reactive-banana --disable-optimization --only-dependencies
+        run: cabal build reactive-banana:lib:reactive-banana --disable-optimization --only-dependencies --with-compiler ghc-${{matrix.ghc}}
 
       - name: Build library
-        run: cabal build reactive-banana:lib:reactive-banana --disable-optimization
+        run: cabal build reactive-banana:lib:reactive-banana --disable-optimization --with-compiler ghc-${{matrix.ghc}}
 
       - name: Build tests
-        run: cabal build reactive-banana:test:tests --disable-optimization
+        run: cabal build reactive-banana:test:tests --disable-optimization --with-compiler ghc-${{matrix.ghc}}
 
       - name: Run tests
-        run: cabal run reactive-banana:test:tests --disable-optimization
+        run: cabal run reactive-banana:test:tests --disable-optimization --with-compiler ghc-${{matrix.ghc}}
 
       - name: Generate docs
-        run: cabal haddock reactive-banana --disable-optimization
+        run: cabal haddock reactive-banana --disable-optimization --with-compiler ghc-${{matrix.ghc}}
 
       - name: Cabal check
         run: |

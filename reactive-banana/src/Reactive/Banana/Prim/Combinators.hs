@@ -58,19 +58,24 @@ unsafeMapIOP f p1 = do
     eval (Just x) = Just <$> liftIO (f x)
     eval Nothing  = return Nothing
 
-unionWithP :: forall a. (a -> a -> a) -> Pulse a -> Pulse a -> Build (Pulse a)
-unionWithP f px py = do
-        p <- newPulse "unionWithP" $
-            ({-# SCC unionWithP #-} eval <$> readPulseP px <*> readPulseP py)
-        p `dependOn` px
-        p `dependOn` py
-        return p
-    where
-    eval :: Maybe a -> Maybe a -> Maybe a
-    eval (Just x) (Just y) = Just (f x y)
-    eval (Just x) Nothing  = Just x
-    eval Nothing  (Just y) = Just y
+mergeWithP
+  :: (a -> Maybe c)
+  -> (b -> Maybe c)
+  -> (a -> b -> Maybe c)
+  -> Pulse a
+  -> Pulse b
+  -> Build (Pulse c)
+mergeWithP f g h px py = do
+  p <- newPulse "mergeWithP" $
+       ({-# SCC mergeWithP #-} eval <$> readPulseP px <*> readPulseP py)
+  p `dependOn` px
+  p `dependOn` py
+  return p
+  where
     eval Nothing  Nothing  = Nothing
+    eval (Just x) Nothing  = f x
+    eval Nothing  (Just y) = g y
+    eval (Just x) (Just y) = h x y
 
 -- See note [LatchRecursion]
 applyP :: Latch (a -> b) -> Pulse a -> Build (Pulse b)

@@ -1,6 +1,12 @@
 Changelog for the `reactive-banana** package
 -------------------------------------------
 
+**unreleased**
+
+* Add `mergeWith` combinator. [#163][]
+
+  [#163] https://github.com/HeinrichApfelmus/reactive-banana/pull/163
+
 **version 1.2.1.0**
 
 * Add `Num`, `Floating`, `Fractional`, and `IsString` instances for `Behavior`. [#34][]
