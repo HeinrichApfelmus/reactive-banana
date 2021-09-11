@@ -8,7 +8,7 @@ Changelog for the `reactive-banana** package
 * Simplify the internal `mkWeakIORef` function. [#154][]
 * Add `mergeWith` combinator. [#163][]
 * Make internal SCC pragmas compatible with the GHC 9.0 parser. [#208][]
-* Optimize internals. [#211][]
+* Change `insertWith (flip (++))` to `insertWith (++)` in `insertEdge`. [#211][]
 * Add `Semigroup a => Semigroup (Behavior a)` and `Monoid a => Monoid (Behavior a)` instances. [#185][]
 * Loosen the upper-bound for `hashable` and `semigroups`. [#205][]
 
