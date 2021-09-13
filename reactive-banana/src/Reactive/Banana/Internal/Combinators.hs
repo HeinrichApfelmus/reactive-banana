@@ -16,6 +16,7 @@ import           Data.Functor.Identity
 import           Data.IORef
 import qualified Reactive.Banana.Prim        as Prim
 import           Reactive.Banana.Prim.Cached
+import           Data.These (These(..), these)
 
 type Build   = Prim.Build
 type Latch a = Prim.Latch a
@@ -116,13 +117,14 @@ never :: Event a
 never = don'tCache  $ liftBuild $ Prim.neverP
 
 mergeWith
-  :: (a -> Maybe c)
-  -> (b -> Maybe c)
-  -> (a -> b -> Maybe c)
+  :: (a -> c)
+  -> (b -> c)
+  -> (a -> b -> c)
   -> Event a
   -> Event b
   -> Event c
-mergeWith f g h = liftCached2 $ (liftBuild .) . Prim.mergeWithP f g h
+mergeWith f g h = liftCached2 $ (liftBuild .) . Prim.mergeWithP (Just . f) (Just . g) (\x y -> Just (h x y))
+
 
 filterJust :: Event (Maybe a) -> Event a
 filterJust  = liftCached1 $ liftBuild . Prim.filterJustP
