@@ -3,12 +3,12 @@ Changelog for the `reactive-banana** package
 
 **unreleased**
 
-* Add `mergeWith` combinator. [#163][], [#219][]
+* Add `merge` and `mergeWith` combinators. [#163][], [#220][]
 * Make internal SCC pragmas compatible with the GHC 9.0 parser. [#208][]
 
   [#163]: https://github.com/HeinrichApfelmus/reactive-banana/pull/163
   [#208]: https://github.com/HeinrichApfelmus/reactive-banana/pull/208
-  [#219]: https://github.com/HeinrichApfelmus/reactive-banana/pull/219
+  [#220]: https://github.com/HeinrichApfelmus/reactive-banana/pull/219
 
 **version 1.2.1.0**
 
