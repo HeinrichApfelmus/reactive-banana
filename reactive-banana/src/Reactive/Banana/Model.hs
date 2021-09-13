@@ -96,7 +96,7 @@ never :: Event a
 never = E $ repeat Nothing
 
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
-unionWith f = mergeWith Just Just (\x y -> Just (f x y))
+unionWith = mergeWith id id
 
 mergeWith
   :: (a -> c)
