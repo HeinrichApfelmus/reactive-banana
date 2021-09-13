@@ -98,6 +98,34 @@ newLatch a = mdo
 
     return (updateOn, latch)
 
+-- | Make a new 'Latch' which runs an IO whenever it is checked.
+--   FIXME Please review this. Ideally the IO would run at most once per
+--   cycle.
+newLatchIO :: IO a -> Build (Latch a)
+newLatchIO ioa = mdo
+    a <- liftIO ioa
+    latch <- liftIO $ newRef $ Latch
+        { _seenL  = beginning
+        , _valueL = a
+        , _evalL  = do
+            Latch {..} <- readRef latch
+            RW.tell _seenL
+            a <- liftIO ioa
+            modify' latch (\x -> x { _valueL = a })
+            pure a
+        }
+    w <- liftIO $ mkWeakRefValue latch latch
+    lw <- liftIO $ newRef $ LatchWrite
+        { _evalLW = do
+            Latch {..} <- readRef latch
+            pure _valueL
+        , _latchLW = w
+        }
+    _ <- liftIO $ mkWeakRefValue latch lw
+    always <- alwaysP
+    (P always) `addChild` (L lw)
+    pure latch
+
 -- | Make a new 'Latch' that caches a previous computation.
 cachedLatch :: EvalL a -> Latch a
 cachedLatch eval = unsafePerformIO $ mdo

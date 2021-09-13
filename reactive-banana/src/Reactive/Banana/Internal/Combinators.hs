@@ -2,6 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo, FlexibleInstances, NoMonomorphismRestriction #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Reactive.Banana.Internal.Combinators where
 
 import           Control.Concurrent.MVar
@@ -16,6 +17,8 @@ import           Data.Functor.Identity
 import           Data.IORef
 import qualified Reactive.Banana.Prim        as Prim
 import           Reactive.Banana.Prim.Cached
+import           Reactive.Banana.Prim.Types (EvalP, _evalP)
+import           Reactive.Banana.Prim.Plumbing (newLatchIO, alwaysP)
 
 type Build   = Prim.Build
 type Latch a = Prim.Latch a
@@ -99,6 +102,16 @@ fromPoll poll = do
         p <- Prim.unsafeMapIOP (const poll) =<< Prim.alwaysP
         return $ Prim.fromPure p
     stepperB a e
+
+-- | Like fromPoll, but the IO is run only when the value of the Behavior is
+--   demanded.
+--
+--   FIXME it should only run the action at most once per evaluation cycle.
+fromPull :: forall a . IO a -> Moment (Behavior a)
+fromPull pull = cacheAndSchedule $ liftBuild $ do
+    latch <- newLatchIO pull
+    pulse <- alwaysP
+    pure (latch, pulse)
 
 liftIONow :: IO a -> Moment a
 liftIONow = liftIO
