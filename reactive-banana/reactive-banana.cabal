@@ -90,4 +90,4 @@ Test-Suite tests
                         test-framework-hunit >= 0.2 && < 0.4,
                         reactive-banana, vault, containers,
                         semigroups, transformers,
-                        unordered-containers, hashable, psqueues, pqueue
+                        unordered-containers, hashable, psqueues, pqueue, these
