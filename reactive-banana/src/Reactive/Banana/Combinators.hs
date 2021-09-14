@@ -19,7 +19,7 @@ module Reactive.Banana.Combinators (
     -- but they are documented at the types 'Event' and 'Behavior'.
     module Control.Applicative,
     module Data.Semigroup,
-    never, unionWith, mergeWith, filterE,
+    never, unionWith, filterE,
     apply,
 
     -- ** Moment and accumulation
@@ -40,6 +40,8 @@ module Reactive.Banana.Combinators (
     -- ** Accumulation
     -- $Accumulation.
     unions, accumB, mapAccum,
+    -- ** Merging events
+    merge, mergeWith
     ) where
 
 import Control.Applicative
