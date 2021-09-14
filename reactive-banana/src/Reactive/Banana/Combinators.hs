@@ -117,7 +117,7 @@ unionWith f = mergeWith id id f
 
 -- | Merge two event streams of any type.
 merge :: Event a -> Event b -> Event (These a b)
-merge e1 e2 = mergeWith This That These
+merge = mergeWith This That These
 
 -- | Merge two event streams of any type.
 --
