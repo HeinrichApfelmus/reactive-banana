@@ -1,13 +1,19 @@
+{-# language GADTs #-}
+{-# language RankNTypes #-}
+{-# language RoleAnnotations #-}
+
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Types (
     -- | Primitive types.
-    Event(..), Behavior(..),
+    Event, mkE, unE,
+    Behavior, mkB, unB,
     Moment(..), MomentIO(..), MonadMoment(..),
     Future(..),
     ) where
 
+import Data.Bifunctor
 import Data.Semigroup
 import Control.Applicative
 import Control.Monad
@@ -33,8 +39,21 @@ no two event occurrences may happen at the same time.
 
 <<doc/frp-event.png>>
 -}
-newtype Event a = E { unE :: Prim.Event a }
+type role Event representational
+
+-- This strange definition allows us to make the @a@ parameter
+-- @representational@ which allows users to use @coerce@ on @Event@.
+newtype Event a = E (forall x. (a -> x) -> Prim.Event x)
 -- Invariant: The empty list `[]` never occurs as event value.
+
+
+unE :: Event a -> Prim.Event a
+unE (E f) = f id
+
+
+mkE :: Prim.Event a -> Event a
+mkE prim = E $ \out -> Prim.mapE out prim
+
 
 -- | The function 'fmap' applies a function @f@ to every value.
 -- Semantically,
@@ -42,7 +61,7 @@ newtype Event a = E { unE :: Prim.Event a }
 -- > fmap :: (a -> b) -> Event a -> Event b
 -- > fmap f e = [(time, f a) | (time, a) <- e]
 instance Functor Event where
-    fmap f = E . Prim.mapE f . unE
+    fmap f = mkE . Prim.mapE f . unE
 
 -- | The combinator '<>' merges two event streams of the same type.
 -- In case of simultaneous occurrences,
@@ -52,7 +71,7 @@ instance Functor Event where
 -- > (<>) :: Event a -> Event a -> Event a
 -- > (<>) ex ey = unionWith (<>) ex ey
 instance Semigroup a => Semigroup (Event a) where
-    x <> y = E $ Prim.mergeWith Just Just (\a b -> Just (a <> b)) (unE x) (unE y)
+    x <> y = mkE $ Prim.mergeWith Just Just (\a b -> Just (a <> b)) (unE x) (unE y)
 
 -- | The combinator 'mempty' represents an event that never occurs.
 -- It is a synonym,
@@ -60,7 +79,7 @@ instance Semigroup a => Semigroup (Event a) where
 -- > mempty :: Event a
 -- > mempty = never
 instance Semigroup a => Monoid (Event a) where
-    mempty  = E $ Prim.never
+    mempty  = mkE $ Prim.never
     mappend = (<>)
 
 
@@ -71,7 +90,17 @@ Semantically, you can think of it as a function
 
 <<doc/frp-behavior.png>>
 -}
-newtype Behavior a = B { unB :: Prim.Behavior a }
+type role Behavior representational
+newtype Behavior a = B (forall x. (a -> x) -> Prim.Behavior x)
+
+
+mkB :: Prim.Behavior a -> Behavior a
+mkB prim = B $ \out -> Prim.mapB out prim
+
+
+unB :: Behavior a -> Prim.Behavior a
+unB (B f) = f id
+
 
 -- | The function 'pure' returns a value that is constant in time. Semantically,
 --
@@ -83,8 +112,8 @@ newtype Behavior a = B { unB :: Prim.Behavior a }
 -- > (<*>)    :: Behavior (a -> b) -> Behavior a -> Behavior b
 -- > fx <*> bx = \time -> fx time $ bx time
 instance Applicative Behavior where
-    pure x    = B $ Prim.pureB x
-    bf <*> bx = B $ Prim.applyB (unB bf) (unB bx)
+    pure x    = mkB $ Prim.pureB x
+    bf <*> bx = mkB $ Prim.applyB (unB bf) (unB bx)
 
 -- | The function 'fmap' applies a function @f@ at every point in time.
 -- Semantically,
