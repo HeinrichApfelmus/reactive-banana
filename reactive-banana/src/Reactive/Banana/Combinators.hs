@@ -115,7 +115,7 @@ unionWith f = mergeWith id id f
 
 -- | Merge two event streams of any type.
 merge :: Event a -> Event b -> Event (These a b)
-merge e1 e2 = E $ Prim.mergeWith This That These (unE e1) (unE e2)
+merge e1 e2 = mergeWith This That These
 
 -- | Merge two event streams of any type.
 --
@@ -127,7 +127,7 @@ mergeWith
   -> Event a
   -> Event b
   -> Event c
-mergeWith f g h e1 e2 = these f g h <$> merge e1 e2
+mergeWith f g h e1 e2 = E $ Prim.mergeWith f g h (unE e1) (unE e2)
 
 -- | Allow all event occurrences that are 'Just' values, discard the rest.
 -- Variant of 'filterE'.
