@@ -168,7 +168,7 @@ reactimate' = MIO . Prim.addReactimate . Prim.mapE unF . unE
 -- this will register a callback function such that
 -- an event will occur whenever the callback function is called.
 fromAddHandler ::AddHandler a -> MomentIO (Event a)
-fromAddHandler = MIO . fmap E . Prim.fromAddHandler
+fromAddHandler = MIO . fmap mkE . Prim.fromAddHandler
 
 -- | Input,
 -- obtain a 'Behavior' by frequently polling mutable data, like the current time.
@@ -183,7 +183,7 @@ fromAddHandler = MIO . fmap E . Prim.fromAddHandler
 -- it should not perform expensive computations.
 -- Neither should its side effects affect the event network significantly.
 fromPoll :: IO a -> MomentIO (Behavior a)
-fromPoll = MIO . fmap B . Prim.fromPoll
+fromPoll = MIO . fmap mkB . Prim.fromPoll
 
 -- | Input,
 -- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
@@ -226,7 +226,7 @@ fromChanges initial changes = do
 -- this is indicated by the type 'Future'.
 -- It can be used only in the context of 'reactimate''.
 changes :: Behavior a -> MomentIO (Event (Future a))
-changes = return . E . Prim.mapE F . Prim.changesB . unB
+changes = return . mkE . Prim.mapE F . Prim.changesB . unB
 
 {- $changes
 
@@ -256,7 +256,7 @@ in this context. Still, it is useful in some cases.
 --
 -- Note: This function is useful only in very specific circumstances.
 imposeChanges :: Behavior a -> Event () -> Behavior a
-imposeChanges b e = B $ Prim.imposeChanges (unB b) (Prim.mapE (const ()) (unE e))
+imposeChanges b e = mkB $ Prim.imposeChanges (unB b) (Prim.mapE (const ()) (unE e))
 
 {- | Dynamically add input and output to an existing event network.
 
@@ -284,7 +284,7 @@ If your main goal is to reliably turn events into 'IO' actions,
 use the 'reactimate' and 'reactimate'' functions instead.
 -}
 execute :: Event (MomentIO a) -> MomentIO (Event a)
-execute = MIO . fmap E . Prim.executeE . Prim.mapE unMIO . unE
+execute = MIO . fmap mkE . Prim.executeE . Prim.mapE unMIO . unE
 
 -- $liftIO
 --

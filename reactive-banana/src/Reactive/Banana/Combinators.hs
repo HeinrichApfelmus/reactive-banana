@@ -78,7 +78,7 @@ which is necessary for the higher-order combinators.
 -- I'm really sorry about the extra 'IO', but it can't be helped.
 -- See source code for the sordid details.
 interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
-interpret f xs = Prim.interpret (fmap unE . unM . f . E) xs
+interpret f xs = Prim.interpret (fmap unE . unM . f . mkE) xs
 -- FIXME: I would love to remove the 'IO' from the type signature,
 -- but unfortunately, it is possible that the argument to interpret
 -- returns an Event that was created in the context of an existing network, e.g.
@@ -99,7 +99,7 @@ interpret f xs = Prim.interpret (fmap unE . unM . f . E) xs
 --
 -- > never = []
 never    :: Event a
-never = E Prim.never
+never = mkE Prim.never
 
 -- | Merge two event streams of the same type.
 -- The function argument specifies how event values are to be combined
@@ -123,12 +123,12 @@ mergeWith
   -> Event a
   -> Event b
   -> Event c
-mergeWith f g h e1 e2 = E $ Prim.mergeWith f g h (unE e1) (unE e2)
+mergeWith f g h e1 e2 = mkE $ Prim.mergeWith f g h (unE e1) (unE e2)
 
 -- | Allow all event occurrences that are 'Just' values, discard the rest.
 -- Variant of 'filterE'.
 filterJust :: Event (Maybe a) -> Event a
-filterJust = E . Prim.filterJust . unE
+filterJust = mkE . Prim.filterJust . unE
 
 -- | Allow all events that fulfill the predicate, discard the rest.
 -- Semantically,
@@ -144,7 +144,7 @@ filterE p = filterJust . fmap (\x -> if p x then Just x else Nothing)
 --
 -- This function is generally used in its infix variant '<@>'.
 apply :: Behavior (a -> b) -> Event a -> Event b
-apply bf ex = E $ Prim.applyE (unB bf) (unE ex)
+apply bf ex = mkE $ Prim.applyE (unB bf) (unE ex)
 
 -- | Construct a time-varying function from an initial value and
 -- a stream of new values. The result will be a step function.
@@ -165,7 +165,7 @@ apply bf ex = E $ Prim.applyE (unB bf) (unE ex)
 -- This allows for recursive definitions.
 -- See the discussion below for more on recursion.
 stepper :: MonadMoment m => a -> Event a -> m (Behavior a)
-stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
+stepper a = liftMoment . M . fmap mkB . Prim.stepperB a . unE
 
 -- | The 'accumE' function accumulates a stream of event values,
 -- similar to a /strict/ left scan, 'scanl''.
@@ -181,7 +181,7 @@ stepper a = liftMoment . M . fmap B . Prim.stepperB a . unE
 -- >     where
 -- >     trimE e start = [(time,x) | (time,x) <- e, start <= time]
 accumE :: MonadMoment m => a -> Event (a -> a) -> m (Event a)
-accumE acc = liftMoment . M . fmap E . Prim.accumE acc . unE
+accumE acc = liftMoment . M . fmap mkE . Prim.accumE acc . unE
 
 {-$recursion
 
@@ -266,7 +266,7 @@ valueBLater = liftMoment . M . Prim.initialBLater . unB
 --
 -- > observeE e = [(time, m time) | (time, m) <- e]
 observeE :: Event (Moment a) -> Event a
-observeE = E . Prim.observeE . Prim.mapE unM . unE
+observeE = mkE . Prim.observeE . Prim.mapE unM . unE
 
 -- | Dynamically switch between 'Event'.
 -- Semantically,
@@ -276,7 +276,7 @@ observeE = E . Prim.observeE . Prim.mapE unM . unE
 -- >     intervals e        = [(time1, time2, x) | ((time1,x),(time2,_)) <- zip e (tail e)]
 -- >     trim time1 time2 e = [x | (timex,x) <- e, time1 < timex, timex <= time2]
 switchE :: MonadMoment m => Event (Event a) -> m (Event a)
-switchE = liftMoment . M . fmap E . Prim.switchE . Prim.mapE (unE) . unE
+switchE = liftMoment . M . fmap mkE . Prim.switchE . Prim.mapE (unE) . unE
 
 -- | Dynamically switch between 'Behavior'.
 -- Semantically,
@@ -284,7 +284,7 @@ switchE = liftMoment . M . fmap E . Prim.switchE . Prim.mapE (unE) . unE
 -- >  switchB b0 eb = \time0 -> \time1 ->
 -- >     last (b0 : [b | (timeb,b) <- eb, time0 <= timeb, timeb < time1]) time1
 switchB :: MonadMoment m => Behavior a -> Event (Behavior a) -> m (Behavior a)
-switchB b = liftMoment . M . fmap B . Prim.switchB (unB b) . Prim.mapE (unB) . unE
+switchB b = liftMoment . M . fmap mkB . Prim.switchB (unB b) . Prim.mapE (unB) . unE
 
 {-----------------------------------------------------------------------------
     Derived Combinators
