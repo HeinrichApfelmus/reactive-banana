@@ -1,4 +1,5 @@
 {-# language GADTs #-}
+{-# language RankNTypes #-}
 {-# language RoleAnnotations #-}
 
 {-----------------------------------------------------------------------------
@@ -39,19 +40,19 @@ no two event occurrences may happen at the same time.
 <<doc/frp-event.png>>
 -}
 type role Event representational
-data Event a where
-  -- This strange definition allows us to make the @a@ parameter
-  -- @representational@ which allows users to use @coerce@ on @Event@.
-  E :: (x -> a) -> Prim.Event x -> Event a
+
+-- This strange definition allows us to make the @a@ parameter
+-- @representational@ which allows users to use @coerce@ on @Event@.
+newtype Event a = E (forall x. (a -> x) -> Prim.Event x)
 -- Invariant: The empty list `[]` never occurs as event value.
 
 
 unE :: Event a -> Prim.Event a
-unE (E out primEvent) = Prim.mapE out primEvent
+unE (E f) = f id
 
 
 mkE :: Prim.Event a -> Event a
-mkE = E id
+mkE prim = E $ \out -> Prim.mapE out prim
 
 
 -- | The function 'fmap' applies a function @f@ to every value.
@@ -90,16 +91,15 @@ Semantically, you can think of it as a function
 <<doc/frp-behavior.png>>
 -}
 type role Behavior representational
-data Behavior a where
-  B :: (x -> a) -> Prim.Behavior x -> Behavior a
+newtype Behavior a = B (forall x. (a -> x) -> Prim.Behavior x)
 
 
 mkB :: Prim.Behavior a -> Behavior a
-mkB = B id
+mkB prim = B $ \out -> Prim.mapB out prim
 
 
 unB :: Behavior a -> Prim.Behavior a
-unB (B out primBehavior) = Prim.mapB out primBehavior
+unB (B f) = f id
 
 
 -- | The function 'pure' returns a value that is constant in time. Semantically,
