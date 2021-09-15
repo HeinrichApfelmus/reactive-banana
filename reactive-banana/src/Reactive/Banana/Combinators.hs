@@ -19,7 +19,7 @@ module Reactive.Banana.Combinators (
     -- but they are documented at the types 'Event' and 'Behavior'.
     module Control.Applicative,
     module Data.Semigroup,
-    never, unionWith, mergeWith, filterE,
+    never, unionWith, filterE,
     apply,
 
     -- ** Moment and accumulation
@@ -40,12 +40,15 @@ module Reactive.Banana.Combinators (
     -- ** Accumulation
     -- $Accumulation.
     unions, accumB, mapAccum,
+    -- ** Merging events
+    merge, mergeWith
     ) where
 
 import Control.Applicative
 import Control.Monad
 import Data.Maybe          (isJust, catMaybes)
 import Data.Semigroup
+import Data.These (These(..), these)
 
 import qualified Reactive.Banana.Internal.Combinators as Prim
 import           Reactive.Banana.Types
@@ -110,16 +113,19 @@ never = E Prim.never
 -- >    | timex >  timey = (timey,y)     : unionWith f ((timex,x):xs) ys
 -- >    | timex == timey = (timex,f x y) : unionWith f xs ys
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
-unionWith f = mergeWith Just Just (\x y -> Just (f x y))
+unionWith f = mergeWith id id f
+
+-- | Merge two event streams of any type.
+merge :: Event a -> Event b -> Event (These a b)
+merge = mergeWith This That These
 
 -- | Merge two event streams of any type.
 --
--- This function generalizes 'unionWith', and can be used to filter event
--- occurrences as well.
+-- This function generalizes 'unionWith'.
 mergeWith
-  :: (a -> Maybe c) -- ^ The function called when only the first event emits a value.
-  -> (b -> Maybe c) -- ^ The function called when only the second event emits a value.
-  -> (a -> b -> Maybe c) -- ^ The function called when both events emit values simultaneously.
+  :: (a -> c) -- ^ The function called when only the first event emits a value.
+  -> (b -> c) -- ^ The function called when only the second event emits a value.
+  -> (a -> b -> c) -- ^ The function called when both events emit values simultaneously.
   -> Event a
   -> Event b
   -> Event c

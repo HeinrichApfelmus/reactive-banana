@@ -3,7 +3,7 @@
 
     Test cases and examples
 ------------------------------------------------------------------------------}
-{-# LANGUAGE Rank2Types, NoMonomorphismRestriction, RecursiveDo #-}
+{-# LANGUAGE FlexibleContexts, Rank2Types, NoMonomorphismRestriction, RecursiveDo #-}
 
 import Control.Arrow
 import Control.Monad (when, join)
@@ -111,14 +111,14 @@ counter e = do
     bcounter <- accumB 0 $ fmap (\_ -> (+1)) e
     return $ applyE (pure const <*> bcounter) e
 
-merge e1 e2 = mergeWith Just Just (\x y -> Just (x ++ y)) (list e1) (list e2)
+merge e1 e2 = mergeWith id id (++) (list e1) (list e2)
     where list = fmap (:[])
 
 double e  = merge e e
 sharing e = merge e1 e1
     where e1 = filterE (< 3) e
 
-mergeFilter e1 = mergeWith Just Just (\x y -> Just (x + y)) e2 e3
+mergeFilter e1 = mergeWith id id (+) e2 e3
     where
     e3 = fmap (+1) $ filterE even e1
     e2 = fmap (+1) $ filterE odd  e1
@@ -245,9 +245,9 @@ issue79 inputEvent = mdo
         fmappedEvent  = fmap id (filteredEvent)
     lastValue <- stepper 1 $ fmappedEvent
 
-    let outputEvent = mergeWith Just Just (\x y -> Just (x ++ y))
+    let outputEvent = mergeWith id id (++)
             (const "filtered event" <$> filteredEvent)
-            (((" and " ++) . show) <$> mergeWith Just Just (\x y -> Just (x + y)) appliedEvent fmappedEvent)
+            (((" and " ++) . show) <$> mergeWith id id (+) appliedEvent fmappedEvent)
 
     return $ outputEvent
 

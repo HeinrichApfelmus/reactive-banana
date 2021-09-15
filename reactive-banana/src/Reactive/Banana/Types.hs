@@ -52,7 +52,7 @@ instance Functor Event where
 -- > (<>) :: Event a -> Event a -> Event a
 -- > (<>) ex ey = unionWith (<>) ex ey
 instance Semigroup a => Semigroup (Event a) where
-    x <> y = E $ Prim.mergeWith Just Just (\a b -> Just (a <> b)) (unE x) (unE y)
+    x <> y = E $ Prim.mergeWith id id (<>) (unE x) (unE y)
 
 -- | The combinator 'mempty' represents an event that never occurs.
 -- It is a synonym,

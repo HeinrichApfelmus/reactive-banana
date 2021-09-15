@@ -1,12 +1,12 @@
 Changelog for the `reactive-banana** package
 -------------------------------------------
 
-**version 1.2.2.0**
+**Version 1.2.2.0**
 
 * Optimize the implementation of Graph.listParents [#209][]
 * Replace a use of `foldl` with `foldl'`. [#212][]
 * Simplify the internal `mkWeakIORef` function. [#154][]
-* Add `mergeWith` combinator. [#163][]
+* Add `merge` and `mergeWith` combinators. [#163][], [#220][]
 * Make internal SCC pragmas compatible with the GHC 9.0 parser. [#208][]
 * Change `insertWith (flip (++))` to `insertWith (++)` in `insertEdge`. [#211][]
 * Add `Semigroup a => Semigroup (Behavior a)` and `Monoid a => Monoid (Behavior a)` instances. [#185][]
@@ -20,6 +20,8 @@ Changelog for the `reactive-banana** package
   [#209]: https://github.com/HeinrichApfelmus/reactive-banana/pull/209
   [#211]: https://github.com/HeinrichApfelmus/reactive-banana/pull/211
   [#212]: https://github.com/HeinrichApfelmus/reactive-banana/pull/212
+  [#220]: https://github.com/HeinrichApfelmus/reactive-banana/pull/219
+
 
 **version 1.2.1.0**
 
