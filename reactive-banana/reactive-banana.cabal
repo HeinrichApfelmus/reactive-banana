@@ -50,7 +50,8 @@ Library
                         vault == 0.3.*,
                         unordered-containers >= 0.2.1.0 && < 0.3,
                         hashable >= 1.1 && < 1.4,
-                        pqueue >= 1.0 && < 1.5
+                        pqueue >= 1.0 && < 1.5,
+                        these >= 0.2 && < 1.2
 
     exposed-modules:
                         Control.Event.Handler,
@@ -89,4 +90,4 @@ Test-Suite tests
                         test-framework-hunit >= 0.2 && < 0.4,
                         reactive-banana, vault, containers,
                         semigroups, transformers,
-                        unordered-containers, hashable, psqueues, pqueue
+                        unordered-containers, hashable, psqueues, pqueue, these

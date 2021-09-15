@@ -26,6 +26,7 @@ module Reactive.Banana.Model (
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
+import Data.These (These(..), these)
 
 {-$overview
 
@@ -95,21 +96,24 @@ never :: Event a
 never = E $ repeat Nothing
 
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
-unionWith f = mergeWith Just Just (\x y -> Just (f x y))
+unionWith = mergeWith id id
 
 mergeWith
-  :: (a -> Maybe c)
-  -> (b -> Maybe c)
-  -> (a -> b -> Maybe c)
+  :: (a -> c)
+  -> (b -> c)
+  -> (a -> b -> c)
   -> Event a
   -> Event b
   -> Event c
-mergeWith f g h (E xs) (E ys) = E $ zipWith combine xs ys
+mergeWith f g h xs ys = these f g h <$> merge xs ys
+
+merge :: Event a -> Event b -> Event (These a b)
+merge (E xs) (E ys) = E $ zipWith combine xs ys
     where
     combine Nothing  Nothing  = Nothing
-    combine (Just x) Nothing  = f x
-    combine Nothing  (Just y) = g y
-    combine (Just x) (Just y) = h x y
+    combine (Just x) Nothing  = Just (This x)
+    combine Nothing  (Just y) = Just (That y)
+    combine (Just x) (Just y) = Just (These x y)
 
 filterJust :: Event (Maybe a) -> Event a
 filterJust = E . fmap join . unE
