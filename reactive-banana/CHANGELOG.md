@@ -3,7 +3,7 @@ Changelog for the `reactive-banana** package
 
 **Version 1.2.2.0**
 
-* Optimize the implementation of Graph.listParents [#209][]
+* Optimize the implementation of `Graph.listParents` [#209][]
 * Replace a use of `foldl` with `foldl'`. [#212][]
 * Simplify the internal `mkWeakIORef` function. [#154][]
 * Add `merge` and `mergeWith` combinators. [#163][], [#220][]
