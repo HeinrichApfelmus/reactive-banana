@@ -301,8 +301,8 @@ liftIOLater = MIO . Prim.liftIOLater
 -- | Compile the description of an event network
 -- into an 'EventNetwork'
 -- that you can 'actuate', 'pause' and so on.
-compile :: MomentIO () -> IO EventNetwork
-compile = fmap EN . Prim.compile . unMIO
+compile :: MonadIO m => MomentIO () -> m EventNetwork
+compile = liftIO . fmap EN . Prim.compile . unMIO
 
 {-----------------------------------------------------------------------------
     Running event networks
@@ -314,8 +314,8 @@ newtype EventNetwork = EN { unEN :: Prim.EventNetwork }
 -- | Actuate an event network.
 -- The inputs will register their event handlers, so that
 -- the networks starts to produce outputs in response to input events.
-actuate :: EventNetwork -> IO ()
-actuate = Prim.actuate . unEN
+actuate :: MonadIO m => EventNetwork -> m ()
+actuate = liftIO . Prim.actuate . unEN
 
 -- | Pause an event network.
 -- Immediately stop producing output.
