@@ -9,6 +9,7 @@ module Control.Event.Handler (
     ) where
 
 
+import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.IORef
 import qualified Data.Map    as Map
 import qualified Data.Unique
@@ -60,8 +61,8 @@ filterIO f e = AddHandler $ \h ->
 -- >     (addHandler, fire) <- newAddHandler
 -- >     register addHandler putStrLn
 -- >     fire "Hello!"
-newAddHandler :: IO (AddHandler a, Handler a)
-newAddHandler = do
+newAddHandler :: MonadIO m => m (AddHandler a, Handler a)
+newAddHandler = liftIO $ do
     handlers <- newIORef Map.empty
     let register handler = do
             key <- Data.Unique.newUnique
