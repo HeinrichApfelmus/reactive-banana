@@ -5,7 +5,7 @@ Changelog for the `reactive-banana** package
 
 * Add `merge` and `mergeWith` combinators. [#163][], [#220][]
 * Make internal SCC pragmas compatible with the GHC 9.0 parser. [#208][]
-* Generalise `compile` and `actuate` to `MonadIO`.  [#226][]
+* Generalise `compile`, `actuate` and `pause` to `MonadIO`.  [#226][]
 
   [#163]: https://github.com/HeinrichApfelmus/reactive-banana/pull/163
   [#208]: https://github.com/HeinrichApfelmus/reactive-banana/pull/208
