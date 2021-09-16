@@ -198,6 +198,12 @@ instance Applicative Moment where
     f <*> a = M $ unM f <*> unM a
 instance MonadFix Moment where mfix f = M $ mfix (unM . f)
 
+instance Semigroup a => Semigroup (Moment a) where
+    (<>) = liftA2 (<>)
+instance Monoid a => Monoid (Moment a) where
+    mempty = pure mempty
+
+
 instance Functor MomentIO where fmap f = MIO . fmap f . unMIO
 instance Monad MomentIO where
     return  = MIO . return
@@ -206,3 +212,8 @@ instance Applicative MomentIO where
     pure    = MIO . pure
     f <*> a = MIO $ unMIO f <*> unMIO a
 instance MonadFix MomentIO where mfix f = MIO $ mfix (unMIO . f)
+
+instance Semigroup a => Semigroup (MomentIO a) where
+    (<>) = liftA2 (<>)
+instance Monoid a => Monoid (MomentIO a) where
+    mempty = pure mempty
