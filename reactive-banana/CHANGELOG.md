@@ -3,12 +3,14 @@ Changelog for the `reactive-banana** package
 
 **unreleased**
 
+* Added `Semigroup` and `Monoid` instances to `Moment` and `MomentIO`. [#223][]
 * Add `merge` and `mergeWith` combinators. [#163][], [#220][]
 * Make internal SCC pragmas compatible with the GHC 9.0 parser. [#208][]
 
   [#163]: https://github.com/HeinrichApfelmus/reactive-banana/pull/163
   [#208]: https://github.com/HeinrichApfelmus/reactive-banana/pull/208
   [#220]: https://github.com/HeinrichApfelmus/reactive-banana/pull/219
+  [#223]: https://github.com/HeinrichApfelmus/reactive-banana/pull/223
 
 **version 1.2.1.0**
 
