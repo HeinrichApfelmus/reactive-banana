@@ -329,8 +329,8 @@ actuate = liftIO . Prim.actuate . unEN
 -- i.e. you can use 'pause' as an argument to 'reactimate'.
 -- The network will /not/ stop immediately though, only after
 -- the current event has been processed completely.
-pause :: EventNetwork -> IO ()
-pause   = Prim.pause . unEN
+pause :: MonadIO m => EventNetwork -> m ()
+pause   = liftIO . Prim.pause . unEN
 
 {-----------------------------------------------------------------------------
     Utilities
