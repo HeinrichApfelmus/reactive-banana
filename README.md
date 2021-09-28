@@ -71,7 +71,7 @@ The reactive-banana mascot [[png]][mascot] is licensed under a <a rel="license" 
 
 Many thanks to everyone who contributed, provided feedback or simply wrote an application using Reactive-Banana! In particular, many thanks to:
 
-Alexander Berntsen, Oliver Charles, Samuel Gélineau, Vladimir Lopatin, Atze van der Ploeg, [*and many others*](CONTRIBUTORS).
+Alexander Berntsen, Oliver Charles, Samuel Gélineau, Vladimir Lopatin, Atze van der Ploeg, Mitchell Rosen, [*and many others*](CONTRIBUTORS).
 
-Special thanks to *Oliver Charles* for co-maintaining this project.
+Special thanks to *Oliver Charles* and *Mitchell Rosen* for co-maintaining this project.
 
