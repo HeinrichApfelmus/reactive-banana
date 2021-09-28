@@ -1,6 +1,10 @@
 Changelog for the `reactive-banana** package
 -------------------------------------------
 
+**Unreleased**
+
+* Add '@>' operator
+
 **Version 1.2.2.0**
 
 * Optimize the implementation of `Graph.listParents` [#209][]
