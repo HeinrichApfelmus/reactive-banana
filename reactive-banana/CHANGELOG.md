@@ -5,6 +5,8 @@ Changelog for the `reactive-banana** package
 
 * Added `Semigroup` and `Monoid` instances to `Moment` and `MomentIO`. [#223][]
 
+  [#223]: https://github.com/HeinrichApfelmus/reactive-banana/pull/223
+
 **Version 1.2.2.0**
 
 * Optimize the implementation of `Graph.listParents` [#209][]
@@ -25,7 +27,6 @@ Changelog for the `reactive-banana** package
   [#211]: https://github.com/HeinrichApfelmus/reactive-banana/pull/211
   [#212]: https://github.com/HeinrichApfelmus/reactive-banana/pull/212
   [#220]: https://github.com/HeinrichApfelmus/reactive-banana/pull/219
-  [#223]: https://github.com/HeinrichApfelmus/reactive-banana/pull/223
 
 
 **version 1.2.1.0**
