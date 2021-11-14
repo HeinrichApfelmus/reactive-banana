@@ -34,7 +34,7 @@ module Reactive.Banana.Combinators (
 
     -- * Derived Combinators
     -- ** Infix operators
-    (<@>), (<@),
+    (<@>), (<@), (@>),
     -- ** Filtering
     filterJust, filterApply, whenE, split,
     -- ** Accumulation
@@ -295,7 +295,7 @@ switchB b = liftMoment . M . fmap B . Prim.switchB (unB b) . Prim.mapE (unB) . u
 {-----------------------------------------------------------------------------
     Derived Combinators
 ------------------------------------------------------------------------------}
-infixl 4 <@>, <@
+infixl 4 <@>, <@, @>
 
 -- | Infix synonym for the 'apply' combinator. Similar to '<*>'.
 --
@@ -308,6 +308,20 @@ infixl 4 <@>, <@
 -- > infixl 4 <@
 (<@)  :: Behavior b -> Event a -> Event b
 f <@ g = (const <$> f) <@> g
+
+-- | Tag all event occurences with a time-varying value. Similar to '*>'.
+--
+-- This is the flipped version of '<@', but can be useful when combined with
+-- @ApplicativeDo@ to sample from multiple 'Behavior's:
+--
+-- @
+-- reactimate $ onEvent @> do
+--   x <- behavior1
+--   y <- behavior2
+--   return (print (x + y))
+-- @
+(@>) :: Event a -> Behavior b -> Event b
+g @> f = (const <$> f) <@> g
 
 -- | Allow all events that fulfill the time-varying predicate, discard the rest.
 -- Generalization of 'filterE'.
