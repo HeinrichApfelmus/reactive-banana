@@ -277,8 +277,9 @@ observeE = E . Prim.observeE . Prim.mapE unM . unE
 -- | Dynamically switch between 'Event'.
 -- Semantically,
 --
--- > switchE ee = \time0 -> concat [trim t1 t2 e | (t1,t2,e) <- intervals ee, time0 <= t1]
+-- > switchE e0 ee = \time0 -> [(t, a) | (t,a) <- e0, t < t1] ++ concat [trim t1 t2 e | (t1,t2,e) <- intervals ee, time0 <= t1]
 -- >     where
+-- >     t1                 = head [t | (t, _) <- ee]
 -- >     intervals e        = [(time1, time2, x) | ((time1,x),(time2,_)) <- zip e (tail e)]
 -- >     trim time1 time2 e = [x | (timex,x) <- e, time1 < timex, timex <= time2]
 switchE :: MonadMoment m => Event a -> Event (Event a) -> m (Event a)
