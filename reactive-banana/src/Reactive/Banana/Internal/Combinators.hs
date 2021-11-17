@@ -16,6 +16,7 @@ import           Data.Functor.Identity
 import           Data.IORef
 import qualified Reactive.Banana.Prim        as Prim
 import           Reactive.Banana.Prim.Cached
+import           Data.These (These(..), these)
 
 type Build   = Prim.Build
 type Latch a = Prim.Latch a
@@ -112,22 +113,44 @@ imposeChanges = liftCached2 $ \(l1,_) p2 -> return (l1,p2)
 {-----------------------------------------------------------------------------
     Combinators - basic
 ------------------------------------------------------------------------------}
-never       = don'tCache  $ liftBuild $ Prim.neverP
-unionWith f = liftCached2 $ (liftBuild .) . Prim.unionWithP f
+never :: Event a
+never = don'tCache  $ liftBuild $ Prim.neverP
+
+mergeWith
+  :: (a -> c)
+  -> (b -> c)
+  -> (a -> b -> c)
+  -> Event a
+  -> Event b
+  -> Event c
+mergeWith f g h = liftCached2 $ (liftBuild .) . Prim.mergeWithP (Just . f) (Just . g) (\x y -> Just (h x y))
+
+
+filterJust :: Event (Maybe a) -> Event a
 filterJust  = liftCached1 $ liftBuild . Prim.filterJustP
-mapE f      = liftCached1 $ liftBuild . Prim.mapP f
-applyE      = liftCached2 $ \(~(lf,_)) px -> liftBuild $ Prim.applyP lf px
 
-changesB    = liftCached1 $ \(~(lx,px)) -> liftBuild $ Prim.tagFuture lx px
+mapE :: (a -> b) -> Event a -> Event b
+mapE f = liftCached1 $ liftBuild . Prim.mapP f
 
+applyE :: Behavior (a -> b) -> Event a -> Event b
+applyE = liftCached2 $ \(~(lf,_)) px -> liftBuild $ Prim.applyP lf px
+
+changesB :: Behavior a -> Event (Future a)
+changesB = liftCached1 $ \(~(lx,px)) -> liftBuild $ Prim.tagFuture lx px
+
+pureB :: a -> Behavior a
 pureB a = cache $ do
     p <- runCached never
     return (Prim.pureL a, p)
-applyB  = liftCached2 $ \(~(l1,p1)) (~(l2,p2)) -> liftBuild $ do
-    p3 <- Prim.unionWithP const p1 p2
+
+applyB :: Behavior (a -> b) -> Behavior a -> Behavior b
+applyB = liftCached2 $ \(~(l1,p1)) (~(l2,p2)) -> liftBuild $ do
+    p3 <- Prim.mergeWithP Just Just (const . Just) p1 p2
     let l3 = Prim.applyL l1 l2
     return (l3,p3)
-mapB f  = applyB (pureB f)
+
+mapB :: (a -> b) -> Behavior a -> Behavior b
+mapB f = applyB (pureB f)
 
 {-----------------------------------------------------------------------------
     Combinators - accumulation
@@ -147,6 +170,7 @@ cacheAndSchedule m = ask >>= \r -> liftBuild $ do
     Prim.buildLater $ void $ runReaderT (runCached c) r
     return c
 
+stepperB :: a -> Event a -> Moment (Behavior a)
 stepperB a e = cacheAndSchedule $ do
     p0 <- runCached e
     liftBuild $ do
@@ -155,6 +179,7 @@ stepperB a e = cacheAndSchedule $ do
         (l,_) <- Prim.accumL a p1
         return (l,p2)
 
+accumE :: a -> Event (a -> a) -> Moment (Event a)
 accumE a e1 = cacheAndSchedule $ do
     p0 <- runCached e1
     liftBuild $ do
@@ -220,4 +245,5 @@ switchB b e = ask >>= \r -> cacheAndSchedule $ do
         pr <- merge c1 =<< merge c2 c3
         return (lr, pr)
 
-merge = Prim.unionWithP (\_ _ -> ())
+merge :: Pulse () -> Pulse () -> Build (Pulse ())
+merge = Prim.mergeWithP Just Just (\_ _ -> Just ())

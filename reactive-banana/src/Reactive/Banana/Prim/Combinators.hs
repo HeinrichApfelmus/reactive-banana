@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE RecursiveDo, ScopedTypeVariables #-}
 module Reactive.Banana.Prim.Combinators where
 
 import Control.Applicative
@@ -15,7 +15,7 @@ import Reactive.Banana.Prim.Plumbing
     , readPulseP, readLatchP, readLatchFutureP, liftBuildP,
     )
 import qualified Reactive.Banana.Prim.Plumbing (pureL)
-import           Reactive.Banana.Prim.Types    (Latch, Future, Pulse, Build)
+import           Reactive.Banana.Prim.Types    (Latch, Future, Pulse, Build, EvalP)
 
 import Debug.Trace
 -- debug s = trace s
@@ -26,7 +26,7 @@ debug s = id
 ------------------------------------------------------------------------------}
 mapP :: (a -> b) -> Pulse a -> Build (Pulse b)
 mapP f p1 = do
-    p2 <- newPulse "mapP" $ {-# SCC mapP #-} fmap f <$> readPulseP p1
+    p2 <- newPulse "mapP" $ ({-# SCC mapP #-} fmap f <$> readPulseP p1)
     p2 `dependOn` p1
     return p2
 
@@ -43,38 +43,45 @@ tagFuture x p1 = do
 
 filterJustP :: Pulse (Maybe a) -> Build (Pulse a)
 filterJustP p1 = do
-    p2 <- newPulse "filterJustP" $ {-# SCC filterJustP #-} join <$> readPulseP p1
+    p2 <- newPulse "filterJustP" $ ({-# SCC filterJustP #-} join <$> readPulseP p1)
     p2 `dependOn` p1
     return p2
 
-unsafeMapIOP :: (a -> IO b) -> Pulse a -> Build (Pulse b)
+unsafeMapIOP :: forall a b. (a -> IO b) -> Pulse a -> Build (Pulse b)
 unsafeMapIOP f p1 = do
         p2 <- newPulse "unsafeMapIOP" $
-            {-# SCC unsafeMapIOP #-} eval =<< readPulseP p1
+            ({-# SCC unsafeMapIOP #-} eval =<< readPulseP p1)
         p2 `dependOn` p1
         return p2
     where
+    eval :: Maybe a -> EvalP (Maybe b)
     eval (Just x) = Just <$> liftIO (f x)
     eval Nothing  = return Nothing
 
-unionWithP :: (a -> a -> a) -> Pulse a -> Pulse a -> Build (Pulse a)
-unionWithP f px py = do
-        p <- newPulse "unionWithP" $
-            {-# SCC unionWithP #-} eval <$> readPulseP px <*> readPulseP py
-        p `dependOn` px
-        p `dependOn` py
-        return p
-    where
-    eval (Just x) (Just y) = Just (f x y)
-    eval (Just x) Nothing  = Just x
-    eval Nothing  (Just y) = Just y
+mergeWithP
+  :: (a -> Maybe c)
+  -> (b -> Maybe c)
+  -> (a -> b -> Maybe c)
+  -> Pulse a
+  -> Pulse b
+  -> Build (Pulse c)
+mergeWithP f g h px py = do
+  p <- newPulse "mergeWithP" $
+       ({-# SCC mergeWithP #-} eval <$> readPulseP px <*> readPulseP py)
+  p `dependOn` px
+  p `dependOn` py
+  return p
+  where
     eval Nothing  Nothing  = Nothing
+    eval (Just x) Nothing  = f x
+    eval Nothing  (Just y) = g y
+    eval (Just x) (Just y) = h x y
 
 -- See note [LatchRecursion]
 applyP :: Latch (a -> b) -> Pulse a -> Build (Pulse b)
 applyP f x = do
     p <- newPulse "applyP" $
-        {-# SCC applyP #-} fmap <$> readLatchP f <*> readPulseP x
+        ({-# SCC applyP #-} fmap <$> readLatchP f <*> readPulseP x)
     p `dependOn` x
     return p
 
@@ -83,11 +90,11 @@ pureL = Reactive.Banana.Prim.Plumbing.pureL
 
 -- specialization of   mapL f = applyL (pureL f)
 mapL :: (a -> b) -> Latch a -> Latch b
-mapL f lx = cachedLatch $ {-# SCC mapL #-} f <$> getValueL lx
+mapL f lx = cachedLatch $ ({-# SCC mapL #-} f <$> getValueL lx)
 
 applyL :: Latch (a -> b) -> Latch a -> Latch b
 applyL lf lx = cachedLatch $
-    {-# SCC applyL #-} getValueL lf <*> getValueL lx
+    ({-# SCC applyL #-} getValueL lf <*> getValueL lx)
 
 accumL :: a -> Pulse (a -> a) -> Build (Latch a, Pulse a)
 accumL a p1 = do
@@ -111,12 +118,13 @@ switchL l pl = mdo
     x <- stepperL l pl
     return $ cachedLatch $ getValueL x >>= getValueL
 
-executeP :: Pulse (b -> Build a) -> b -> Build (Pulse a)
+executeP :: forall a b. Pulse (b -> Build a) -> b -> Build (Pulse a)
 executeP p1 b = do
-        p2 <- newPulse "executeP" $ {-# SCC executeP #-} eval =<< readPulseP p1
+        p2 <- newPulse "executeP" $ ({-# SCC executeP #-} eval =<< readPulseP p1)
         p2 `dependOn` p1
         return p2
     where
+    eval :: Maybe (b -> Build a) -> EvalP (Maybe a)
     eval (Just x) = Just <$> liftBuildP (x b)
     eval Nothing  = return Nothing
 

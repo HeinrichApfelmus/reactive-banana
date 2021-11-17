@@ -5,7 +5,7 @@
 module Reactive.Banana.Prim.Cached (
     -- | Utility for executing monadic actions once
     -- and then retrieving values from a cache.
-    -- 
+    --
     -- Very useful for observable sharing.
     Cached, runCached, cache, fromPure, don'tCache,
     liftCached1, liftCached2,
@@ -63,4 +63,3 @@ liftCached2 f ca cb = cache $ do
     a <- runCached ca
     b <- runCached cb
     f a b
-

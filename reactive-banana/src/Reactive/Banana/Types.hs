@@ -13,6 +13,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Fix
+import Data.String (IsString(..))
 
 import qualified Reactive.Banana.Internal.Combinators as Prim
 
@@ -51,7 +52,7 @@ instance Functor Event where
 -- > (<>) :: Event a -> Event a -> Event a
 -- > (<>) ex ey = unionWith (<>) ex ey
 instance Semigroup a => Semigroup (Event a) where
-    x <> y = E $ Prim.unionWith (<>) (unE x) (unE y)
+    x <> y = E $ Prim.mergeWith id id (<>) (unE x) (unE y)
 
 -- | The combinator 'mempty' represents an event that never occurs.
 -- It is a synonym,
@@ -93,6 +94,47 @@ instance Applicative Behavior where
 instance Functor Behavior where
     fmap = liftA
 
+instance Semigroup a => Semigroup (Behavior a) where
+  (<>) = liftA2 (<>)
+
+instance (Semigroup a, Monoid a) => Monoid (Behavior a) where
+  mempty = pure mempty
+  mappend = (<>)
+
+instance Num a => Num (Behavior a) where
+    (+) = liftA2 (+)
+    (-) = liftA2 (-)
+    (*) = liftA2 (*)
+    abs = fmap abs
+    signum = fmap signum
+    fromInteger = pure . fromInteger
+    negate = fmap negate
+
+instance Fractional a => Fractional (Behavior a) where
+    (/) = liftA2 (/)
+    fromRational = pure . fromRational
+    recip = fmap recip
+
+instance Floating a => Floating (Behavior a) where
+    (**) = liftA2 (**)
+    acos = fmap acos
+    acosh = fmap acosh
+    asin = fmap asin
+    asinh = fmap asinh
+    atan = fmap atan
+    atanh = fmap atanh
+    cos = fmap cos
+    cosh = fmap cosh
+    exp = fmap exp
+    log = fmap log
+    logBase = liftA2 logBase
+    pi = pure pi
+    sin = fmap sin
+    sinh = fmap sinh
+    sqrt = fmap sqrt
+
+instance IsString a => IsString (Behavior a) where
+    fromString = pure . fromString
 
 -- | The 'Future' monad is just a helper type for the 'changes' function.
 --
@@ -140,7 +182,7 @@ instance MonadIO MomentIO where liftIO = MIO . liftIO
 that happens at one particular moment in time.
 Unlike the 'Moment' monad, it need not be pure anymore.
 -}
-class Monad m => MonadMoment m where
+class MonadFix m => MonadMoment m where
     liftMoment :: Moment a -> m a
 
 instance MonadMoment Moment   where liftMoment = id
@@ -156,6 +198,12 @@ instance Applicative Moment where
     f <*> a = M $ unM f <*> unM a
 instance MonadFix Moment where mfix f = M $ mfix (unM . f)
 
+instance Semigroup a => Semigroup (Moment a) where
+    (<>) = liftA2 (<>)
+instance Monoid a => Monoid (Moment a) where
+    mempty = pure mempty
+
+
 instance Functor MomentIO where fmap f = MIO . fmap f . unMIO
 instance Monad MomentIO where
     return  = MIO . return
@@ -164,3 +212,8 @@ instance Applicative MomentIO where
     pure    = MIO . pure
     f <*> a = MIO $ unMIO f <*> unMIO a
 instance MonadFix MomentIO where mfix f = MIO $ mfix (unMIO . f)
+
+instance Semigroup a => Semigroup (MomentIO a) where
+    (<>) = liftA2 (<>)
+instance Monoid a => Monoid (MomentIO a) where
+    mempty = pure mempty

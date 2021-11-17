@@ -2,7 +2,7 @@ module Control.Event.Handler (
     -- * Synopsis
     -- | <http://en.wikipedia.org/wiki/Event-driven_programming Event-driven programming>
     -- in the traditional imperative style.
-    
+
     -- * Documentation
     Handler, AddHandler(..), newAddHandler,
     mapIO, filterIO,
@@ -24,10 +24,10 @@ type Handler a = a -> IO ()
 
 -- | The type 'AddHandler' represents a facility for registering
 -- event handlers. These will be called whenever the event occurs.
--- 
+--
 -- When registering an event handler, you will also be given an action
 -- that unregisters this handler again.
--- 
+--
 -- > do unregisterMyHandler <- register addHandler myHandler
 --
 newtype AddHandler a = AddHandler { register :: Handler a -> IO (IO ()) }
@@ -40,7 +40,7 @@ instance Functor AddHandler where
 
 -- | Map the event value with an 'IO' action.
 mapIO :: (a -> IO b) -> AddHandler a -> AddHandler b
-mapIO f e = AddHandler $ \h -> register e $ \x -> f x >>= h 
+mapIO f e = AddHandler $ \h -> register e $ \x -> f x >>= h
 
 -- | Filter event values that don't return 'True'.
 filterIO :: (a -> IO Bool) -> AddHandler a -> AddHandler a
@@ -71,4 +71,5 @@ newAddHandler = do
             mapM_ ($ a) . map snd . Map.toList =<< readIORef handlers
     return (AddHandler register, runHandlers)
 
+atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ ref f = atomicModifyIORef ref $ \x -> (f x, ())

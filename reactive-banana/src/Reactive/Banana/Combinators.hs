@@ -34,18 +34,21 @@ module Reactive.Banana.Combinators (
 
     -- * Derived Combinators
     -- ** Infix operators
-    (<@>), (<@),
+    (<@>), (<@), (@>),
     -- ** Filtering
     filterJust, filterApply, whenE, split,
     -- ** Accumulation
     -- $Accumulation.
     unions, accumB, mapAccum,
+    -- ** Merging events
+    merge, mergeWith
     ) where
 
 import Control.Applicative
 import Control.Monad
 import Data.Maybe          (isJust, catMaybes)
 import Data.Semigroup
+import Data.These (These(..), these)
 
 import qualified Reactive.Banana.Internal.Combinators as Prim
 import           Reactive.Banana.Types
@@ -110,7 +113,23 @@ never = E Prim.never
 -- >    | timex >  timey = (timey,y)     : unionWith f ((timex,x):xs) ys
 -- >    | timex == timey = (timex,f x y) : unionWith f xs ys
 unionWith :: (a -> a -> a) -> Event a -> Event a -> Event a
-unionWith f e1 e2 = E $ Prim.unionWith f (unE e1) (unE e2)
+unionWith f = mergeWith id id f
+
+-- | Merge two event streams of any type.
+merge :: Event a -> Event b -> Event (These a b)
+merge = mergeWith This That These
+
+-- | Merge two event streams of any type.
+--
+-- This function generalizes 'unionWith'.
+mergeWith
+  :: (a -> c) -- ^ The function called when only the first event emits a value.
+  -> (b -> c) -- ^ The function called when only the second event emits a value.
+  -> (a -> b -> c) -- ^ The function called when both events emit values simultaneously.
+  -> Event a
+  -> Event b
+  -> Event c
+mergeWith f g h e1 e2 = E $ Prim.mergeWith f g h (unE e1) (unE e2)
 
 -- | Allow all event occurrences that are 'Just' values, discard the rest.
 -- Variant of 'filterE'.
@@ -276,21 +295,7 @@ switchB b = liftMoment . M . fmap B . Prim.switchB (unB b) . Prim.mapE (unB) . u
 {-----------------------------------------------------------------------------
     Derived Combinators
 ------------------------------------------------------------------------------}
-{-
-
-Unfortunately, we can't make a  Num  instance because that would
-require  Eq  and  Show .
-
-instance Num a => Num (Behavior t a) where
-    (+) = liftA2 (+)
-    (-) = liftA2 (-)
-    (*) = liftA2 (*)
-    negate = fmap negate
-    abs    = fmap abs
-    signum = fmap signum
-    fromInteger = pure . fromInteger
--}
-infixl 4 <@>, <@
+infixl 4 <@>, <@, @>
 
 -- | Infix synonym for the 'apply' combinator. Similar to '<*>'.
 --
@@ -303,6 +308,20 @@ infixl 4 <@>, <@
 -- > infixl 4 <@
 (<@)  :: Behavior b -> Event a -> Event b
 f <@ g = (const <$> f) <@> g
+
+-- | Tag all event occurences with a time-varying value. Similar to '*>'.
+--
+-- This is the flipped version of '<@', but can be useful when combined with
+-- @ApplicativeDo@ to sample from multiple 'Behavior's:
+--
+-- @
+-- reactimate $ onEvent @> do
+--   x <- behavior1
+--   y <- behavior2
+--   return (print (x + y))
+-- @
+(@>) :: Event a -> Behavior b -> Event b
+g @> f = (const <$> f) <@> g
 
 -- | Allow all events that fulfill the time-varying predicate, discard the rest.
 -- Generalization of 'filterE'.
@@ -320,8 +339,11 @@ whenE bf = filterApply (const <$> bf)
 split :: Event (Either a b) -> (Event a, Event b)
 split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     where
+    fromLeft :: Either a b -> Maybe a
     fromLeft  (Left  a) = Just a
     fromLeft  (Right b) = Nothing
+
+    fromRight :: Either a b -> Maybe b
     fromRight (Left  a) = Nothing
     fromRight (Right b) = Just b
 

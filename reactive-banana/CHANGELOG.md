@@ -1,5 +1,53 @@
-Changelog for the `reactive-banana` package
+Changelog for the `reactive-banana** package
 -------------------------------------------
+
+**Unreleased**
+
+* Added `Semigroup` and `Monoid` instances to `Moment` and `MomentIO`. [#223][]
+* Add '@>' operator
+
+  [#223]: https://github.com/HeinrichApfelmus/reactive-banana/pull/223
+
+**Version 1.2.2.0**
+
+* Optimize the implementation of `Graph.listParents` [#209][]
+* Replace a use of `foldl` with `foldl'`. [#212][]
+* Simplify the internal `mkWeakIORef` function. [#154][]
+* Add `merge` and `mergeWith` combinators. [#163][], [#220][]
+* Make internal SCC pragmas compatible with the GHC 9.0 parser. [#208][]
+* Change `insertWith (flip (++))` to `insertWith (++)` in `insertEdge`. [#211][]
+* Add `Semigroup a => Semigroup (Behavior a)` and `Monoid a => Monoid (Behavior a)` instances. [#185][]
+* Loosen the upper-bound for `hashable` and `semigroups`. [#205][]
+
+  [#154]: https://github.com/HeinrichApfelmus/reactive-banana/pull/154
+  [#163]: https://github.com/HeinrichApfelmus/reactive-banana/pull/163
+  [#185]: https://github.com/HeinrichApfelmus/reactive-banana/pull/185
+  [#205]: https://github.com/HeinrichApfelmus/reactive-banana/pull/205
+  [#208]: https://github.com/HeinrichApfelmus/reactive-banana/pull/208
+  [#209]: https://github.com/HeinrichApfelmus/reactive-banana/pull/209
+  [#211]: https://github.com/HeinrichApfelmus/reactive-banana/pull/211
+  [#212]: https://github.com/HeinrichApfelmus/reactive-banana/pull/212
+  [#220]: https://github.com/HeinrichApfelmus/reactive-banana/pull/219
+
+
+**version 1.2.1.0**
+
+* Add `Num`, `Floating`, `Fractional`, and `IsString` instances for `Behavior`. [#34][]
+* Support `containers-0.6`. [#191][]
+
+  [#34]: https://github.com/HeinrichApfelmus/reactive-banana/pull/34
+  [#191]: https://github.com/HeinrichApfelmus/reactive-banana/pull/191
+
+**version 1.2.0.0**
+
+* Make `MonadFix` superclass of `MonadMoment`. [#128][]
+* Add `Semigroup` and `Monoid` instances for `Event`. [#104][]
+* Semigroup compatibility with GHC 8.4.1 [#168][]
+* Increased upper-bound on `pqueue`.
+
+  [#128]: https://github.com/HeinrichApfelmus/reactive-banana/pull/128
+  [#104]: https://github.com/HeinrichApfelmus/reactive-banana/issues/104
+  [#168]: https://github.com/HeinrichApfelmus/reactive-banana/pull/168
 
 **version 1.1.0.1**
 
