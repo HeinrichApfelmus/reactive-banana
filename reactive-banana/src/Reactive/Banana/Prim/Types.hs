@@ -123,7 +123,6 @@ type Output  = Ref Output'
 data Output' = Output
     { _evalO     :: EvalP EvalO
     }
-instance Eq Output where (==) = equalRef
 
 data SomeNode
     = forall a. P (Pulse a)
