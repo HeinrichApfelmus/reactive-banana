@@ -28,7 +28,7 @@ nop = return ()
 ------------------------------------------------------------------------------}
 data Ref a = Ref !(IORef a) !Unique
 
-instance Eq (Ref a) where Ref _ x == Ref _ y = x == y
+instance Eq (Ref a) where (==) = equalRef
 
 instance Hashable (Ref a) where hashWithSalt s (Ref _ u) = hashWithSalt s u 
 
