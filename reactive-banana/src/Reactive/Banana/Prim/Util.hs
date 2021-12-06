@@ -28,6 +28,8 @@ nop = return ()
 ------------------------------------------------------------------------------}
 data Ref a = Ref !(IORef a) !Unique
 
+instance Eq (Ref a) where Ref _ x == Ref _ y = x == y
+
 instance Hashable (Ref a) where hashWithSalt s (Ref _ u) = hashWithSalt s u 
 
 equalRef :: Ref a -> Ref b -> Bool
