@@ -91,3 +91,14 @@ Test-Suite tests
                         reactive-banana, vault, containers,
                         semigroups, transformers,
                         unordered-containers, hashable, psqueues, pqueue, these
+
+
+Benchmark benchmark
+  type:          exitcode-stdio-1.0
+  build-depends: base, tasty-bench, reactive-banana, containers, random, tasty
+  hs-source-dirs: benchmark
+  main-is: Main.hs
+  if impl(ghc >= 8.10)
+    ghc-options:  "-with-rtsopts=-A32m --nonmoving-gc"
+  else
+    ghc-options:  "-with-rtsopts=-A32m"
