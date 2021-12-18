@@ -60,7 +60,7 @@ instance Semigroup a => Semigroup (Event a) where
 -- > mempty :: Event a
 -- > mempty = never
 instance Semigroup a => Monoid (Event a) where
-    mempty  = E $ Prim.never
+    mempty  = E Prim.never
     mappend = (<>)
 
 

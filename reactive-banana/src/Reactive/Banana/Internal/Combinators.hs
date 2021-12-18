@@ -76,11 +76,11 @@ compile setup = do
         Prim.compile (runReaderT setup eventNetwork) Prim.emptyNetwork
     putMVar s s0                                -- set initial state
 
-    return $ eventNetwork
+    return eventNetwork
 
 fromAddHandler :: AddHandler a -> Moment (Event a)
 fromAddHandler addHandler = do
-    (p, fire) <- liftBuild $ Prim.newInput
+    (p, fire) <- liftBuild Prim.newInput
     network   <- ask
     liftIO $ register addHandler $ runStep network . fire
     return $ Prim.fromPure p
@@ -114,7 +114,7 @@ imposeChanges = liftCached2 $ \(l1,_) p2 -> return (l1,p2)
     Combinators - basic
 ------------------------------------------------------------------------------}
 never :: Event a
-never = don'tCache  $ liftBuild $ Prim.neverP
+never = don'tCache  $ liftBuild Prim.neverP
 
 mergeWith
   :: (a -> c)
@@ -210,7 +210,7 @@ executeP p1 = do
         Prim.executeP p2 r
 
 observeE :: Event (Moment a) -> Event a
-observeE = liftCached1 $ executeP
+observeE = liftCached1 executeP
 
 executeE :: Event (Moment a) -> Moment (Event a)
 executeE e = do

@@ -58,7 +58,7 @@ doAddChild (P parent) (P child) = do
     level1 <- _levelP <$> readRef child
     level2 <- _levelP <$> readRef parent
     let level = level1 `max` (level2 + 1)
-    w <- parent `connectChild` (P child)
+    w <- parent `connectChild` P child
     modify' child $ set levelP level . update parentsP (w:)
 doAddChild (P parent) node = void $ parent `connectChild` node
 
@@ -81,7 +81,7 @@ doChangeParent :: Pulse a -> Pulse b -> IO ()
 doChangeParent child parent = do
     -- remove all previous parents and connect to new parent
     removeParents child
-    w <- parent `connectChild` (P child)
+    w <- parent `connectChild` P child
     modify' child $ update parentsP (w:)
 
     -- calculate level difference between parent and node
@@ -100,9 +100,9 @@ doChangeParent child parent = do
     Helper functions
 ------------------------------------------------------------------------------}
 getChildren :: SomeNode -> IO [SomeNode]
-getChildren (P p) = deRefWeaks =<< fmap _childrenP (readRef p)
+getChildren (P p) = deRefWeaks . _childrenP =<< readRef p
 getChildren _     = return []
 
 getParents :: SomeNode -> IO [SomeNode]
-getParents (P p) = deRefWeaks =<< fmap _parentsP (readRef p)
+getParents (P p) = deRefWeaks . _parentsP =<< readRef p
 getParents _     = return []

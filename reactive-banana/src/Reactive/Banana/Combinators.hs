@@ -282,7 +282,7 @@ observeE = E . Prim.observeE . Prim.mapE unM . unE
 -- >     intervals e        = [(time1, time2, x) | ((time1,x),(time2,_)) <- zip e (tail e)]
 -- >     trim time1 time2 e = [x | (timex,x) <- e, time1 < timex, timex <= time2]
 switchE :: MonadMoment m => Event (Event a) -> m (Event a)
-switchE = liftMoment . M . fmap E . Prim.switchE . Prim.mapE (unE) . unE
+switchE = liftMoment . M . fmap E . Prim.switchE . Prim.mapE unE . unE
 
 -- | Dynamically switch between 'Behavior'.
 -- Semantically,
@@ -290,7 +290,7 @@ switchE = liftMoment . M . fmap E . Prim.switchE . Prim.mapE (unE) . unE
 -- >  switchB b0 eb = \time0 -> \time1 ->
 -- >     last (b0 : [b | (timeb,b) <- eb, time0 <= timeb, timeb < time1]) time1
 switchB :: MonadMoment m => Behavior a -> Event (Behavior a) -> m (Behavior a)
-switchB b = liftMoment . M . fmap B . Prim.switchB (unB b) . Prim.mapE (unB) . unE
+switchB b = liftMoment . M . fmap B . Prim.switchB (unB b) . Prim.mapE unB . unE
 
 {-----------------------------------------------------------------------------
     Derived Combinators

@@ -71,11 +71,11 @@ instance MonadFix Moment where
 
 
 accumE   a ~(E x y) = M
-    (fmap ex $ X.accumE a x)
-    (fmap ey $ Y.accumE a y)
+    (ex <$> X.accumE a x)
+    (ey <$> Y.accumE a y)
 stepperB a ~(E x y) = M
-    (fmap bx $ X.stepper  a x)
-    (fmap by $ Y.stepperB a y)
+    (bx <$> X.stepper  a x)
+    (by <$> Y.stepperB a y)
 stepper            = stepperB
 
 valueB ~(B x y) = M (X.valueB x) (Y.valueB y)
@@ -85,13 +85,13 @@ observeE (E x y) = E (X.observeE $ fmap fstM x) (Y.observeE $ Y.mapE sndM y)
 
 switchE :: Event (Event a) -> Moment (Event a)
 switchE (E x y) = M
-    (fmap ex $ X.switchE $   fmap (fstE) x)
-    (fmap ey $ Y.switchE $ Y.mapE (sndE) y)
+    (fmap ex $ X.switchE $   fmap fstE x)
+    (fmap ey $ Y.switchE $ Y.mapE sndE y)
 
 switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
 switchB (B x y) (E xe ye) = M
-    (fmap bx $ X.switchB x $   fmap (fstB) xe)
-    (fmap by $ Y.switchB y $ Y.mapE (sndB) ye)
+    (fmap bx $ X.switchB x $   fmap fstB xe)
+    (fmap by $ Y.switchB y $ Y.mapE sndB ye)
 
 {-----------------------------------------------------------------------------
     Derived combinators
