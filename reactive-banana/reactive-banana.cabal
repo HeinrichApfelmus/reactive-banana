@@ -25,8 +25,7 @@ Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Category:            FRP
 Cabal-version:       1.18
 Build-type:          Simple
-Tested-with:         GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.1, GHC == 8.0.1,
-                     GHC == 8.2.2, GHC == 8.4.3, GHC == 8.6.1
+Tested-with:         GHC == 8.4.3, GHC == 8.6.1
 
 extra-source-files:     CHANGELOG.md,
                         doc/examples/*.hs,
