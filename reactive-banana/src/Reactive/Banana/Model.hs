@@ -27,6 +27,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
 import Data.These (These(..), these)
+import Data.Maybe (fromMaybe)
 
 {-$overview
 
@@ -145,9 +146,7 @@ stepper :: a -> Event a -> Moment (Behavior a)
 stepper i e = M $ \time -> B $ replicate time i ++ step i (forgetE time e)
     where
     step i ~(x:xs) = i : step next xs
-        where next = case x of
-                        Just i  -> i
-                        Nothing -> i
+        where next = fromMaybe i x
 
 -- Expressed using recursion and the other primitives
 -- FIXME: Strictness!

@@ -7,8 +7,7 @@ module Reactive.Banana.Prim.Evaluation (
     ) where
 
 import qualified Control.Exception                  as Strict (evaluate)
-import           Control.Monad                                (foldM)
-import           Control.Monad                                (join)
+import Control.Monad ( foldM, join )
 import           Control.Monad.IO.Class
 import qualified Control.Monad.Trans.RWSIO          as RWS
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
@@ -58,7 +57,7 @@ step (inputs,pulses)
     return (runEvalOs $ map snd actions, state2)
 
 runEvalOs :: [EvalO] -> IO ()
-runEvalOs = sequence_ . map join
+runEvalOs = mapM_ join
 
 {-----------------------------------------------------------------------------
     Traversal in dependency order
@@ -103,7 +102,7 @@ evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
     debug "evaluateNode O"
     Output{..} <- readRef o
     m          <- _evalO                    -- calculate output action
-    rememberOutput $ (o,m)
+    rememberOutput (o,m)
     return []
 
 -- | Insert nodes into the queue

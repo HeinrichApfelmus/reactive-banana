@@ -9,6 +9,7 @@ module Control.Event.Handler (
     ) where
 
 
+import           Control.Monad ((>=>), when)
 import           Data.IORef
 import qualified Data.Map    as Map
 import qualified Data.Unique
@@ -40,12 +41,12 @@ instance Functor AddHandler where
 
 -- | Map the event value with an 'IO' action.
 mapIO :: (a -> IO b) -> AddHandler a -> AddHandler b
-mapIO f e = AddHandler $ \h -> register e $ \x -> f x >>= h
+mapIO f e = AddHandler $ \h -> register e (f >=> h)
 
 -- | Filter event values that don't return 'True'.
 filterIO :: (a -> IO Bool) -> AddHandler a -> AddHandler a
 filterIO f e = AddHandler $ \h ->
-    register e $ \x -> f x >>= \b -> if b then h x else return ()
+    register e $ \x -> f x >>= \b -> when b $ h x
 
 {-----------------------------------------------------------------------------
     Construction
@@ -68,7 +69,7 @@ newAddHandler = do
             atomicModifyIORef_ handlers $ Map.insert key handler
             return $ atomicModifyIORef_ handlers $ Map.delete key
         runHandlers a =
-            mapM_ ($ a) . map snd . Map.toList =<< readIORef handlers
+            mapM_ (($ a) . snd) . Map.toList =<< readIORef handlers
     return (AddHandler register, runHandlers)
 
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()

@@ -342,7 +342,7 @@ pause   = Prim.pause . unEN
 -- inside a 'reactimate'.
 newEvent :: MomentIO (Event a, Handler a)
 newEvent = do
-    (addHandler, fire) <- liftIO $ newAddHandler
+    (addHandler, fire) <- liftIO newAddHandler
     e <- fromAddHandler addHandler
     return (e,fire)
 
@@ -377,7 +377,7 @@ newBehavior a = do
 mapEventIO :: (a -> IO b) -> Event a -> MomentIO (Event b)
 mapEventIO f e1 = do
     (e2, handler) <- newEvent
-    reactimate $ (\a -> f a >>= handler) <$> e1
+    reactimate $ (f >=> handler) <$> e1
     return e2
 
 {-----------------------------------------------------------------------------
@@ -396,7 +396,7 @@ interpretFrameworks f xs = do
         reactimate $ writeIORef output . Just <$> e2
 
     actuate network
-    bs <- forM xs $ \x -> do
+    forM xs $ \x -> do
         case x of
             Nothing -> return Nothing
             Just x  -> do
@@ -404,7 +404,6 @@ interpretFrameworks f xs = do
                 b <- readIORef output
                 writeIORef output Nothing
                 return b
-    return bs
 
 -- | Simple way to write a single event handler with
 -- functional reactive programming.

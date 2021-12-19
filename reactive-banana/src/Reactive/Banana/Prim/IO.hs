@@ -28,7 +28,7 @@ debug s = id
 newInput :: forall a. Build (Pulse a, a -> Step)
 newInput = mdo
     always <- alwaysP
-    key    <- liftIO $ Lazy.newKey
+    key    <- liftIO Lazy.newKey
     pulse  <- liftIO $ newRef $ Pulse
         { _keyP      = key
         , _seenP     = agesAgo

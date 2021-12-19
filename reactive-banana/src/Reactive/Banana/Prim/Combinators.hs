@@ -26,7 +26,7 @@ debug s = id
 ------------------------------------------------------------------------------}
 mapP :: (a -> b) -> Pulse a -> Build (Pulse b)
 mapP f p1 = do
-    p2 <- newPulse "mapP" $ ({-# SCC mapP #-} fmap f <$> readPulseP p1)
+    p2 <- newPulse "mapP" ({-# SCC mapP #-} fmap f <$> readPulseP p1)
     p2 `dependOn` p1
     return p2
 
@@ -43,13 +43,13 @@ tagFuture x p1 = do
 
 filterJustP :: Pulse (Maybe a) -> Build (Pulse a)
 filterJustP p1 = do
-    p2 <- newPulse "filterJustP" $ ({-# SCC filterJustP #-} join <$> readPulseP p1)
+    p2 <- newPulse "filterJustP" ({-# SCC filterJustP #-} join <$> readPulseP p1)
     p2 `dependOn` p1
     return p2
 
 unsafeMapIOP :: forall a b. (a -> IO b) -> Pulse a -> Build (Pulse b)
 unsafeMapIOP f p1 = do
-        p2 <- newPulse "unsafeMapIOP" $
+        p2 <- newPulse "unsafeMapIOP"
             ({-# SCC unsafeMapIOP #-} eval =<< readPulseP p1)
         p2 `dependOn` p1
         return p2
@@ -66,7 +66,7 @@ mergeWithP
   -> Pulse b
   -> Build (Pulse c)
 mergeWithP f g h px py = do
-  p <- newPulse "mergeWithP" $
+  p <- newPulse "mergeWithP"
        ({-# SCC mergeWithP #-} eval <$> readPulseP px <*> readPulseP py)
   p `dependOn` px
   p `dependOn` py
@@ -80,7 +80,7 @@ mergeWithP f g h px py = do
 -- See note [LatchRecursion]
 applyP :: Latch (a -> b) -> Pulse a -> Build (Pulse b)
 applyP f x = do
-    p <- newPulse "applyP" $
+    p <- newPulse "applyP"
         ({-# SCC applyP #-} fmap <$> readLatchP f <*> readPulseP x)
     p `dependOn` x
     return p
@@ -90,10 +90,10 @@ pureL = Reactive.Banana.Prim.Plumbing.pureL
 
 -- specialization of   mapL f = applyL (pureL f)
 mapL :: (a -> b) -> Latch a -> Latch b
-mapL f lx = cachedLatch $ ({-# SCC mapL #-} f <$> getValueL lx)
+mapL f lx = cachedLatch ({-# SCC mapL #-} f <$> getValueL lx)
 
 applyL :: Latch (a -> b) -> Latch a -> Latch b
-applyL lf lx = cachedLatch $
+applyL lf lx = cachedLatch
     ({-# SCC applyL #-} getValueL lf <*> getValueL lx)
 
 accumL :: a -> Pulse (a -> a) -> Build (Latch a, Pulse a)
@@ -120,7 +120,7 @@ switchL l pl = mdo
 
 executeP :: forall a b. Pulse (b -> Build a) -> b -> Build (Pulse a)
 executeP p1 b = do
-        p2 <- newPulse "executeP" $ ({-# SCC executeP #-} eval =<< readPulseP p1)
+        p2 <- newPulse "executeP" ({-# SCC executeP #-} eval =<< readPulseP p1)
         p2 `dependOn` p1
         return p2
     where

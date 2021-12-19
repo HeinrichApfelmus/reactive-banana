@@ -55,11 +55,11 @@ insertEdge (x,y) gr = gr
 
 -- | Get all immediate children of a node in a graph.
 getChildren :: (Eq a, Hashable a) => Graph a -> a -> [a]
-getChildren gr x = maybe [] id . Map.lookup x . children $ gr
+getChildren gr x = fromMaybe [] . Map.lookup x . children $ gr
 
 -- | Get all immediate parents of a node in a graph.
 getParents :: (Eq a, Hashable a) => Graph a -> a -> [a]
-getParents gr x = maybe [] id . Map.lookup x . parents $ gr
+getParents gr x = fromMaybe [] . Map.lookup x . parents $ gr
 
 -- | List all nodes such that each parent is listed before all of its children.
 listParents :: forall a. (Eq a, Hashable a) => Graph a -> [a]
@@ -88,7 +88,7 @@ dfs x = dfs' [x]
 -- | Depth-first serach, refined version.
 -- INVARIANT: None of the nodes in the initial list have a predecessor.
 dfs' :: forall a m. (Eq a, Hashable a, Monad m) => [a] -> GraphM m a -> m [a]
-dfs' xs succs = liftM fst $ go xs [] Set.empty
+dfs' xs succs = fst <$> go xs [] Set.empty
     where
     go :: [a] -> [a] -> Set.HashSet a -> m ([a], Set.HashSet a)
     go []     ys seen            = return (ys, seen)    -- all nodes seen
