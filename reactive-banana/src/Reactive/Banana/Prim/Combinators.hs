@@ -4,7 +4,6 @@
 {-# LANGUAGE RecursiveDo, ScopedTypeVariables #-}
 module Reactive.Banana.Prim.Combinators where
 
-import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
 
@@ -17,9 +16,9 @@ import Reactive.Banana.Prim.Plumbing
 import qualified Reactive.Banana.Prim.Plumbing (pureL)
 import           Reactive.Banana.Prim.Types    (Latch, Future, Pulse, Build, EvalP)
 
-import Debug.Trace
+debug :: String -> a -> a
 -- debug s = trace s
-debug s = id
+debug _ = id
 
 {-----------------------------------------------------------------------------
     Combinators - basic

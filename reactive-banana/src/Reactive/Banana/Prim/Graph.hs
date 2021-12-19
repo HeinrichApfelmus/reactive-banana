@@ -14,7 +14,6 @@ module Reactive.Banana.Prim.Graph
   , dfs
   ) where
 
-import           Control.Monad
 import           Data.Functor.Identity
 import qualified Data.HashMap.Strict   as Map
 import qualified Data.HashSet          as Set
@@ -56,10 +55,6 @@ insertEdge (x,y) gr = gr
 -- | Get all immediate children of a node in a graph.
 getChildren :: (Eq a, Hashable a) => Graph a -> a -> [a]
 getChildren gr x = fromMaybe [] . Map.lookup x . children $ gr
-
--- | Get all immediate parents of a node in a graph.
-getParents :: (Eq a, Hashable a) => Graph a -> a -> [a]
-getParents gr x = fromMaybe [] . Map.lookup x . parents $ gr
 
 -- | List all nodes such that each parent is listed before all of its children.
 listParents :: forall a. (Eq a, Hashable a) => Graph a -> [a]

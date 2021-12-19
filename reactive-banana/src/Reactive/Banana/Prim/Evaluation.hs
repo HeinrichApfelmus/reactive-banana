@@ -1,18 +1,14 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards, BangPatterns #-}
+{-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Prim.Evaluation (
     step
     ) where
 
-import qualified Control.Exception                  as Strict (evaluate)
-import Control.Monad ( foldM, join )
+import Control.Monad ( join )
 import           Control.Monad.IO.Class
 import qualified Control.Monad.Trans.RWSIO          as RWS
-import qualified Control.Monad.Trans.ReaderWriterIO as RW
-import           Data.Functor
-import           Data.Maybe
 import qualified Data.PQueue.Prio.Min               as Q
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.Mem.Weak
@@ -55,6 +51,7 @@ step (inputs,pulses)
             , nAlwaysP = Just alwaysP
             }
     return (runEvalOs $ map snd actions, state2)
+step _ Network{ nAlwaysP = Nothing } = error "step: step called when nAlwaysP is Nothing"
 
 runEvalOs :: [EvalO] -> IO ()
 runEvalOs = mapM_ join

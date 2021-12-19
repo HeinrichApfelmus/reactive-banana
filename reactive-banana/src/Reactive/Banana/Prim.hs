@@ -1,7 +1,6 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecursiveDo #-}
 module Reactive.Banana.Prim (
     -- * Synopsis
     -- | This is an internal module, useful if you want to
@@ -90,12 +89,6 @@ One notable exception is the 'readLatch' function, which must
 inspect its argument in order to be able to read its value.
 
 -}
-
-test :: Build (Pulse ())
-test = mdo
-    p1 <- mapP (const ()) p2
-    p2 <- neverP
-    return p1
 
 -- Note [LatchStrictness]
 {-

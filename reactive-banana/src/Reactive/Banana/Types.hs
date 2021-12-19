@@ -8,9 +8,7 @@ module Reactive.Banana.Types (
     Future(..),
     ) where
 
-import Data.Semigroup
 import Control.Applicative
-import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Fix
 import Data.String (IsString(..))
