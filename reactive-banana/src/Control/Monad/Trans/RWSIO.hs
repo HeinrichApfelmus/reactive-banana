@@ -7,13 +7,10 @@ module Control.Monad.Trans.RWSIO (
     RWSIOT(..), Tuple(..), rwsT, runRWSIOT, tell, ask, get, put,
     ) where
 
-import Control.Applicative
-import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Data.IORef
-import Data.Monoid
 
 {-----------------------------------------------------------------------------
     Type and class instances
@@ -92,8 +89,3 @@ get = R $ \(Tuple _ _ s') -> liftIO $ readIORef s'
 
 put :: MonadIO m => s -> RWSIOT r w s m ()
 put s = R $ \(Tuple _ _ s') -> liftIO $ writeIORef s' s
-
-test :: RWSIOT String String () IO ()
-test = do
-    c <- ask
-    tell c

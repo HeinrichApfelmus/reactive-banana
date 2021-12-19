@@ -5,7 +5,6 @@
 module Reactive.Banana.Prim.Compile where
 
 import Control.Exception (evaluate)
-import Control.Monad     (void)
 import Data.Functor
 import Data.IORef
 

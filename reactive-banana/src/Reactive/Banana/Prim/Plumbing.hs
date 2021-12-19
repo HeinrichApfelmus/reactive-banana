@@ -1,20 +1,15 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards, RecursiveDo, BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards, RecursiveDo, ScopedTypeVariables #-}
 module Reactive.Banana.Prim.Plumbing where
 
 import           Control.Monad                                (join)
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Class
 import qualified Control.Monad.Trans.RWSIO          as RWS
-import qualified Control.Monad.Trans.Reader         as Reader
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
-import           Data.Function                                (on)
 import           Data.Functor
 import           Data.IORef
-import           Data.List                                    (sortBy)
-import           Data.Monoid
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
 

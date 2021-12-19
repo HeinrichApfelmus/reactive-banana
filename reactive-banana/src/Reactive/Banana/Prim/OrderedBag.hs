@@ -6,10 +6,9 @@
 {-# LANGUAGE TupleSections #-}
 module Reactive.Banana.Prim.OrderedBag where
 
-import           Data.Functor
 import qualified Data.HashMap.Strict as Map
 import           Data.Hashable
-import           Data.List  hiding (insert)
+import           Data.List ( foldl', sortBy )
 import           Data.Maybe
 import           Data.Ord
 
@@ -26,7 +25,7 @@ empty = OB Map.empty 0
 -- | Add an element to an ordered bag after all the others.
 -- Does nothing if the element is already in the bag.
 insert :: (Eq a, Hashable a) => OrderedBag a -> a -> OrderedBag a
-insert (OB xs n) x = OB (Map.insertWith (\new old -> old) x n xs) (n+1)
+insert (OB xs n) x = OB (Map.insertWith (\_new old -> old) x n xs) (n+1)
 
 -- | Add a sequence of elements to an ordered bag.
 --

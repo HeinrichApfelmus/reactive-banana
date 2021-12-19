@@ -2,6 +2,8 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Reactive.Banana.Model (
     -- * Synopsis
     -- | Model implementation for learning and testing.

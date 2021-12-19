@@ -45,10 +45,8 @@ module Reactive.Banana.Combinators (
     ) where
 
 import Control.Applicative
-import Control.Monad
-import Data.Maybe          (isJust, catMaybes)
 import Data.Semigroup
-import Data.These (These(..), these)
+import Data.These (These(..))
 
 import qualified Reactive.Banana.Internal.Combinators as Prim
 import           Reactive.Banana.Types
@@ -341,10 +339,10 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     where
     fromLeft :: Either a b -> Maybe a
     fromLeft  (Left  a) = Just a
-    fromLeft  (Right b) = Nothing
+    fromLeft  (Right _) = Nothing
 
     fromRight :: Either a b -> Maybe b
-    fromRight (Left  a) = Nothing
+    fromRight (Left  _) = Nothing
     fromRight (Right b) = Just b
 
 

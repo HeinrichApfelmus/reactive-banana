@@ -1,22 +1,18 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecursiveDo, FlexibleInstances, NoMonomorphismRestriction #-}
+{-# LANGUAGE FlexibleInstances, NoMonomorphismRestriction #-}
 module Reactive.Banana.Internal.Combinators where
 
 import           Control.Concurrent.MVar
 import           Control.Event.Handler
 import           Control.Monad
-import           Control.Monad.Fix
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class           (lift)
 import           Control.Monad.Trans.Reader
-import           Data.Functor
-import           Data.Functor.Identity
 import           Data.IORef
 import qualified Reactive.Banana.Prim        as Prim
 import           Reactive.Banana.Prim.Cached
-import           Data.These (These(..), these)
 
 type Build   = Prim.Build
 type Latch a = Prim.Latch a
@@ -72,7 +68,7 @@ compile setup = do
             , pause   = writeIORef actuated False
             }
 
-    (output, s0) <-                             -- compile initial graph
+    (_output, s0) <-                             -- compile initial graph
         Prim.compile (runReaderT setup eventNetwork) Prim.emptyNetwork
     putMVar s s0                                -- set initial state
 
@@ -82,7 +78,7 @@ fromAddHandler :: AddHandler a -> Moment (Event a)
 fromAddHandler addHandler = do
     (p, fire) <- liftBuild Prim.newInput
     network   <- ask
-    liftIO $ register addHandler $ runStep network . fire
+    _unregister <- liftIO $ register addHandler $ runStep network . fire
     return $ Prim.fromPure p
 
 addReactimate :: Event (Future (IO ())) -> Moment ()

@@ -1,14 +1,14 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE LambdaCase #-}
 module Reactive.Banana.Prim.Dependencies (
     -- | Utilities for operating on node dependencies.
     addChild, changeParent, buildDependencies,
     ) where
 
 import Control.Monad
-import Data.Functor
 import Data.Monoid
 import System.Mem.Weak
 
@@ -61,6 +61,8 @@ doAddChild (P parent) (P child) = do
     w <- parent `connectChild` P child
     modify' child $ set levelP level . update parentsP (w:)
 doAddChild (P parent) node = void $ parent `connectChild` node
+doAddChild (L _) _ = error "doAddChild: Cannot add children to LatchWrite"
+doAddChild (O _) _ = error "doAddChild: Cannot add children to Output"
 
 -- | Remove a node from its parents and all parents from this node.
 removeParents :: Pulse a -> IO ()
@@ -93,16 +95,14 @@ doChangeParent child parent = do
     -- lower all parents of the node if the parent was higher than the node
     when (d > 0) $ do
         parents <- Graph.dfs (P parent) getParents
-        forM_ parents $ \(P node) -> do
-            modify' node $ update levelP (subtract d)
+        forM_ parents $ \case
+            P node -> modify' node $ update levelP (subtract d)
+            L _    -> error "doChangeParent: Cannot change parent of LatchWrite"
+            O _    -> error "doChangeParent: Cannot change parent of Output"
 
 {-----------------------------------------------------------------------------
     Helper functions
 ------------------------------------------------------------------------------}
-getChildren :: SomeNode -> IO [SomeNode]
-getChildren (P p) = deRefWeaks . _childrenP =<< readRef p
-getChildren _     = return []
-
 getParents :: SomeNode -> IO [SomeNode]
 getParents (P p) = deRefWeaks . _parentsP =<< readRef p
 getParents _     = return []

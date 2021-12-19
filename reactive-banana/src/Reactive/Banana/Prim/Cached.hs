@@ -11,7 +11,6 @@ module Reactive.Banana.Prim.Cached (
     liftCached1, liftCached2,
     ) where
 
-import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Data.IORef

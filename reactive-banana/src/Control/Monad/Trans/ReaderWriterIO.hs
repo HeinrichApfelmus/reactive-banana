@@ -8,14 +8,10 @@ module Control.Monad.Trans.ReaderWriterIO (
     ReaderWriterIOT, readerWriterIOT, runReaderWriterIOT, tell, listen, ask, local,
     ) where
 
-import Control.Applicative
-import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Data.IORef
-import Data.Monoid
-import Data.Semigroup
 
 {-----------------------------------------------------------------------------
     Type and class instances
@@ -40,17 +36,17 @@ instance (Monad m, a ~ ()) => Semigroup (ReaderWriterIOT r w m a) where
     mx <> my = mx >> my
 
 instance (Monad m, a ~ ()) => Monoid (ReaderWriterIOT r w m a) where
-    mempty          = return ()
-    mx `mappend` my = mx >> my
+    mempty  = return ()
+    mappend = (<>)
 
 {-----------------------------------------------------------------------------
     Functions
 ------------------------------------------------------------------------------}
 liftIOR :: MonadIO m => IO a -> ReaderWriterIOT r w m a
-liftIOR m = ReaderWriterIOT $ \x y -> liftIO m
+liftIOR m = ReaderWriterIOT $ \_ _ -> liftIO m
 
 liftR :: m a -> ReaderWriterIOT r w m a
-liftR m = ReaderWriterIOT $ \x y -> m
+liftR m = ReaderWriterIOT $ \_ _ -> m
 
 fmapR :: Functor m => (a -> b) -> ReaderWriterIOT r w m a -> ReaderWriterIOT r w m b
 fmapR f m = ReaderWriterIOT $ \x y -> fmap f (run m x y)
@@ -99,8 +95,3 @@ local f m = ReaderWriterIOT $ \r ref -> run m (f r) ref
 
 ask :: Monad m => ReaderWriterIOT r w m r
 ask = ReaderWriterIOT $ \r _ -> return r
-
-test :: ReaderWriterIOT String String IO ()
-test = do
-    c <- ask
-    tell c
