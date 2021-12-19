@@ -82,12 +82,12 @@ Library
 Test-Suite tests
     default-language:   Haskell98
     type:               exitcode-stdio-1.0
-    hs-source-dirs:     src
-    main-is:            Reactive/Banana/Test.hs
+    hs-source-dirs:     tests
+    main-is:            Main.hs
+    other-modules:      Plumbing
     build-depends:      base >= 4.2 && < 5,
-                        HUnit >= 1.2 && < 2,
-                        test-framework >= 0.6 && < 0.9,
-                        test-framework-hunit >= 0.2 && < 0.4,
+                        tasty,
+                        tasty-hunit,
                         reactive-banana, vault, containers,
                         semigroups, transformers,
                         unordered-containers, hashable, psqueues, pqueue, these
