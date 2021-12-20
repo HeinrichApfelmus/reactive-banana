@@ -4,14 +4,14 @@
 -- * Synopsis
 -- | Merge model and implementation into a single type. Not pretty.
 
-module Reactive.Banana.Test.Plumbing where
+module Plumbing where
 
 import Control.Applicative
 import Control.Monad (liftM, ap)
 import Control.Monad.Fix
 
 import qualified Reactive.Banana.Model as X
-import qualified Reactive.Banana.Internal.Combinators as Y
+import qualified Reactive.Banana as Y
 
 {-----------------------------------------------------------------------------
     Types as pairs
@@ -44,14 +44,14 @@ interpretGraph f = Y.interpret (fmap sndE . sndM . f . ey)
 never                               = E X.never Y.never
 filterJust (E x y)                  = E (X.filterJust x) (Y.filterJust y)
 mergeWith f g h (E x1 y1) (E x2 y2) = E (X.mergeWith f g h x1 x2) (Y.mergeWith f g h y1 y2)
-mapE f (E x y)                      = E (fmap f x) (Y.mapE f y)
-applyE ~(B x1 y1) (E x2 y2)         = E (X.apply x1 x2) (Y.applyE y1 y2)
+mapE f (E x y)                      = E (fmap f x) (fmap f y)
+applyE ~(B x1 y1) (E x2 y2)         = E (X.apply x1 x2) (y1 Y.<@> y2)
 
 instance Functor Event where fmap = mapE
 
-pureB a                         = B (pure a) (Y.pureB a)
-applyB (B x1 y1) (B x2 y2)      = B (x1 <*> x2) (Y.applyB y1 y2)
-mapB f (B x y)                  = B (fmap f x) (Y.mapB f y)
+pureB a                         = B (pure a) (pure a)
+applyB (B x1 y1) (B x2 y2)      = B (x1 <*> x2) (y1 <*> y2)
+mapB f (B x y)                  = B (fmap f x) (fmap f y)
 
 instance Functor     Behavior where fmap = mapB
 instance Applicative Behavior where pure = pureB; (<*>) = applyB
@@ -74,24 +74,24 @@ accumE   a ~(E x y) = M
     (ex <$> X.accumE a x)
     (ey <$> Y.accumE a y)
 stepperB a ~(E x y) = M
-    (bx <$> X.stepper  a x)
-    (by <$> Y.stepperB a y)
+    (bx <$> X.stepper a x)
+    (by <$> Y.stepper a y)
 stepper            = stepperB
 
 valueB ~(B x y) = M (X.valueB x) (Y.valueB y)
 
 observeE :: Event (Moment a) -> Event a
-observeE (E x y) = E (X.observeE $ fmap fstM x) (Y.observeE $ Y.mapE sndM y)
+observeE (E x y) = E (X.observeE $ fmap fstM x) (Y.observeE $ fmap sndM y)
 
 switchE :: Event (Event a) -> Moment (Event a)
 switchE (E x y) = M
-    (fmap ex $ X.switchE $   fmap fstE x)
-    (fmap ey $ Y.switchE $ Y.mapE sndE y)
+    (fmap ex $ X.switchE $ fmap fstE x)
+    (fmap ey $ Y.switchE $ fmap sndE y)
 
 switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
 switchB (B x y) (E xe ye) = M
-    (fmap bx $ X.switchB x $   fmap fstB xe)
-    (fmap by $ Y.switchB y $ Y.mapE sndB ye)
+    (fmap bx $ X.switchB x $ fmap fstB xe)
+    (fmap by $ Y.switchB y $ fmap sndB ye)
 
 {-----------------------------------------------------------------------------
     Derived combinators

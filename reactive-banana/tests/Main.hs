@@ -8,19 +8,14 @@
 import Control.Arrow
 import Control.Monad (when, join)
 
-import Test.Framework (defaultMain, testGroup, Test)
-import Test.Framework.Providers.HUnit (testCase)
-
-import Test.HUnit (assert, Assertion)
-
--- import Test.QuickCheck
--- import Test.QuickCheck.Property
+import Test.Tasty (defaultMain, testGroup, TestTree)
+import Test.Tasty.HUnit (testCase, assertBool)
 
 import Control.Applicative
-import Reactive.Banana.Test.Plumbing
+import Plumbing
 
 
-main = defaultMain
+main = defaultMain $ testGroup "Tests"
     [ testGroup "Simple"
         [ testModelMatch "id"      id
         , testModelMatch "never1"  never1
@@ -82,8 +77,8 @@ singletons = map Just
 -- test whether model matches
 testModelMatchM
     :: (Show b, Eq b)
-    => String -> (Event Int -> Moment (Event b)) -> Test
-testModelMatchM name f = testCase name $ assert $ matchesModel f [1..8::Int]
+    => String -> (Event Int -> Moment (Event b)) -> TestTree
+testModelMatchM name f = testCase name $ assertBool "matchesModel" =<< matchesModel f [1..8::Int]
 testModelMatch name f = testModelMatchM name (return . f)
 
 -- individual tests for debugging
