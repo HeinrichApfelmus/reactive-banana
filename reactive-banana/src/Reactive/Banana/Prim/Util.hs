@@ -60,4 +60,4 @@ mkWeakRefValue (Ref ref _) v = liftIO $ mkWeakIORefValue ref v
 
 -- | Dereference a list of weak pointers while discarding dead ones.
 deRefWeaks :: [Weak v] -> IO [v]
-deRefWeaks ws = {-# SCC deRefWeaks #-} catMaybes <$> mapM deRefWeak ws
+deRefWeaks ws = catMaybes <$> mapM deRefWeak ws

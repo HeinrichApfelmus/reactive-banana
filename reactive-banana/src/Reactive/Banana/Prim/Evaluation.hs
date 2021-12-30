@@ -31,7 +31,7 @@ step (inputs,pulses)
         , nOutputs = outputs1
         , nAlwaysP = Just alwaysP   -- we assume that this has been built already
         }
-    = {-# SCC step #-} do
+    = do
 
     -- evaluate pulses
     ((_, (latchUpdates, outputs)), topologyUpdates, os)
@@ -64,7 +64,7 @@ evaluatePulses :: [SomeNode] -> EvalP ()
 evaluatePulses roots = wrapEvalP $ \r -> go r =<< insertNodes r roots Q.empty
     where
     go :: RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> Queue SomeNode -> IO ()
-    go r q = {-# SCC go #-}
+    go r q =
         case ({-# SCC minView #-} Q.minView q) of
             Nothing         -> return ()
             Just (node, q)  -> do
@@ -104,7 +104,7 @@ evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
 
 -- | Insert nodes into the queue
 insertNodes :: RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> [SomeNode] -> Queue SomeNode -> IO (Queue SomeNode)
-insertNodes (RWS.Tuple (time,_) _ _) = {-# SCC insertNodes #-} go
+insertNodes (RWS.Tuple (time,_) _ _) = go
     where
     go :: [SomeNode] -> Queue SomeNode -> IO (Queue SomeNode)
     go []              q = return q

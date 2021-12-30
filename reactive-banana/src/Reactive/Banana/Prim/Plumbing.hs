@@ -129,7 +129,7 @@ addOutput p = do
     Build monad
 ------------------------------------------------------------------------------}
 runBuildIO :: BuildR -> BuildIO a -> IO (a, Action, [Output])
-runBuildIO i m = {-# SCC runBuild #-} do
+runBuildIO i m = do
         (a, BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold mempty m
         doit liftIOLaters          -- execute late IOs
         return (a,Action $ Deps.buildDependencies topologyUpdates,os)
