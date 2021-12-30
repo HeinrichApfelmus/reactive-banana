@@ -5,7 +5,7 @@ import Control.Monad (replicateM, forM_)
 import qualified Data.IntMap.Strict as IM
 import Reactive.Banana.Combinators ( Event, Behavior, MonadMoment, filterE, accumE, switchB, accumB )
 import Reactive.Banana.Frameworks (MomentIO, newAddHandler, fromAddHandler, compile, actuate, Handler)
-import Reactive.Banana.Types ( Event, Behavior, MonadMoment )
+import Reactive.Banana ( Event, Behavior, MonadMoment )
 import System.Random (randomRIO)
 import Test.Tasty (withResource)
 import Test.Tasty.Bench (env, defaultMain, bgroup, bench, whnfIO)
