@@ -78,7 +78,7 @@ Library
                         Reactive.Banana.Prim.Util,
                         Reactive.Banana.Types
     
-    ghc-options: -Wall -Wcompat -Werror=incomplete-record-updates -Werror=incomplete-uni-patterns -Werror=missing-fields -Werror=partial-fields -Wno-name-shadowing
+    ghc-options: -O2 -Wall -Wcompat -Werror=incomplete-record-updates -Werror=incomplete-uni-patterns -Werror=missing-fields -Werror=partial-fields -Wno-name-shadowing
 
 Test-Suite tests
     default-language:   Haskell98
