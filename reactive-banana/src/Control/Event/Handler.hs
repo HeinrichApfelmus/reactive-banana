@@ -11,7 +11,6 @@ module Control.Event.Handler (
 
 import           Control.Monad ((>=>), when)
 import           Data.IORef
-import qualified Data.Map    as Map
 import qualified Data.Unique
 
 {-----------------------------------------------------------------------------
@@ -61,13 +60,13 @@ filterIO f e = AddHandler $ \h ->
 -- >     fire "Hello!"
 newAddHandler :: IO (AddHandler a, Handler a)
 newAddHandler = do
-    handlers <- newIORef Map.empty
+    handlers <- newIORef []
     let register handler = do
             key <- Data.Unique.newUnique
-            atomicModifyIORef_ handlers $ Map.insert key handler
-            return $ atomicModifyIORef_ handlers $ Map.delete key
+            atomicModifyIORef_ handlers ((key, handler) :)
+            return $ atomicModifyIORef_ handlers $ filter (\(key', _) -> key' /= key)
         runHandlers a =
-            mapM_ (($ a) . snd) . Map.toList =<< readIORef handlers
+            mapM_ (($ a) . snd) =<< readIORef handlers
     return (AddHandler register, runHandlers)
 
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()

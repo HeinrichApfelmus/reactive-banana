@@ -1,17 +1,19 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NumericUnderscores #-}
 module Main ( main ) where
 
-import Control.Monad (replicateM, forM_)
+import Control.Monad (replicateM, replicateM_, forM_)
 import qualified Data.IntMap.Strict as IM
 import Reactive.Banana.Combinators ( Event, Behavior, MonadMoment, filterE, accumE, switchB, accumB )
-import Reactive.Banana.Frameworks (MomentIO, newAddHandler, fromAddHandler, compile, actuate, Handler)
+import Reactive.Banana.Frameworks (MomentIO, newAddHandler, fromAddHandler, compile, actuate, Handler, reactimate)
 import Reactive.Banana ( Event, Behavior, MonadMoment )
 import System.Random (randomRIO)
 import Test.Tasty (withResource)
 import Test.Tasty.Bench (env, defaultMain, bgroup, bench, whnfIO)
 
 main :: IO ()
-main = defaultMain [ mkBenchmarkGroup netsize | netsize <- [ 1, 2, 4, 8, 16, 32, 64, 128 ] ]
+main = defaultMain $ [ mkBenchmarkGroup netsize | netsize <- [ 1, 2, 4, 8, 16, 32, 64, 128 ] ] ++
+                     [ boringBenchmark ]
   where
     mkBenchmarkGroup netsize =
       withResource (setupBenchmark netsize) mempty $ \getEnv ->
@@ -27,6 +29,18 @@ main = defaultMain [ mkBenchmarkGroup netsize | netsize <- [ 1, 2, 4, 8, 16, 32,
             forM_ randomRs $ \ev ->
                 maybe (error "benchmark: trigger not found") ($ ()) $
                     IM.lookup ev trigMap
+
+    boringBenchmark = withResource setup mempty $ \getEnv ->
+      bench "Boring" $ whnfIO $ do
+        tick <- getEnv
+        {-# SCC ticks #-} replicateM_ 10_000_000 $ {-# SCC tick #-} tick ()
+      where
+        setup = do
+          (tick, onTick) <- newAddHandler
+          compile $ do
+            e <- fromAddHandler tick
+            reactimate $ return <$> e
+          return onTick
 
 setupBenchmark :: Int -> IO ([Handler ()], Handler Int)
 setupBenchmark netsize = do
