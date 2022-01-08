@@ -13,7 +13,7 @@ import           Control.Monad ((>=>), when)
 import           Control.Monad.Trans.Reader
 import           Data.IORef
 import qualified Data.Map    as Map
-import           Data.Monoid.Compat (Ap(Ap), getAp)
+import           Data.Monoid.Compat
 import qualified Data.Unique
 
 {-----------------------------------------------------------------------------
