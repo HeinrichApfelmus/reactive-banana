@@ -10,7 +10,10 @@ module Control.Event.Handler (
 
 
 import           Control.Monad ((>=>), when)
+import           Control.Monad.Trans.Reader
 import           Data.IORef
+import qualified Data.Map    as Map
+import           Data.Monoid (Ap(Ap), getAp)
 import qualified Data.Unique
 
 {-----------------------------------------------------------------------------
@@ -60,14 +63,24 @@ filterIO f e = AddHandler $ \h ->
 -- >     fire "Hello!"
 newAddHandler :: IO (AddHandler a, Handler a)
 newAddHandler = do
-    handlers <- newIORef []
+    handlers <- newIORef Map.empty
     let register handler = do
             key <- Data.Unique.newUnique
-            atomicModifyIORef_ handlers ((key, handler) :)
-            return $ atomicModifyIORef_ handlers $ filter (\(key', _) -> key' /= key)
+            atomicModifyIORef_ handlers $ Map.insert key handler
+            return $ atomicModifyIORef_ handlers $ Map.delete key
         runHandlers a =
-            mapM_ (($ a) . snd) =<< readIORef handlers
+            runAll a =<< readIORef handlers
     return (AddHandler register, runHandlers)
+    where
+        -- This function can also be seen as
+        --
+        --   runAll a fs = mapM_ ($ a) fs
+        --
+        -- The reason we write this using `Ap` and `ReaderT` is to produce code
+        -- that doesn't allocate. See https://github.com/HeinrichApfelmus/reactive-banana/pull/237
+        -- for more info.
+        runAll :: Foldable f => a -> f (a -> IO ()) -> IO ()
+        runAll a fs = runReaderT (getAp (foldMap (Ap . ReaderT) fs)) a
 
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ ref f = atomicModifyIORef ref $ \x -> (f x, ())
