@@ -55,8 +55,8 @@ runStep EventNetwork{ actuated, s } f = whenFlag actuated $ do
     (output, s2) <- f s1                -- calculate new state
     putMVar s s2                        -- write state
     output                              -- run IO actions afterwards
-    where
-        whenFlag flag action = readIORef flag >>= \b -> when b action
+  where
+    whenFlag flag action = readIORef flag >>= \b -> when b action
 
 
 actuate :: EventNetwork -> IO ()
