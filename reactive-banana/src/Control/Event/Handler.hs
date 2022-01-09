@@ -67,8 +67,29 @@ newAddHandler = do
             atomicModifyIORef_ handlers $ Map.insert key handler
             return $ atomicModifyIORef_ handlers $ Map.delete key
         runHandlers a =
-            mapM_ (($ a) . snd) . Map.toList =<< readIORef handlers
+            runAll a =<< readIORef handlers
     return (AddHandler register, runHandlers)
 
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ ref f = atomicModifyIORef ref $ \x -> (f x, ())
+
+-- | A callback is a @a -> IO ()@ function. We define this newtype to provide
+-- a way to combine callbacks ('Monoid' and 'Semigroup' instances), which
+-- allow us to write the efficient 'runAll' function.
+newtype Callback a = Callback { invoke :: a -> IO () }
+
+instance Semigroup (Callback a) where
+    Callback f <> Callback g = Callback $ \a -> f a >> g a
+
+instance Monoid (Callback a) where
+    mempty = Callback $ \_ -> return ()
+
+-- This function can also be seen as
+--
+--   runAll a fs = mapM_ ($ a) fs
+--
+-- The reason we write this using 'foldMap' and 'Callback' is to produce code
+-- that doesn't allocate. See https://github.com/HeinrichApfelmus/reactive-banana/pull/237
+-- for more info.
+runAll :: a -> Map.Map Data.Unique.Unique (a -> IO ()) -> IO ()
+runAll a fs = invoke (foldMap Callback fs) a
