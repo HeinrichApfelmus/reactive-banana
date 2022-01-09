@@ -45,10 +45,8 @@ module Reactive.Banana.Combinators (
     ) where
 
 import Control.Applicative
-import Control.Monad
-import Data.Maybe          (isJust, catMaybes)
 import Data.Semigroup
-import Data.These (These(..), these)
+import Data.These (These(..))
 
 import qualified Reactive.Banana.Internal.Combinators as Prim
 import           Reactive.Banana.Types
@@ -291,7 +289,7 @@ switchE e ee = liftMoment (M (fmap E (Prim.switchE (unE e) (Prim.mapE unE (unE e
 -- >  switchB b0 eb = \time0 -> \time1 ->
 -- >     last (b0 : [b | (timeb,b) <- eb, time0 <= timeb, timeb < time1]) time1
 switchB :: MonadMoment m => Behavior a -> Event (Behavior a) -> m (Behavior a)
-switchB b = liftMoment . M . fmap B . Prim.switchB (unB b) . Prim.mapE (unB) . unE
+switchB b = liftMoment . M . fmap B . Prim.switchB (unB b) . Prim.mapE unB . unE
 
 {-----------------------------------------------------------------------------
     Derived Combinators
@@ -342,10 +340,10 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     where
     fromLeft :: Either a b -> Maybe a
     fromLeft  (Left  a) = Just a
-    fromLeft  (Right b) = Nothing
+    fromLeft  (Right _) = Nothing
 
     fromRight :: Either a b -> Maybe b
-    fromRight (Left  a) = Nothing
+    fromRight (Left  _) = Nothing
     fromRight (Right b) = Just b
 
 

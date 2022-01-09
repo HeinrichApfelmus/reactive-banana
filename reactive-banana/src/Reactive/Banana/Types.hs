@@ -8,9 +8,7 @@ module Reactive.Banana.Types (
     Future(..),
     ) where
 
-import Data.Semigroup
 import Control.Applicative
-import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Fix
 import Data.String (IsString(..))
@@ -60,7 +58,7 @@ instance Semigroup a => Semigroup (Event a) where
 -- > mempty :: Event a
 -- > mempty = never
 instance Semigroup a => Monoid (Event a) where
-    mempty  = E $ Prim.never
+    mempty  = E Prim.never
     mappend = (<>)
 
 

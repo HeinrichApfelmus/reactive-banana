@@ -19,8 +19,6 @@ jobs:
           - '8.8.4'
           - '8.6.5'
           - '8.4.4'
-          - '8.2.2'
-          - '8.0.2'
           # We get linker errors when building the test suite. They look like this:
           # relocation R_X86_64_32S against symbol `stg_upd_frame_info' can not be used when making a PIE object; recompile with -fPIC
           # - '7.10.3'

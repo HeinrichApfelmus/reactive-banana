@@ -5,7 +5,6 @@
 module Reactive.Banana.Prim.Compile where
 
 import Control.Exception (evaluate)
-import Control.Monad     (void)
 import Data.Functor
 import Data.IORef
 
@@ -54,7 +53,7 @@ interpret :: (Pulse a -> BuildIO (Pulse b)) -> [Maybe a] -> IO [Maybe b]
 interpret f xs = do
     o   <- newIORef Nothing
     let network = do
-            (pin, sin) <- liftBuild $ newInput
+            (pin, sin) <- liftBuild newInput
             pmid       <- f pin
             pout       <- liftBuild $ mapP return pmid
             liftBuild $ addHandler pout (writeIORef o . Just)
@@ -80,10 +79,10 @@ interpret f xs = do
 runSpaceProfile :: Show b => (Pulse a -> BuildIO (Pulse b)) -> [a] -> IO ()
 runSpaceProfile f xs = do
     let g = do
-        (p1, fire) <- liftBuild $ newInput
+        (p1, fire) <- liftBuild newInput
         p2 <- f p1
         p3 <- mapP return p2                -- wrap into Future
-        addHandler p3 (\b -> void $ evaluate b)
+        addHandler p3 (void . evaluate)
         return fire
     (step,network) <- compile g emptyNetwork
 

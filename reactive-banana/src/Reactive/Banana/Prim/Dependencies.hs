@@ -1,16 +1,16 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE LambdaCase #-}
 module Reactive.Banana.Prim.Dependencies (
     -- | Utilities for operating on node dependencies.
     addChild, changeParent, buildDependencies,
     ) where
 
-import Control.Monad
-import Data.Functor
-import Data.Monoid
-import System.Mem.Weak
+import           Control.Monad
+import           Data.Monoid
+import           System.Mem.Weak
 
 import qualified Reactive.Banana.Prim.Graph as Graph
 import           Reactive.Banana.Prim.Types
@@ -58,9 +58,11 @@ doAddChild (P parent) (P child) = do
     level1 <- _levelP <$> readRef child
     level2 <- _levelP <$> readRef parent
     let level = level1 `max` (level2 + 1)
-    w <- parent `connectChild` (P child)
+    w <- parent `connectChild` P child
     modify' child $ set levelP level . update parentsP (w:)
 doAddChild (P parent) node = void $ parent `connectChild` node
+doAddChild (L _) _ = error "doAddChild: Cannot add children to LatchWrite"
+doAddChild (O _) _ = error "doAddChild: Cannot add children to Output"
 
 -- | Remove a node from its parents and all parents from this node.
 removeParents :: Pulse a -> IO ()
@@ -81,7 +83,7 @@ doChangeParent :: Pulse a -> Pulse b -> IO ()
 doChangeParent child parent = do
     -- remove all previous parents and connect to new parent
     removeParents child
-    w <- parent `connectChild` (P child)
+    w <- parent `connectChild` P child
     modify' child $ update parentsP (w:)
 
     -- calculate level difference between parent and node
@@ -92,17 +94,15 @@ doChangeParent child parent = do
 
     -- lower all parents of the node if the parent was higher than the node
     when (d > 0) $ do
-        parents <- Graph.dfs (P parent) getParents
-        forM_ parents $ \(P node) -> do
-            modify' node $ update levelP (subtract d)
+        parents <- Graph.reversePostOrder (P parent) getParents
+        forM_ parents $ \case
+            P node -> modify' node $ update levelP (subtract d)
+            L _    -> error "doChangeParent: Cannot change parent of LatchWrite"
+            O _    -> error "doChangeParent: Cannot change parent of Output"
 
 {-----------------------------------------------------------------------------
     Helper functions
 ------------------------------------------------------------------------------}
-getChildren :: SomeNode -> IO [SomeNode]
-getChildren (P p) = deRefWeaks =<< fmap _childrenP (readRef p)
-getChildren _     = return []
-
 getParents :: SomeNode -> IO [SomeNode]
-getParents (P p) = deRefWeaks =<< fmap _parentsP (readRef p)
+getParents (P p) = deRefWeaks . _parentsP =<< readRef p
 getParents _     = return []

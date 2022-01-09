@@ -28,7 +28,9 @@ nop = return ()
 ------------------------------------------------------------------------------}
 data Ref a = Ref !(IORef a) !Unique
 
-instance Hashable (Ref a) where hashWithSalt s (Ref _ u) = hashWithSalt s u 
+instance Eq (Ref a) where (==) = equalRef
+
+instance Hashable (Ref a) where hashWithSalt s (Ref _ u) = hashWithSalt s u
 
 equalRef :: Ref a -> Ref b -> Bool
 equalRef (Ref _ a) (Ref _ b) = a == b
@@ -58,4 +60,4 @@ mkWeakRefValue (Ref ref _) v = liftIO $ mkWeakIORefValue ref v
 
 -- | Dereference a list of weak pointers while discarding dead ones.
 deRefWeaks :: [Weak v] -> IO [v]
-deRefWeaks ws = {-# SCC deRefWeaks #-} fmap catMaybes $ mapM deRefWeak ws
+deRefWeaks ws = catMaybes <$> mapM deRefWeak ws

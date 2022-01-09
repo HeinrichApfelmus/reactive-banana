@@ -1,22 +1,18 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecursiveDo, FlexibleInstances, NoMonomorphismRestriction #-}
+{-# LANGUAGE FlexibleInstances, NamedFieldPuns, NoMonomorphismRestriction #-}
 module Reactive.Banana.Internal.Combinators where
 
 import           Control.Concurrent.MVar
 import           Control.Event.Handler
 import           Control.Monad
-import           Control.Monad.Fix
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class           (lift)
 import           Control.Monad.Trans.Reader
-import           Data.Functor
-import           Data.Functor.Identity
 import           Data.IORef
 import qualified Reactive.Banana.Prim        as Prim
 import           Reactive.Banana.Prim.Cached
-import           Data.These (These(..), these)
 
 type Build   = Prim.Build
 type Latch a = Prim.Latch a
@@ -47,42 +43,47 @@ interpret f = Prim.interpret $ \pulse -> runReaderT (g pulse) undefined
 ------------------------------------------------------------------------------}
 -- | Data type representing an event network.
 data EventNetwork = EventNetwork
-    { runStep :: Prim.Step -> IO ()
-    , actuate :: IO ()
-    , pause   :: IO ()
+    { actuated :: IORef Bool
+    , s :: MVar Prim.Network
     }
+
+
+runStep :: EventNetwork -> Prim.Step -> IO ()
+runStep EventNetwork{ actuated, s } f = whenFlag actuated $ do
+    s1 <- takeMVar s                    -- read and take lock
+    -- pollValues <- sequence polls     -- poll mutable data
+    (output, s2) <- f s1                -- calculate new state
+    putMVar s s2                        -- write state
+    output                              -- run IO actions afterwards
+  where
+    whenFlag flag action = readIORef flag >>= \b -> when b action
+
+
+actuate :: EventNetwork -> IO ()
+actuate EventNetwork{ actuated } = writeIORef actuated True
+
+pause :: EventNetwork -> IO ()
+pause EventNetwork{ actuated } = writeIORef actuated False
 
 -- | Compile to an event network.
 compile :: Moment () -> IO EventNetwork
 compile setup = do
     actuated <- newIORef False                   -- flag to set running status
     s        <- newEmptyMVar                     -- setup callback machinery
-    let
-        whenFlag flag action = readIORef flag >>= \b -> when b action
-        runStep f            = whenFlag actuated $ do
-            s1 <- takeMVar s                    -- read and take lock
-            -- pollValues <- sequence polls     -- poll mutable data
-            (output, s2) <- f s1                -- calculate new state
-            putMVar s s2                        -- write state
-            output                              -- run IO actions afterwards
 
-        eventNetwork = EventNetwork
-            { runStep = runStep
-            , actuate = writeIORef actuated True
-            , pause   = writeIORef actuated False
-            }
+    let eventNetwork = EventNetwork{ actuated, s }
 
-    (output, s0) <-                             -- compile initial graph
+    (_output, s0) <-                             -- compile initial graph
         Prim.compile (runReaderT setup eventNetwork) Prim.emptyNetwork
     putMVar s s0                                -- set initial state
 
-    return $ eventNetwork
+    return eventNetwork
 
 fromAddHandler :: AddHandler a -> Moment (Event a)
 fromAddHandler addHandler = do
-    (p, fire) <- liftBuild $ Prim.newInput
+    (p, fire) <- liftBuild Prim.newInput
     network   <- ask
-    liftIO $ register addHandler $ runStep network . fire
+    _unregister <- liftIO $ register addHandler $ runStep network . fire
     return $ Prim.fromPure p
 
 addReactimate :: Event (Future (IO ())) -> Moment ()
@@ -114,7 +115,7 @@ imposeChanges = liftCached2 $ \(l1,_) p2 -> return (l1,p2)
     Combinators - basic
 ------------------------------------------------------------------------------}
 never :: Event a
-never = don'tCache  $ liftBuild $ Prim.neverP
+never = don'tCache  $ liftBuild Prim.neverP
 
 mergeWith
   :: (a -> c)
@@ -210,7 +211,7 @@ executeP p1 = do
         Prim.executeP p2 r
 
 observeE :: Event (Moment a) -> Event a
-observeE = liftCached1 $ executeP
+observeE = liftCached1 executeP
 
 executeE :: Event (Moment a) -> Moment (Event a)
 executeE e = do

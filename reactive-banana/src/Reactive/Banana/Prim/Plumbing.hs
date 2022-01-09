@@ -1,26 +1,22 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards, RecursiveDo, BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards, RecursiveDo, ScopedTypeVariables #-}
 module Reactive.Banana.Prim.Plumbing where
 
 import           Control.Monad                                (join)
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Class
 import qualified Control.Monad.Trans.RWSIO          as RWS
-import qualified Control.Monad.Trans.Reader         as Reader
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
-import           Data.Function                                (on)
 import           Data.Functor
 import           Data.IORef
-import           Data.List                                    (sortBy)
-import           Data.Monoid
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
 
 import qualified Reactive.Banana.Prim.Dependencies as Deps
 import           Reactive.Banana.Prim.Types
 import           Reactive.Banana.Prim.Util
+import Data.Maybe (fromMaybe)
 
 {-----------------------------------------------------------------------------
     Build primitive pulses and latches
@@ -89,12 +85,12 @@ newLatch a = mdo
         updateOn p = do
             w  <- liftIO $ mkWeakRefValue latch latch
             lw <- liftIO $ newRef $ LatchWrite
-                { _evalLW  = maybe err id <$> readPulseP p
+                { _evalLW  = fromMaybe err <$> readPulseP p
                 , _latchLW = w
                 }
             -- writer is alive only as long as the latch is alive
             _  <- liftIO $ mkWeakRefValue latch lw
-            (P p) `addChild` (L lw)
+            P p `addChild` L lw
 
     return (updateOn, latch)
 
@@ -124,18 +120,18 @@ cachedLatch eval = unsafePerformIO $ mdo
 addOutput :: Pulse EvalO -> Build ()
 addOutput p = do
     o <- liftIO $ newRef $ Output
-        { _evalO = maybe (return $ debug "nop") id <$> readPulseP p
+        { _evalO = fromMaybe (return $ debug "nop") <$> readPulseP p
         }
-    (P p) `addChild` (O o)
+    P p `addChild` O o
     RW.tell $ BuildW (mempty, [o], mempty, mempty)
 
 {-----------------------------------------------------------------------------
     Build monad
 ------------------------------------------------------------------------------}
 runBuildIO :: BuildR -> BuildIO a -> IO (a, Action, [Output])
-runBuildIO i m = {-# SCC runBuild #-} do
+runBuildIO i m = do
         (a, BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold mempty m
-        doit $ liftIOLaters          -- execute late IOs
+        doit liftIOLaters          -- execute late IOs
         return (a,Action $ Deps.buildDependencies topologyUpdates,os)
     where
     -- Recursively execute the  buildLater  calls.
@@ -168,19 +164,19 @@ liftBuild :: Build a -> BuildIO a
 liftBuild = id
 
 getTimeB :: Build Time
-getTimeB = (\(x,_) -> x) <$> RW.ask
+getTimeB = fst <$> RW.ask
 
 alwaysP :: Build (Pulse ())
-alwaysP = (\(_,x) -> x) <$> RW.ask
+alwaysP = snd <$> RW.ask
 
 readLatchB :: Latch a -> Build a
 readLatchB = liftIO . readLatchIO
 
 dependOn :: Pulse child -> Pulse parent -> Build ()
-dependOn child parent = (P parent) `addChild` (P child)
+dependOn child parent = P parent `addChild` P child
 
 keepAlive :: Pulse child -> Pulse parent -> Build ()
-keepAlive child parent = liftIO $ mkWeakRefValue child parent >> return ()
+keepAlive child parent = liftIO $ void $ mkWeakRefValue child parent
 
 addChild :: SomeNode -> SomeNode -> Build ()
 addChild parent child =

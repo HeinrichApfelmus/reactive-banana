@@ -9,11 +9,10 @@ module Control.Event.Handler (
     ) where
 
 
+import           Control.Monad ((>=>), when)
 import           Data.IORef
 import qualified Data.Map    as Map
 import qualified Data.Unique
-
-type Map = Map.Map
 
 {-----------------------------------------------------------------------------
     Types
@@ -40,12 +39,12 @@ instance Functor AddHandler where
 
 -- | Map the event value with an 'IO' action.
 mapIO :: (a -> IO b) -> AddHandler a -> AddHandler b
-mapIO f e = AddHandler $ \h -> register e $ \x -> f x >>= h
+mapIO f e = AddHandler $ \h -> register e (f >=> h)
 
 -- | Filter event values that don't return 'True'.
 filterIO :: (a -> IO Bool) -> AddHandler a -> AddHandler a
 filterIO f e = AddHandler $ \h ->
-    register e $ \x -> f x >>= \b -> if b then h x else return ()
+    register e $ \x -> f x >>= \b -> when b $ h x
 
 {-----------------------------------------------------------------------------
     Construction
@@ -68,8 +67,29 @@ newAddHandler = do
             atomicModifyIORef_ handlers $ Map.insert key handler
             return $ atomicModifyIORef_ handlers $ Map.delete key
         runHandlers a =
-            mapM_ ($ a) . map snd . Map.toList =<< readIORef handlers
+            runAll a =<< readIORef handlers
     return (AddHandler register, runHandlers)
 
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ ref f = atomicModifyIORef ref $ \x -> (f x, ())
+
+-- | A callback is a @a -> IO ()@ function. We define this newtype to provide
+-- a way to combine callbacks ('Monoid' and 'Semigroup' instances), which
+-- allow us to write the efficient 'runAll' function.
+newtype Callback a = Callback { invoke :: a -> IO () }
+
+instance Semigroup (Callback a) where
+    Callback f <> Callback g = Callback $ \a -> f a >> g a
+
+instance Monoid (Callback a) where
+    mempty = Callback $ \_ -> return ()
+
+-- This function can also be seen as
+--
+--   runAll a fs = mapM_ ($ a) fs
+--
+-- The reason we write this using 'foldMap' and 'Callback' is to produce code
+-- that doesn't allocate. See https://github.com/HeinrichApfelmus/reactive-banana/pull/237
+-- for more info.
+runAll :: a -> Map.Map Data.Unique.Unique (a -> IO ()) -> IO ()
+runAll a fs = invoke (foldMap Callback fs) a

@@ -6,8 +6,6 @@
 module Reactive.Banana.Prim.IO where
 
 import           Control.Monad.IO.Class
-import           Data.Functor
-import           Data.IORef
 import qualified Data.Vault.Lazy        as Lazy
 
 import Reactive.Banana.Prim.Combinators (mapP)
@@ -16,7 +14,8 @@ import Reactive.Banana.Prim.Plumbing
 import Reactive.Banana.Prim.Types
 import Reactive.Banana.Prim.Util
 
-debug s = id
+debug :: String -> a -> a
+debug _ = id
 
 {-----------------------------------------------------------------------------
     Primitives connecting to the outside world
@@ -28,7 +27,7 @@ debug s = id
 newInput :: forall a. Build (Pulse a, a -> Step)
 newInput = mdo
     always <- alwaysP
-    key    <- liftIO $ Lazy.newKey
+    key    <- liftIO Lazy.newKey
     pulse  <- liftIO $ newRef $ Pulse
         { _keyP      = key
         , _seenP     = agesAgo

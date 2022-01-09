@@ -1,19 +1,14 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards, BangPatterns #-}
+{-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Prim.Evaluation (
     step
     ) where
 
-import qualified Control.Exception                  as Strict (evaluate)
-import           Control.Monad                                (foldM)
-import           Control.Monad                                (join)
+import Control.Monad ( join )
 import           Control.Monad.IO.Class
 import qualified Control.Monad.Trans.RWSIO          as RWS
-import qualified Control.Monad.Trans.ReaderWriterIO as RW
-import           Data.Functor
-import           Data.Maybe
 import qualified Data.PQueue.Prio.Min               as Q
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.Mem.Weak
@@ -36,7 +31,7 @@ step (inputs,pulses)
         , nOutputs = outputs1
         , nAlwaysP = Just alwaysP   -- we assume that this has been built already
         }
-    = {-# SCC step #-} do
+    = do
 
     -- evaluate pulses
     ((_, (latchUpdates, outputs)), topologyUpdates, os)
@@ -56,9 +51,10 @@ step (inputs,pulses)
             , nAlwaysP = Just alwaysP
             }
     return (runEvalOs $ map snd actions, state2)
+step _ Network{ nAlwaysP = Nothing } = error "step: step called when nAlwaysP is Nothing"
 
 runEvalOs :: [EvalO] -> IO ()
-runEvalOs = sequence_ . map join
+runEvalOs = mapM_ join
 
 {-----------------------------------------------------------------------------
     Traversal in dependency order
@@ -68,7 +64,7 @@ evaluatePulses :: [SomeNode] -> EvalP ()
 evaluatePulses roots = wrapEvalP $ \r -> go r =<< insertNodes r roots Q.empty
     where
     go :: RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> Queue SomeNode -> IO ()
-    go r q = {-# SCC go #-}
+    go r q =
         case ({-# SCC minView #-} Q.minView q) of
             Nothing         -> return ()
             Just (node, q)  -> do
@@ -103,12 +99,12 @@ evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
     debug "evaluateNode O"
     Output{..} <- readRef o
     m          <- _evalO                    -- calculate output action
-    rememberOutput $ (o,m)
+    rememberOutput (o,m)
     return []
 
 -- | Insert nodes into the queue
 insertNodes :: RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> [SomeNode] -> Queue SomeNode -> IO (Queue SomeNode)
-insertNodes (RWS.Tuple (time,_) _ _) = {-# SCC insertNodes #-} go
+insertNodes (RWS.Tuple (time,_) _ _) = go
     where
     go :: [SomeNode] -> Queue SomeNode -> IO (Queue SomeNode)
     go []              q = return q

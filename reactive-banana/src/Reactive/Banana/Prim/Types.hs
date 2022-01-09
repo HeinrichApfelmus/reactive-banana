@@ -1,16 +1,13 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ExistentialQuantification, NamedFieldPuns #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Reactive.Banana.Prim.Types where
 
 import           Control.Monad.Trans.RWSIO
-import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.ReaderWriterIO
-import           Data.Functor
 import           Data.Hashable
-import           Data.Monoid (Monoid, mempty, mappend)
 import           Data.Semigroup
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
@@ -123,7 +120,6 @@ type Output  = Ref Output'
 data Output' = Output
     { _evalO     :: EvalP EvalO
     }
-instance Eq Output where (==) = equalRef
 
 data SomeNode
     = forall a. P (Pulse a)
@@ -187,8 +183,8 @@ type EvalL    = ReaderWriterIOT () Time IO
 ------------------------------------------------------------------------------}
 printNode :: SomeNode -> IO String
 printNode (P p) = _nameP <$> readRef p
-printNode (L l) = return "L"
-printNode (O o) = return "O"
+printNode (L _) = return "L"
+printNode (O _) = return "O"
 
 {-----------------------------------------------------------------------------
     Time monoid
