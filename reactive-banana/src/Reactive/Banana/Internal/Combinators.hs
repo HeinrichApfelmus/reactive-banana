@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE FlexibleInstances, NoMonomorphismRestriction #-}
+{-# LANGUAGE FlexibleInstances, NamedFieldPuns, NoMonomorphismRestriction #-}
 module Reactive.Banana.Internal.Combinators where
 
 import           Control.Concurrent.MVar
@@ -43,30 +43,35 @@ interpret f = Prim.interpret $ \pulse -> runReaderT (g pulse) undefined
 ------------------------------------------------------------------------------}
 -- | Data type representing an event network.
 data EventNetwork = EventNetwork
-    { runStep :: Prim.Step -> IO ()
-    , actuate :: IO ()
-    , pause   :: IO ()
+    { actuated :: IORef Bool
+    , s :: MVar Prim.Network
     }
+
+
+runStep :: EventNetwork -> Prim.Step -> IO ()
+runStep EventNetwork{ actuated, s } f = whenFlag actuated $ do
+    s1 <- takeMVar s                    -- read and take lock
+    -- pollValues <- sequence polls     -- poll mutable data
+    (output, s2) <- f s1                -- calculate new state
+    putMVar s s2                        -- write state
+    output                              -- run IO actions afterwards
+  where
+    whenFlag flag action = readIORef flag >>= \b -> when b action
+
+
+actuate :: EventNetwork -> IO ()
+actuate EventNetwork{ actuated } = writeIORef actuated True
+
+pause :: EventNetwork -> IO ()
+pause EventNetwork{ actuated } = writeIORef actuated False
 
 -- | Compile to an event network.
 compile :: Moment () -> IO EventNetwork
 compile setup = do
     actuated <- newIORef False                   -- flag to set running status
     s        <- newEmptyMVar                     -- setup callback machinery
-    let
-        whenFlag flag action = readIORef flag >>= \b -> when b action
-        runStep f            = whenFlag actuated $ do
-            s1 <- takeMVar s                    -- read and take lock
-            -- pollValues <- sequence polls     -- poll mutable data
-            (output, s2) <- f s1                -- calculate new state
-            putMVar s s2                        -- write state
-            output                              -- run IO actions afterwards
 
-        eventNetwork = EventNetwork
-            { runStep = runStep
-            , actuate = writeIORef actuated True
-            , pause   = writeIORef actuated False
-            }
+    let eventNetwork = EventNetwork{ actuated, s }
 
     (_output, s0) <-                             -- compile initial graph
         Prim.compile (runReaderT setup eventNetwork) Prim.emptyNetwork
