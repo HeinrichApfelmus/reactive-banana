@@ -5,7 +5,9 @@ Changelog for the `reactive-banana** package
 
 * Added `Semigroup` and `Monoid` instances to `Moment` and `MomentIO`. [#223][]
 * Add '@>' operator
+* `switchE` now takes an initial event. [#165][]
 
+  [#165]: https://github.com/HeinrichApfelmus/reactive-banana/pull/165
   [#223]: https://github.com/HeinrichApfelmus/reactive-banana/pull/223
 
 **Version 1.2.2.0**

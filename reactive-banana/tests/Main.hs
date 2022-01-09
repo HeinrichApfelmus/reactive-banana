@@ -215,7 +215,7 @@ dynamic_apply e = do
     return $ observeE $ (valueB b) <$ e
     -- = stepper 0 e <@ e
 
-switchE1 e = switchE (e <$ e)
+switchE1 e = switchE e (e <$ e)
 
 switchB1 e = do
     b0 <- stepper 0 e

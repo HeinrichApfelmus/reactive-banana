@@ -275,12 +275,15 @@ observeE = E . Prim.observeE . Prim.mapE unM . unE
 -- | Dynamically switch between 'Event'.
 -- Semantically,
 --
--- > switchE ee = \time0 -> concat [trim t1 t2 e | (t1,t2,e) <- intervals ee, time0 <= t1]
--- >     where
--- >     intervals e        = [(time1, time2, x) | ((time1,x),(time2,_)) <- zip e (tail e)]
+-- > switchE e0 ee0 time0 =
+-- >     concat [ trim t1 t2 e | (t1,t2,e) <- intervals ee ]
+-- >   where
+-- >     laterThan e time0  = [(timex,x) | (timex,x) <- e, time0 < timex ]
+-- >     ee                 = [(time0, e0)] ++ (ee0 `laterThan` time0)
+-- >     intervals ee       = [(time1, time2, e) | ((time1,e),(time2,_)) <- zip ee (tail ee)]
 -- >     trim time1 time2 e = [x | (timex,x) <- e, time1 < timex, timex <= time2]
-switchE :: MonadMoment m => Event (Event a) -> m (Event a)
-switchE = liftMoment . M . fmap E . Prim.switchE . Prim.mapE unE . unE
+switchE :: MonadMoment m => Event a -> Event (Event a) -> m (Event a)
+switchE e ee = liftMoment (M (fmap E (Prim.switchE (unE e) (Prim.mapE unE (unE ee)))))
 
 -- | Dynamically switch between 'Behavior'.
 -- Semantically,
