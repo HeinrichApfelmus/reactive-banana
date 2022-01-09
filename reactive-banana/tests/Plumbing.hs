@@ -85,8 +85,8 @@ observeE (E x y) = E (X.observeE $ fmap fstM x) (Y.observeE $ fmap sndM y)
 
 switchE :: Event a -> Event (Event a) -> Moment (Event a)
 switchE (E x0 y0) (E x y) = M
-    (fmap ex $ X.switchE x0 $   fmap fstE x)
-    (fmap ey $ Y.switchE y0 $ Y.mapE sndE y)
+    (fmap ex $ X.switchE x0 $ fstE <$> x)
+    (fmap ey $ Y.switchE y0 $ sndE <$> y)
 
 switchB :: Behavior a -> Event (Behavior a) -> Moment (Behavior a)
 switchB (B x y) (E xe ye) = M

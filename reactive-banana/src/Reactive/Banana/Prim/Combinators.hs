@@ -8,7 +8,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 
 import Reactive.Banana.Prim.Plumbing
-    ( neverP, newPulse, newLatch, cachedLatch
+    ( newPulse, newLatch, cachedLatch
     , dependOn, keepAlive, changeParent
     , getValueL
     , readPulseP, readLatchP, readLatchFutureP, liftBuildP,
