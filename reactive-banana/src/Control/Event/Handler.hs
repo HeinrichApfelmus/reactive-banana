@@ -10,10 +10,8 @@ module Control.Event.Handler (
 
 
 import           Control.Monad ((>=>), when)
-import           Control.Monad.Trans.Reader
 import           Data.IORef
 import qualified Data.Map    as Map
-import           Data.Monoid.Compat
 import qualified Data.Unique
 
 {-----------------------------------------------------------------------------
@@ -71,16 +69,27 @@ newAddHandler = do
         runHandlers a =
             runAll a =<< readIORef handlers
     return (AddHandler register, runHandlers)
-    where
-        -- This function can also be seen as
-        --
-        --   runAll a fs = mapM_ ($ a) fs
-        --
-        -- The reason we write this using `Ap` and `ReaderT` is to produce code
-        -- that doesn't allocate. See https://github.com/HeinrichApfelmus/reactive-banana/pull/237
-        -- for more info.
-        runAll :: Foldable f => a -> f (a -> IO ()) -> IO ()
-        runAll a fs = runReaderT (getAp (foldMap (Ap . ReaderT) fs)) a
 
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ ref f = atomicModifyIORef ref $ \x -> (f x, ())
+
+-- | A callback is a @a -> IO ()@ function. We define this newtype to provide
+-- a way to combine callbacks ('Monoid' and 'Semigroup' instances), which
+-- allow us to write the efficient 'runAll' function.
+newtype Callback a = Callback { invoke :: a -> IO () }
+
+instance Semigroup (Callback a) where
+    Callback f <> Callback g = Callback $ \a -> f a >> g a
+
+instance Monoid (Callback a) where
+    mempty = Callback $ \_ -> return ()
+
+-- This function can also be seen as
+--
+--   runAll a fs = mapM_ ($ a) fs
+--
+-- The reason we write this using 'foldMap' and 'Callback' is to produce code
+-- that doesn't allocate. See https://github.com/HeinrichApfelmus/reactive-banana/pull/237
+-- for more info.
+runAll :: a -> Map.Map Data.Unique.Unique (a -> IO ()) -> IO ()
+runAll a fs = invoke (foldMap Callback fs) a
