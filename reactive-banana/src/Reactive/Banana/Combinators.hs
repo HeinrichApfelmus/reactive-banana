@@ -353,7 +353,7 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
 -- | Keep only the next occurence of an event.
 --
 -- > once e = \time0 -> take 1 [(t, a) | (t, a) <- e, time0 <= t]
-once :: Event a -> MomentIO (Event a)
+once :: MonadMoment m => Event a -> m (Event a)
 once e = mdo
     e1 <- switchE e (never <$ e1)
     return e1
