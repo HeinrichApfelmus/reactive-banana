@@ -28,9 +28,7 @@ Build-type:          Simple
 Tested-with:         GHC == 8.4.3, GHC == 8.6.1
 
 extra-source-files:     CHANGELOG.md,
-                        doc/examples/*.hs,
-                        src/Reactive/Banana/Test.hs,
-                        src/Reactive/Banana/Test/Plumbing.hs
+                        doc/examples/*.hs
 extra-doc-files:        doc/*.png
 
 Source-repository head
