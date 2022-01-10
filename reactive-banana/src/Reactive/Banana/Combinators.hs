@@ -2,6 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Reactive.Banana.Combinators (
@@ -36,7 +37,7 @@ module Reactive.Banana.Combinators (
     -- ** Infix operators
     (<@>), (<@), (@>),
     -- ** Filtering
-    filterJust, filterApply, whenE, split,
+    filterJust, filterApply, whenE, split, once,
     -- ** Accumulation
     -- $Accumulation.
     unions, accumB, mapAccum,
@@ -347,6 +348,15 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
     fromRight :: Either a b -> Maybe b
     fromRight (Left  _) = Nothing
     fromRight (Right b) = Just b
+
+
+-- | Keep only the next occurence of an event.
+--
+-- > once e = \time0 -> head [(t, a) | (t, a) <- e, time0 < t]
+once :: Event a -> MomentIO (Event a)
+once e = mdo
+    e1 <- switchE e (never <$ e1)
+    return e1
 
 
 -- $Accumulation.
