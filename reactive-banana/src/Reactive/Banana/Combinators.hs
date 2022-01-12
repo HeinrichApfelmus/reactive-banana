@@ -351,7 +351,9 @@ split e = (filterJust $ fromLeft <$> e, filterJust $ fromRight <$> e)
 
 
 -- | Keep only the next occurence of an event.
--- (Also aids the garbage collector by indicating that the result event can be discarded after its only occurrence.)
+-- 
+-- @once@ also aids the garbage collector by indicating that the result event can be discarded after its only occurrence.
+--
 -- > once e = \time0 -> take 1 [(t, a) | (t, a) <- e, time0 <= t]
 once :: MonadMoment m => Event a -> m (Event a)
 once e = mdo
