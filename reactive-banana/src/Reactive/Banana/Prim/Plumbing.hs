@@ -2,6 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecordWildCards, RecursiveDo, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns #-}
 module Reactive.Banana.Prim.Plumbing where
 
 import           Control.Monad                                (join)
@@ -129,7 +130,7 @@ addOutput p = do
     Build monad
 ------------------------------------------------------------------------------}
 runBuildIO :: BuildR -> BuildIO a -> IO (a, Action, [Output])
-runBuildIO i m = do
+runBuildIO !i m = do
         (a, BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold mempty m
         doit liftIOLaters          -- execute late IOs
         return (a,Action $ Deps.buildDependencies topologyUpdates,os)
