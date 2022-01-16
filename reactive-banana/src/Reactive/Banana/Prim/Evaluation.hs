@@ -29,7 +29,7 @@ step :: Inputs -> Step
 step (inputs,pulses)
         Network{ nTime = time1
         , nOutputs = outputs1
-        , nAlwaysP = Just alwaysP   -- we assume that this has been built already
+        , nAlwaysP = alwaysP
         }
     = do
 
@@ -48,10 +48,9 @@ step (inputs,pulses)
         state2  = Network
             { nTime    = next time1
             , nOutputs = OB.inserts outputs1 os
-            , nAlwaysP = Just alwaysP
+            , nAlwaysP = alwaysP
             }
     return (runEvalOs $ map snd actions, state2)
-step _ Network{ nAlwaysP = Nothing } = error "step: step called when nAlwaysP is Nothing"
 
 runEvalOs :: [EvalO] -> IO ()
 runEvalOs = mapM_ join
