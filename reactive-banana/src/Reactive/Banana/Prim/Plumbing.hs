@@ -212,6 +212,7 @@ runEvalP :: Lazy.Vault -> EvalP a -> Build (a, EvalPW)
 runEvalP s1 m = RW.readerWriterIOT $ \r2 -> do
     (a,_,(w1,w2)) <- RWS.runRWSIOT m r2 s1
     return ((a,w1), w2)
+{-# inline runEvalP #-}
 
 liftBuildP :: Build a -> EvalP a
 liftBuildP m = RWS.rwsT $ \r2 s -> do

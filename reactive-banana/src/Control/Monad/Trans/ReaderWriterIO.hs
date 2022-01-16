@@ -82,7 +82,7 @@ runReaderWriterIOT m r = do
     return (a,w)
 
 tell :: (MonadIO m, Monoid w) => w -> ReaderWriterIOT r w m ()
-tell w = ReaderWriterIOT $ \_ ref -> liftIO $ modifyIORef ref (`mappend` w)
+tell w = ReaderWriterIOT $ \_ ref -> liftIO $ modifyIORef' ref (`mappend` w)
 
 listen :: (MonadIO m, Monoid w) => ReaderWriterIOT r w m a -> ReaderWriterIOT r w m (a, w)
 listen m = ReaderWriterIOT $ \r ref -> do
