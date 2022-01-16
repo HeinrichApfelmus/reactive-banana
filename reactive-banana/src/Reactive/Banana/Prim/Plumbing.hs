@@ -144,6 +144,7 @@ runBuildIO !i m = do
             Just m  -> snd <$> unfold w' m
             Nothing -> return w'
         return (a,w'')
+{-# inline runBuildIO #-}
 
 buildLater :: Build () -> Build ()
 buildLater x = RW.tell $ BuildW (mempty, mempty, mempty, Just x)
