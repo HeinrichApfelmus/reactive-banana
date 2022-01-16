@@ -39,7 +39,7 @@ newInput = mdo
         }
     -- Also add the  alwaysP  pulse to the inputs.
     let run :: a -> Step
-        run a = step ([P pulse, P always], Lazy.insert key (Just a) Lazy.empty)
+        run a n = step ([P pulse, P always], Lazy.insert key (Just a) Lazy.empty) n
     return (pulse, run)
 
 -- | Register a handler to be executed whenever a pulse occurs.
