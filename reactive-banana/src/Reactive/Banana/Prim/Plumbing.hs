@@ -131,20 +131,20 @@ addOutput p = do
 ------------------------------------------------------------------------------}
 runBuildIO :: BuildR -> BuildIO a -> IO (a, Action, [Output])
 runBuildIO !i m = do
-        (a, BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold mempty m
+        (a, BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold i mempty m
         doit liftIOLaters          -- execute late IOs
         return (a,Action $ Deps.buildDependencies topologyUpdates,os)
-    where
-    -- Recursively execute the  buildLater  calls.
-    unfold :: BuildW -> BuildIO a -> IO (a, BuildW)
-    unfold w m = do
-        (a, BuildW (w1, w2, w3, later)) <- RW.runReaderWriterIOT m i
-        let w' = w <> BuildW (w1,w2,w3,mempty)
-        w'' <- case later of
-            Just m  -> snd <$> unfold w' m
-            Nothing -> return w'
-        return (a,w'')
 {-# inline runBuildIO #-}
+
+-- Recursively execute the  buildLater  calls.
+unfold :: BuildR -> BuildW -> BuildIO a -> IO (a, BuildW)
+unfold i w m = do
+    (a, BuildW (w1, w2, w3, later)) <- RW.runReaderWriterIOT m i
+    let w' = w <> BuildW (w1,w2,w3,mempty)
+    w'' <- case later of
+        Just m  -> snd <$> unfold i w' m
+        Nothing -> return w'
+    return (a,w'')
 
 buildLater :: Build () -> Build ()
 buildLater x = RW.tell $ BuildW (mempty, mempty, mempty, Just x)
