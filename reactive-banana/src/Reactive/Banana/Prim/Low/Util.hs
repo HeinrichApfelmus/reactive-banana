@@ -2,7 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
-module Reactive.Banana.Prim.Util where
+module Reactive.Banana.Prim.Low.Util where
 
 import           Control.Monad
 import           Control.Monad.IO.Class

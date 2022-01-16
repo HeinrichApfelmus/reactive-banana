@@ -42,7 +42,7 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.IORef
 import           Reactive.Banana.Combinators
-import qualified Reactive.Banana.Internal.Combinators as Prim
+import qualified Reactive.Banana.Prim.High.Combinators as Prim
 import           Reactive.Banana.Types
 
 

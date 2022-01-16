@@ -4,7 +4,7 @@
     Implementation of a bag whose elements are ordered by arrival time.
 ------------------------------------------------------------------------------}
 {-# LANGUAGE TupleSections #-}
-module Reactive.Banana.Prim.OrderedBag where
+module Reactive.Banana.Prim.Low.OrderedBag where
 
 import qualified Data.HashMap.Strict as Map
 import           Data.Hashable

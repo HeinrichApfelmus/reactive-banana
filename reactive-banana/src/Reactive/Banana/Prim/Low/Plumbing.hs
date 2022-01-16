@@ -2,7 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecordWildCards, RecursiveDo, ScopedTypeVariables #-}
-module Reactive.Banana.Prim.Plumbing where
+module Reactive.Banana.Prim.Low.Plumbing where
 
 import           Control.Monad                                (join)
 import           Control.Monad.IO.Class
@@ -13,9 +13,9 @@ import           Data.IORef
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
 
-import qualified Reactive.Banana.Prim.Dependencies as Deps
-import           Reactive.Banana.Prim.Types
-import           Reactive.Banana.Prim.Util
+import qualified Reactive.Banana.Prim.Low.Dependencies as Deps
+import           Reactive.Banana.Prim.Low.Types
+import           Reactive.Banana.Prim.Low.Util
 import Data.Maybe (fromMaybe)
 
 {-----------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Prim (
+module Reactive.Banana.Prim.Mid (
     -- * Synopsis
     -- | This is an internal module, useful if you want to
     -- implemented your own FRP library.
@@ -16,7 +16,7 @@ module Reactive.Banana.Prim (
     module Control.Monad.IO.Class,
 
     -- * Caching
-    module Reactive.Banana.Prim.Cached,
+    module Reactive.Banana.Prim.High.Cached,
 
     -- * Testing
     interpret, mapAccumM, mapAccumM_, runSpaceProfile,
@@ -41,12 +41,13 @@ module Reactive.Banana.Prim (
 
 
 import Control.Monad.IO.Class
-import Reactive.Banana.Prim.Cached
-import Reactive.Banana.Prim.Combinators
-import Reactive.Banana.Prim.Compile
-import Reactive.Banana.Prim.IO
-import Reactive.Banana.Prim.Plumbing (neverP, alwaysP, liftBuild, buildLater, buildLaterReadNow, liftIOLater)
-import Reactive.Banana.Prim.Types
+import Reactive.Banana.Prim.Low.Compile
+import Reactive.Banana.Prim.Low.IO
+import Reactive.Banana.Prim.Low.Plumbing
+    ( neverP, alwaysP, liftBuild, buildLater, buildLaterReadNow, liftIOLater )
+import Reactive.Banana.Prim.Low.Types
+import Reactive.Banana.Prim.Mid.Combinators
+import Reactive.Banana.Prim.High.Cached
 
 {-----------------------------------------------------------------------------
     Notes

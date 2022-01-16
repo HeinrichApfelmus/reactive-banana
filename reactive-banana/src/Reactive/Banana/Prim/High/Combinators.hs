@@ -2,7 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE FlexibleInstances, NamedFieldPuns, NoMonomorphismRestriction #-}
-module Reactive.Banana.Internal.Combinators where
+module Reactive.Banana.Prim.High.Combinators where
 
 import           Control.Concurrent.MVar
 import           Control.Event.Handler
@@ -11,8 +11,8 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class           (lift)
 import           Control.Monad.Trans.Reader
 import           Data.IORef
-import qualified Reactive.Banana.Prim        as Prim
-import           Reactive.Banana.Prim.Cached
+import qualified Reactive.Banana.Prim.Mid        as Prim
+import           Reactive.Banana.Prim.High.Cached
 
 type Build   = Prim.Build
 type Latch a = Prim.Latch a

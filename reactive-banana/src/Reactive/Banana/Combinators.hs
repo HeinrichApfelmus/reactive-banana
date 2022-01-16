@@ -49,7 +49,7 @@ import Control.Applicative
 import Data.Semigroup
 import Data.These (These(..))
 
-import qualified Reactive.Banana.Internal.Combinators as Prim
+import qualified Reactive.Banana.Prim.High.Combinators as Prim
 import           Reactive.Banana.Types
 
 {-----------------------------------------------------------------------------

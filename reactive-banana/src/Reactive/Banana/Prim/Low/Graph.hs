@@ -5,7 +5,7 @@
 ------------------------------------------------------------------------------}
 {-# language ScopedTypeVariables#-}
 
-module Reactive.Banana.Prim.Graph
+module Reactive.Banana.Prim.Low.Graph
   ( Graph
   , emptyGraph
   , insertEdge

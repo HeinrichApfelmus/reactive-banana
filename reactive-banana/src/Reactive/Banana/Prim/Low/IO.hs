@@ -3,16 +3,16 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Reactive.Banana.Prim.IO where
+module Reactive.Banana.Prim.Low.IO where
 
 import           Control.Monad.IO.Class
 import qualified Data.Vault.Lazy        as Lazy
 
-import Reactive.Banana.Prim.Combinators (mapP)
-import Reactive.Banana.Prim.Evaluation  (step)
-import Reactive.Banana.Prim.Plumbing
-import Reactive.Banana.Prim.Types
-import Reactive.Banana.Prim.Util
+import Reactive.Banana.Prim.Mid.Combinators (mapP)
+import Reactive.Banana.Prim.Low.Evaluation  (step)
+import Reactive.Banana.Prim.Low.Plumbing
+import Reactive.Banana.Prim.Low.Types
+import Reactive.Banana.Prim.Low.Util
 
 debug :: String -> a -> a
 debug _ = id

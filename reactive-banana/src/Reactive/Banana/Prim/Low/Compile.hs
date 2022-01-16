@@ -3,17 +3,17 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
-module Reactive.Banana.Prim.Compile where
+module Reactive.Banana.Prim.Low.Compile where
 
 import Control.Exception (evaluate)
 import Data.Functor
 import Data.IORef
 
-import           Reactive.Banana.Prim.Combinators
-import           Reactive.Banana.Prim.IO
-import qualified Reactive.Banana.Prim.OrderedBag  as OB
-import           Reactive.Banana.Prim.Plumbing
-import           Reactive.Banana.Prim.Types
+import           Reactive.Banana.Prim.Mid.Combinators (mapP)
+import           Reactive.Banana.Prim.Low.IO
+import qualified Reactive.Banana.Prim.Low.OrderedBag  as OB
+import           Reactive.Banana.Prim.Low.Plumbing
+import           Reactive.Banana.Prim.Low.Types
 
 {-----------------------------------------------------------------------------
    Compilation
