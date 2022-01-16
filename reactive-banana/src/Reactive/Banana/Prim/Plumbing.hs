@@ -140,7 +140,7 @@ runBuildIO !i m = do
 unfold :: BuildR -> BuildW -> BuildIO a -> IO (a, BuildW)
 unfold i w m = do
     (a, BuildW (w1, w2, w3, later)) <- RW.runReaderWriterIOT m i
-    let w' = w <> BuildW (w1,w2,w3,mempty)
+    let !w' = w <> BuildW (w1,w2,w3,mempty)
     w'' <- case later of
         Just m  -> snd <$> unfold i w' m
         Nothing -> return w'
