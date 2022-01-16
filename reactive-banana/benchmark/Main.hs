@@ -33,13 +33,14 @@ main = defaultMain $ [ mkBenchmarkGroup netsize | netsize <- [ 1, 2, 4, 8, 16, 3
     boringBenchmark = withResource setup mempty $ \getEnv ->
       bench "Boring" $ whnfIO $ do
         tick <- getEnv
-        {-# SCC ticks #-} replicateM_ 10_000_000 $ {-# SCC tick #-} tick ()
+        {-# SCC ticks #-} replicateM_ 1_000_000 $ {-# SCC tick #-} tick ()
       where
         setup = do
           (tick, onTick) <- newAddHandler
-          compile $ do
+          network <- compile $ do
             e <- fromAddHandler tick
             reactimate $ return <$> e
+          actuate network
           return onTick
 
 setupBenchmark :: Int -> IO ([Handler ()], Handler Int)
