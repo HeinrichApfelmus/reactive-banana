@@ -138,7 +138,7 @@ runBuildIO !i m = do
 
 -- Recursively execute the  buildLater  calls.
 unfold :: BuildR -> BuildW -> BuildIO a -> IO (a, BuildW)
-unfold i w m = do
+unfold !i w m = do
     (a, BuildW (w1, w2, w3, later)) <- RW.runReaderWriterIOT m i
     let !w' = w <> BuildW (w1,w2,w3,mempty)
     w'' <- case later of
