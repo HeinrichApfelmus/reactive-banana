@@ -2,6 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE BangPatterns #-}
 module Reactive.Banana.Prim.Evaluation (
     step
     ) where
@@ -107,14 +108,14 @@ insertNodes :: RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> [SomeNode] -> Que
 insertNodes (RWS.Tuple (time,_) _ _) = go
     where
     go :: [SomeNode] -> Queue SomeNode -> IO (Queue SomeNode)
-    go []              q = return q
-    go (node@(P p):xs) q = do
+    go []              !q = return q
+    go (node@(P p):xs) !q = do
         Pulse{..} <- readRef p
         if time <= _seenP
             then go xs q        -- pulse has already been put into the queue once
             else do             -- pulse needs to be scheduled for evaluation
                 put p $! (let p = Pulse{..} in p { _seenP = time })
                 go xs (Q.insert _levelP node q)
-    go (node:xs)      q = go xs (Q.insert ground node q)
+    go (node:xs)      !q = go xs (Q.insert ground node q)
             -- O and L nodes have only one parent, so
             -- we can insert them at an arbitrary level
