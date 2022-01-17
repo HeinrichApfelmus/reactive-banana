@@ -23,7 +23,7 @@ import Reactive.Banana.Prim.Util
 -- | A 'Network' represents the state of a pulse/latch network,
 data Network = Network
     { nTime           :: !Time                 -- Current time.
-    , nOutputs        :: !(OrderedBag Output)  -- Remember outputs to prevent garbage collection.
+    , nOutputs        :: {-# unpack #-} !(OrderedBag Output)  -- Remember outputs to prevent garbage collection.
     , nAlwaysP        :: !(Maybe (Pulse ()))   -- Pulse that always fires.
     }
 
