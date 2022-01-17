@@ -2,6 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Reactive.Banana.Prim.Compile where
 
 import Control.Exception (evaluate)
@@ -20,14 +21,14 @@ import           Reactive.Banana.Prim.Types
 -- | Change a 'Network' of pulses and latches by
 -- executing a 'BuildIO' action.
 compile :: BuildIO a -> Network -> IO (a, Network)
-compile m (Network time1 outputs1 theAlwaysP) = do
-    (a, topology, os) <- runBuildIO (time1, theAlwaysP) m
+compile m Network {nTime, nOutputs, nAlwaysP} = do
+    (a, topology, os) <- runBuildIO (nTime, nAlwaysP) m
     doit topology
 
     let state2 = Network
-            { nTime    = next time1
-            , nOutputs = OB.inserts outputs1 os
-            , nAlwaysP = theAlwaysP
+            { nTime    = next nTime
+            , nOutputs = OB.inserts nOutputs os
+            , nAlwaysP
             }
     return (a,state2)
 
