@@ -21,7 +21,7 @@ import           Reactive.Banana.Prim.Types
 -- | Change a 'Network' of pulses and latches by
 -- executing a 'BuildIO' action.
 compile :: BuildIO a -> Network -> IO (a, Network)
-compile m Network {nTime, nOutputs, nAlwaysP} = do
+compile m Network{nTime, nOutputs, nAlwaysP} = do
     (a, topology, os) <- runBuildIO (nTime, nAlwaysP) m
     doit topology
 
