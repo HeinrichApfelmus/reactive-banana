@@ -2,6 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Reactive.Banana.Prim.Compile where
 
 import Control.Exception (evaluate)
@@ -20,25 +21,25 @@ import           Reactive.Banana.Prim.Types
 -- | Change a 'Network' of pulses and latches by
 -- executing a 'BuildIO' action.
 compile :: BuildIO a -> Network -> IO (a, Network)
-compile m state1 = do
-    let time1    = nTime state1
-        outputs1 = nOutputs state1
-
-    theAlwaysP <- case nAlwaysP state1 of
-        Just x   -> return x
-        Nothing  -> do
-            (x,_,_) <- runBuildIO undefined $ newPulse "alwaysP" (return $ Just ())
-            return x
-
-    (a, topology, os) <- runBuildIO (nTime state1, theAlwaysP) m
+compile m Network{nTime, nOutputs, nAlwaysP} = do
+    (a, topology, os) <- runBuildIO (nTime, nAlwaysP) m
     doit topology
 
     let state2 = Network
-            { nTime    = next time1
-            , nOutputs = OB.inserts outputs1 os
-            , nAlwaysP = Just theAlwaysP
+            { nTime    = next nTime
+            , nOutputs = OB.inserts nOutputs os
+            , nAlwaysP
             }
     return (a,state2)
+
+emptyNetwork :: IO Network
+emptyNetwork = do
+  (alwaysP, _, _) <- runBuildIO undefined $ newPulse "alwaysP" (return $ Just ())
+  pure Network
+    { nTime    = next beginning
+    , nOutputs = OB.empty
+    , nAlwaysP = alwaysP
+    }
 
 {-----------------------------------------------------------------------------
     Testing
@@ -60,7 +61,7 @@ interpret f xs = do
             return sin
 
     -- compile initial network
-    (sin, state) <- compile network emptyNetwork
+    (sin, state) <- compile network =<< emptyNetwork
 
     let go Nothing  s1 = return (Nothing,s1)
         go (Just a) s1 = do
@@ -84,7 +85,7 @@ runSpaceProfile f xs = do
         p3 <- mapP return p2                -- wrap into Future
         addHandler p3 (void . evaluate)
         return fire
-    (step,network) <- compile g emptyNetwork
+    (step,network) <- compile g =<< emptyNetwork
 
     let fire x s1 = do
             (outputs, s2) <- step x s1

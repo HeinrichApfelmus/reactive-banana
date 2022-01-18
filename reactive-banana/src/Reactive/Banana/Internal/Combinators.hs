@@ -74,7 +74,7 @@ compile setup = do
     let eventNetwork = EventNetwork{ actuated, s }
 
     (_output, s0) <-                             -- compile initial graph
-        Prim.compile (runReaderT setup eventNetwork) Prim.emptyNetwork
+        Prim.compile (runReaderT setup eventNetwork) =<< Prim.emptyNetwork
     putMVar s s0                                -- set initial state
 
     return eventNetwork

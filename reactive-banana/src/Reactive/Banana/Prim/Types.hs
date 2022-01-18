@@ -14,7 +14,7 @@ import           System.IO.Unsafe
 import           System.Mem.Weak
 
 import Reactive.Banana.Prim.Graph            (Graph)
-import Reactive.Banana.Prim.OrderedBag as OB (OrderedBag, empty)
+import Reactive.Banana.Prim.OrderedBag as OB (OrderedBag)
 import Reactive.Banana.Prim.Util
 
 {-----------------------------------------------------------------------------
@@ -24,19 +24,12 @@ import Reactive.Banana.Prim.Util
 data Network = Network
     { nTime           :: !Time                 -- Current time.
     , nOutputs        :: !(OrderedBag Output)  -- Remember outputs to prevent garbage collection.
-    , nAlwaysP        :: !(Maybe (Pulse ()))   -- Pulse that always fires.
+    , nAlwaysP        :: !(Pulse ())   -- Pulse that always fires.
     }
 
 type Inputs        = ([SomeNode], Lazy.Vault)
 type EvalNetwork a = Network -> IO (a, Network)
 type Step          = EvalNetwork (IO ())
-
-emptyNetwork :: Network
-emptyNetwork = Network
-    { nTime    = next beginning
-    , nOutputs = OB.empty
-    , nAlwaysP = Nothing
-    }
 
 type Build  = ReaderWriterIOT BuildR BuildW IO
 type BuildR = (Time, Pulse ())
