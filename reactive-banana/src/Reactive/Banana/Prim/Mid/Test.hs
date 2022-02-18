@@ -2,9 +2,9 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo #-}
-module Reactive.Banana.Prim.Test where
+module Reactive.Banana.Prim.Mid.Test where
 
-import Reactive.Banana.Prim
+import Reactive.Banana.Prim.Mid
 
 main :: IO ()
 main = test_space1

@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE LambdaCase #-}
-module Reactive.Banana.Prim.Dependencies (
+module Reactive.Banana.Prim.Low.Dependencies (
     -- | Utilities for operating on node dependencies.
     addChild, changeParent, buildDependencies,
     ) where
@@ -12,9 +12,9 @@ import           Control.Monad
 import           Data.Monoid
 import           System.Mem.Weak
 
-import qualified Reactive.Banana.Prim.Graph as Graph
-import           Reactive.Banana.Prim.Types
-import           Reactive.Banana.Prim.Util
+import qualified Reactive.Banana.Prim.Low.Graph as Graph
+import           Reactive.Banana.Prim.Low.Types
+import           Reactive.Banana.Prim.Low.Util
 
 {-----------------------------------------------------------------------------
     Accumulate dependency information for nodes

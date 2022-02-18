@@ -13,7 +13,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Fix
 import Data.String (IsString(..))
 
-import qualified Reactive.Banana.Internal.Combinators as Prim
+import qualified Reactive.Banana.Prim.High.Combinators as Prim
 
 {-----------------------------------------------------------------------------
     Types

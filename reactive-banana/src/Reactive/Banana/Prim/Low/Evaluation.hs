@@ -2,7 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecordWildCards #-}
-module Reactive.Banana.Prim.Evaluation (
+module Reactive.Banana.Prim.Low.Evaluation (
     step
     ) where
 
@@ -13,10 +13,10 @@ import qualified Data.PQueue.Prio.Min               as Q
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.Mem.Weak
 
-import qualified Reactive.Banana.Prim.OrderedBag as OB
-import           Reactive.Banana.Prim.Plumbing
-import           Reactive.Banana.Prim.Types
-import           Reactive.Banana.Prim.Util
+import qualified Reactive.Banana.Prim.Low.OrderedBag as OB
+import           Reactive.Banana.Prim.Low.Plumbing
+import           Reactive.Banana.Prim.Low.Types
+import           Reactive.Banana.Prim.Low.Util
 
 type Queue = Q.MinPQueue Level
 

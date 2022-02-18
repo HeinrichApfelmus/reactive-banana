@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Reactive.Banana.Prim.Types where
+module Reactive.Banana.Prim.Low.Types where
 
 import           Control.Monad.Trans.RWSIO
 import           Control.Monad.Trans.ReaderWriterIO
@@ -13,9 +13,9 @@ import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
 import           System.Mem.Weak
 
-import Reactive.Banana.Prim.Graph            (Graph)
-import Reactive.Banana.Prim.OrderedBag as OB (OrderedBag)
-import Reactive.Banana.Prim.Util
+import Reactive.Banana.Prim.Low.Graph            (Graph)
+import Reactive.Banana.Prim.Low.OrderedBag as OB (OrderedBag)
+import Reactive.Banana.Prim.Low.Util
 
 {-----------------------------------------------------------------------------
     Network

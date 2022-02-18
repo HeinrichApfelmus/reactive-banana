@@ -2,7 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE RecursiveDo #-}
-module Reactive.Banana.Prim.Cached (
+module Reactive.Banana.Prim.High.Cached (
     -- | Utility for executing monadic actions once
     -- and then retrieving values from a cache.
     --
