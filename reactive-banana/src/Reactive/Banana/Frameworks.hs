@@ -183,7 +183,7 @@ reactimate' = MIO . fmap (const ()) . Prim.addReactimate . Prim.mapE unF . unE
 
 
 -- | As for "reactimate'", but also returns a function to cancel the event actions. See
--- "reactimate1" for details.
+-- "reactimate_" for details.
 reactimate_' :: Event (Future (IO ())) -> MomentIO (MomentIO ())
 reactimate_' ev = MIO $ do
    s <- Prim.addReactimate $ Prim.mapE unF $ unE ev
