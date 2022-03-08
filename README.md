@@ -56,7 +56,7 @@ The reactive-banana library actually contains *two* FRP implementations:
 2. [Reactive.Banana.Prim][push] - The efficient push-driven implementation used for production code. Contains hard to understand trade secrets. ;-)
 
   [model]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Model.hs
-  [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Prim.hs
+  [push]: https://github.com/HeinrichApfelmus/reactive-banana/blob/master/reactive-banana/src/Reactive/Banana/Prim
 
 ### License
 
