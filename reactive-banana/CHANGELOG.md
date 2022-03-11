@@ -12,7 +12,7 @@ Changelog for the `reactive-banana** package
 * Some internal refactoring to reduce allocations and improve performance. [#238][]
 
   [#165]: https://github.com/HeinrichApfelmus/reactive-banana/pull/165
-  [#220]: https://github.com/HeinrichApfelmus/reactive-banana/pull/229
+  [#229]: https://github.com/HeinrichApfelmus/reactive-banana/pull/229
   [#223]: https://github.com/HeinrichApfelmus/reactive-banana/pull/223
   [#237]: https://github.com/HeinrichApfelmus/reactive-banana/pull/237
   [#239]: https://github.com/HeinrichApfelmus/reactive-banana/pull/238
