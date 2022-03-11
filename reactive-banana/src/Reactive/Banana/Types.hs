@@ -12,6 +12,20 @@ import Control.Applicative
 import Control.Monad.IO.Class
 import Control.Monad.Fix
 import Data.String (IsString(..))
+import Control.Monad.Trans.Accum (AccumT)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Except (ExceptT)
+import Control.Monad.Trans.Identity (IdentityT)
+import Control.Monad.Trans.Maybe (MaybeT)
+import qualified Control.Monad.Trans.RWS.CPS as CPS (RWST)
+import qualified Control.Monad.Trans.RWS.Lazy as Lazy (RWST)
+import qualified Control.Monad.Trans.RWS.Strict as Strict (RWST)
+import Control.Monad.Trans.Reader (ReaderT)
+import qualified Control.Monad.Trans.State.Lazy as Lazy (StateT)
+import qualified Control.Monad.Trans.State.Strict as Strict (StateT)
+import qualified Control.Monad.Trans.Writer.CPS as CPS (WriterT)
+import qualified Control.Monad.Trans.Writer.Lazy as Lazy (WriterT)
+import qualified Control.Monad.Trans.Writer.Strict as Strict (WriterT)
 
 import qualified Reactive.Banana.Prim.High.Combinators as Prim
 
@@ -185,6 +199,19 @@ class MonadFix m => MonadMoment m where
 
 instance MonadMoment Moment   where liftMoment = id
 instance MonadMoment MomentIO where liftMoment = MIO . unM
+instance (MonadMoment m, Monoid w) => MonadMoment (AccumT w m) where liftMoment = lift . liftMoment
+instance MonadMoment m => MonadMoment (ExceptT e m) where liftMoment = lift . liftMoment
+instance MonadMoment m => MonadMoment (IdentityT m) where liftMoment = lift . liftMoment
+instance MonadMoment m => MonadMoment (MaybeT m) where liftMoment = lift . liftMoment
+instance MonadMoment m => MonadMoment (CPS.RWST r w s m) where liftMoment = lift . liftMoment
+instance (MonadMoment m, Monoid w) => MonadMoment (Lazy.RWST r w s m) where liftMoment = lift . liftMoment
+instance (MonadMoment m, Monoid w) => MonadMoment (Strict.RWST r w s m) where liftMoment = lift . liftMoment
+instance MonadMoment m => MonadMoment (ReaderT r m) where liftMoment = lift . liftMoment
+instance MonadMoment m => MonadMoment (Lazy.StateT s m) where liftMoment = lift . liftMoment
+instance MonadMoment m => MonadMoment (Strict.StateT s m) where liftMoment = lift . liftMoment
+instance MonadMoment m => MonadMoment (CPS.WriterT w m) where liftMoment = lift . liftMoment
+instance (MonadMoment m, Monoid w) => MonadMoment (Lazy.WriterT w m) where liftMoment = lift . liftMoment
+instance (MonadMoment m, Monoid w) => MonadMoment (Strict.WriterT w m) where liftMoment = lift . liftMoment
 
 -- boilerplate class instances
 instance Functor Moment where fmap f = M . fmap f . unM
