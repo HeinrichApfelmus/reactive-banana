@@ -4,7 +4,7 @@ Changelog for the `reactive-banana** package
 **Unreleased**
 
 * Added `Semigroup` and `Monoid` instances to `Moment` and `MomentIO`. [#223][]
-* Add '@>' operator
+* Add `@>` operator. [#229][]
 * `switchE` now takes an initial event. This is breaking change. The previous behavior can be restored by using `switchE never`. [#165][]
 * Triggering an `AddHandler` no longer allocates, leading to a minor performance improvement. [#237][]
 * A new `once` combinator has been added that filters an `Event` so it only fires once. [#239][]
@@ -12,11 +12,12 @@ Changelog for the `reactive-banana** package
 * Some internal refactoring to reduce allocations and improve performance. [#238][]
 
   [#165]: https://github.com/HeinrichApfelmus/reactive-banana/pull/165
+  [#220]: https://github.com/HeinrichApfelmus/reactive-banana/pull/229
   [#223]: https://github.com/HeinrichApfelmus/reactive-banana/pull/223
   [#237]: https://github.com/HeinrichApfelmus/reactive-banana/pull/237
   [#239]: https://github.com/HeinrichApfelmus/reactive-banana/pull/238
   [#239]: https://github.com/HeinrichApfelmus/reactive-banana/pull/239
-  [#239]: https://github.com/HeinrichApfelmus/reactive-banana/pull/248
+  [#248]: https://github.com/HeinrichApfelmus/reactive-banana/pull/248
 
 **Version 1.2.2.0**
 
