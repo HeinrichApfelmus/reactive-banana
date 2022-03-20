@@ -10,6 +10,7 @@ Changelog for the `reactive-banana** package
 * A new `once` combinator has been added that filters an `Event` so it only fires once. [#239][]
 * `MonadMoment` instances have been added for all possibly monad transformers (from the `transformers` library). [#248][]
 * Some internal refactoring to reduce allocations and improve performance. [#238][]
+* The `Reactive.Banana.Prim` hierarchy has been changed to better reflect the abstraction hierarchy. [#241][]
 
   [#165]: https://github.com/HeinrichApfelmus/reactive-banana/pull/165
   [#229]: https://github.com/HeinrichApfelmus/reactive-banana/pull/229
@@ -17,6 +18,7 @@ Changelog for the `reactive-banana** package
   [#237]: https://github.com/HeinrichApfelmus/reactive-banana/pull/237
   [#238]: https://github.com/HeinrichApfelmus/reactive-banana/pull/238
   [#239]: https://github.com/HeinrichApfelmus/reactive-banana/pull/239
+  [#241]: https://github.com/HeinrichApfelmus/reactive-banana/pull/241
   [#248]: https://github.com/HeinrichApfelmus/reactive-banana/pull/248
 
 **Version 1.2.2.0**
