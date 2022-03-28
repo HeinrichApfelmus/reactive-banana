@@ -3,6 +3,7 @@ Changelog for the `reactive-banana** package
 
 **Unreleased**
 
+* Increased upper bounds of `transformers`, `semigroups` and `hashable`
 * Added `Semigroup` and `Monoid` instances to `Moment` and `MomentIO`. [#223][]
 * Add `@>` operator. [#229][]
 * `switchE` now takes an initial event. This is breaking change. The previous behavior can be restored by using `switchE never`. [#165][]
