@@ -1,7 +1,7 @@
 Changelog for the `reactive-banana** package
 -------------------------------------------
 
-**Unreleased**
+**Version 1.3.0.0** (2022-03-28)
 
 * Added `Semigroup` and `Monoid` instances to `Moment` and `MomentIO`. [#223][]
 * Add `@>` operator. [#229][]
