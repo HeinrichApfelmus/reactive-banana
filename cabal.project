@@ -1,1 +1,4 @@
 packages: reactive-banana
+
+package *
+  ghc-options: -finfo-table-map -fdistinct-constructor-tables

@@ -1,3 +1,4 @@
+{-# language BangPatterns #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
@@ -32,8 +33,8 @@ changeParent child parent = (mempty, [(P child, P parent)])
 -- to change network topology.
 buildDependencies :: DependencyBuilder -> IO ()
 buildDependencies (Endo f, parents) = do
-    sequence_ [x `doAddChild` y | x <- Graph.listParents gr, y <- Graph.getChildren gr x]
-    sequence_ [x `doChangeParent` y | (P x, P y) <- parents]
+    sequence_ [{-# SCC doAddChild #-} (x `doAddChild` y) | x <- Graph.listParents gr, y <- Graph.getChildren gr x]
+    sequence_ [{-# SCC doChangeParent #-} (x `doChangeParent` y) | (P x, P y) <- parents]
     where
     gr :: Graph.Graph SomeNode
     gr = f Graph.emptyGraph
@@ -48,8 +49,11 @@ connectChild
     -> IO (Weak SomeNode)
                 -- ^ Weak reference with the child as key and the parent as value.
 connectChild parent child = do
-    w <- mkWeakNodeValue child child
-    modify' parent $ update childrenP (w:)
+    putStrLn "1"
+    w <- {-# SCC childChild #-} mkWeakNodeValue child child
+    modify' parent $ update childrenP $ const [w]
+
+    putStrLn "2"
     mkWeakNodeValue child (P parent)        -- child keeps parent alive
 
 -- | Add a child node to a parent node and update evaluation order.
@@ -73,7 +77,7 @@ removeParents child = do
         Just (P parent) <- deRefWeak w  -- get parent node
         finalize w                      -- severe connection in garbage collector
         let isGoodChild w = not . maybe True (== P child) <$> deRefWeak w
-        new <- filterM isGoodChild . _childrenP =<< readRef parent
+        !new <- filterM isGoodChild . _childrenP =<< readRef parent
         modify' parent $ set childrenP new
     -- replace parents by empty list
     put child $ c{_parentsP = []}
@@ -81,9 +85,12 @@ removeParents child = do
 -- | Set the parent of a pulse to a different pulse.
 doChangeParent :: Pulse a -> Pulse b -> IO ()
 doChangeParent child parent = do
+    w <- {-# SCC connectChildX #-} do 
+      parent `connectChild` P child
+
     -- remove all previous parents and connect to new parent
-    removeParents child
-    w <- parent `connectChild` P child
+    {-# SCC removeParents #-} removeParents child
+
     modify' child $ update parentsP (w:)
 
     -- calculate level difference between parent and node

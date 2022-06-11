@@ -15,6 +15,8 @@ import Reactive.Banana.Prim.Low.Plumbing
     )
 import qualified Reactive.Banana.Prim.Low.Plumbing (pureL)
 import           Reactive.Banana.Prim.Low.Types    (Latch, Future, Pulse, Build, EvalP)
+import Reactive.Banana.Prim.Low.Util (Ref(..))
+import Unsafe.Coerce (unsafeCoerce)
 
 debug :: String -> a -> a
 -- debug s = trace s
@@ -136,7 +138,11 @@ switchP p pp = mdo
             mnew <- readPulseP pp
             case mnew of
                 Nothing  -> return ()
-                Just new -> liftBuildP $ p2 `changeParent` new
+                Just new -> liftBuildP $ do
+                  case p2 of
+                    Ref _ u -> do
+                      liftIO $ putStrLn $ "Changing parent of " <> show (unsafeCoerce u :: Integer)
+                  p2 `changeParent` new
             return Nothing
         -- fetch value from old parent
         eval = readPulseP =<< readLatchP lp

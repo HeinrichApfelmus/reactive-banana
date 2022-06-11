@@ -132,9 +132,9 @@ instance Eq SomeNode where
 
 {-# INLINE mkWeakNodeValue #-}
 mkWeakNodeValue :: SomeNode -> v -> IO (Weak v)
-mkWeakNodeValue (P x) = mkWeakRefValue x
-mkWeakNodeValue (L x) = mkWeakRefValue x
-mkWeakNodeValue (O x) = mkWeakRefValue x
+mkWeakNodeValue (P x) = {-# SCC p #-} mkWeakRefValue x
+mkWeakNodeValue (L x) = {-# SCC l #-} mkWeakRefValue x
+mkWeakNodeValue (O x) = {-# SCC o #-} mkWeakRefValue x
 
 -- Lenses for various parameters
 seenP :: Lens (Pulse' a) Time

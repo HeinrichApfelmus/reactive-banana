@@ -25,6 +25,7 @@ import Data.Maybe (fromMaybe)
 newPulse :: String -> EvalP (Maybe a) -> Build (Pulse a)
 newPulse name eval = liftIO $ do
     key <- Lazy.newKey
+    putStrLn "Making a new Pulse"
     newRef $ Pulse
         { _keyP      = key
         , _seenP     = agesAgo
