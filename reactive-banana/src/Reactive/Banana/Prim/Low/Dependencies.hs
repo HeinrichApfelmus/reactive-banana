@@ -48,7 +48,7 @@ connectChild
     -> IO (Weak SomeNode)
                 -- ^ Weak reference with the child as key and the parent as value.
 connectChild parent child = do
-    w <- mkWeakNodeValue child child
+    w <- someNodeRef child
     modify' parent $ update childrenP (w:)
     mkWeakNodeValue child (P parent)        -- child keeps parent alive
 

@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Reactive.Banana.Prim.Low.Types where
 
+import           Control.Monad.IO.Class ( MonadIO )
 import           Control.Monad.Trans.RWSIO
 import           Control.Monad.Trans.ReaderWriterIO
 import           Data.Hashable
@@ -92,6 +93,7 @@ data Pulse' a = Pulse
     , _parentsP  :: [Weak SomeNode]    -- Weak reference to parent nodes.
     , _levelP    :: !Level             -- Priority in evaluation order.
     , _nameP     :: String             -- Name for debugging.
+    , _pulsePtr  :: Weak SomeNode      -- A weak pointer back to this exact Pulse
     }
 
 instance Show (Pulse a) where
@@ -107,11 +109,13 @@ type LatchWrite = Ref LatchWrite'
 data LatchWrite' = forall a. LatchWrite
     { _evalLW  :: EvalP a            -- Calculate value to write.
     , _latchLW :: Weak (Latch a)     -- Destination 'Latch' to write to.
+    , _latchWritePtr :: Weak SomeNode
     }
 
 type Output  = Ref Output'
 data Output' = Output
     { _evalO     :: EvalP EvalO
+    , _outputPtr :: Weak SomeNode
     }
 
 data SomeNode
@@ -119,6 +123,11 @@ data SomeNode
     | L LatchWrite
     | O Output
 
+
+someNodeRef :: MonadIO m => SomeNode -> m (Weak SomeNode)
+someNodeRef (P p) = _pulsePtr <$> readRef p
+someNodeRef (L l) = _latchWritePtr <$> readRef l
+someNodeRef (O o) = _outputPtr <$> readRef o
 instance Hashable SomeNode where
     hashWithSalt s (P x) = hashWithSalt s x
     hashWithSalt s (L x) = hashWithSalt s x

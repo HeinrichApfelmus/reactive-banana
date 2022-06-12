@@ -28,15 +28,19 @@ newInput :: forall a. Build (Pulse a, a -> Step)
 newInput = mdo
     always <- alwaysP
     key    <- liftIO Lazy.newKey
-    pulse  <- liftIO $ newRef $ Pulse
-        { _keyP      = key
-        , _seenP     = agesAgo
-        , _evalP     = readPulseP pulse    -- get its own value
-        , _childrenP = []
-        , _parentsP  = []
-        , _levelP    = ground
-        , _nameP     = "newInput"
-        }
+    pulse  <- liftIO $ mdo
+        me <- newRef $ Pulse
+            { _keyP      = key
+            , _seenP     = agesAgo
+            , _evalP     = readPulseP pulse    -- get its own value
+            , _childrenP = []
+            , _parentsP  = []
+            , _levelP    = ground
+            , _nameP     = "newInput"
+            , _pulsePtr  = w
+            }
+        w <- mkWeakRefValue me (P me)
+        return me
     -- Also add the  alwaysP  pulse to the inputs.
     let run :: a -> Step
         run a = step ([P pulse, P always], Lazy.insert key (Just a) Lazy.empty)

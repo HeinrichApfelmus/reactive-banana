@@ -23,9 +23,9 @@ import Data.Maybe (fromMaybe)
 ------------------------------------------------------------------------------}
 -- | Make 'Pulse' from evaluation function
 newPulse :: String -> EvalP (Maybe a) -> Build (Pulse a)
-newPulse name eval = liftIO $ do
+newPulse name eval = liftIO $ mdo
     key <- Lazy.newKey
-    newRef $ Pulse
+    me <- newRef $ Pulse
         { _keyP      = key
         , _seenP     = agesAgo
         , _evalP     = eval
@@ -33,7 +33,10 @@ newPulse name eval = liftIO $ do
         , _parentsP  = []
         , _levelP    = ground
         , _nameP     = name
+        , _pulsePtr  = w
         }
+    w <- mkWeakRefValue me (P me)
+    return me
 
 {-
 * Note [PulseCreation]
@@ -47,9 +50,9 @@ this is a recipe for desaster.
 
 -- | 'Pulse' that never fires.
 neverP :: Build (Pulse a)
-neverP = liftIO $ do
+neverP = liftIO $ mdo
     key <- Lazy.newKey
-    newRef $ Pulse
+    me <- newRef $ Pulse
         { _keyP      = key
         , _seenP     = agesAgo
         , _evalP     = return Nothing
@@ -57,7 +60,10 @@ neverP = liftIO $ do
         , _parentsP  = []
         , _levelP    = ground
         , _nameP     = "neverP"
+        , _pulsePtr  = w
         }
+    w <- mkWeakRefValue me (P me)
+    return me
 
 -- | Return a 'Latch' that has a constant value
 pureL :: a -> Latch a
@@ -84,10 +90,15 @@ newLatch a = mdo
         updateOn :: Pulse a -> Build ()
         updateOn p = do
             w  <- liftIO $ mkWeakRefValue latch latch
-            lw <- liftIO $ newRef $ LatchWrite
+            lw <- liftIO $ mdo
+              me <- newRef $ LatchWrite
                 { _evalLW  = fromMaybe err <$> readPulseP p
                 , _latchLW = w
+                , _latchWritePtr = ptr
                 }
+              ptr <- mkWeakRefValue me (L me)
+              return me
+
             -- writer is alive only as long as the latch is alive
             _  <- liftIO $ mkWeakRefValue latch lw
             P p `addChild` L lw
@@ -119,9 +130,13 @@ cachedLatch eval = unsafePerformIO $ mdo
 -- TODO: Return function to unregister the output again.
 addOutput :: Pulse EvalO -> Build ()
 addOutput p = do
-    o <- liftIO $ newRef $ Output
+    o <- liftIO $ mdo
+      me <- newRef $ Output
         { _evalO = fromMaybe (return $ debug "nop") <$> readPulseP p
+        , _outputPtr = w
         }
+      w <- mkWeakRefValue me (O me)
+      return me
     P p `addChild` O o
     RW.tell $ BuildW (mempty, [o], mempty, mempty)
 
