@@ -72,7 +72,12 @@ removeParents child = do
     forM_ _parentsP $ \w -> do
         Just (P parent) <- deRefWeak w  -- get parent node
         finalize w                      -- severe connection in garbage collector
-        let isGoodChild w = not . maybe True (== P child) <$> deRefWeak w
+        let isGoodChild w = deRefWeak w >>= \x ->
+              case x of
+                Just y | y /= P child -> return True
+                _                     -> do
+                  finalize w
+                  return False
         new <- filterM isGoodChild . _childrenP =<< readRef parent
         modify' parent $ set childrenP new
     -- replace parents by empty list
