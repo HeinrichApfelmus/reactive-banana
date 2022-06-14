@@ -98,7 +98,11 @@ applyL lf lx = cachedLatch
 accumL :: a -> Pulse (a -> a) -> Build (Latch a, Pulse a)
 accumL a p1 = do
     (updateOn, x) <- newLatch a
-    p2 <- applyP (mapL (\x f -> f x) x) p1
+    p2 <- newPulse "accumL" $ do
+      a <- readLatchP x
+      f <- readPulseP p1
+      return $ fmap (\g -> g a) f
+    p2 `dependOn` p1
     updateOn p2
     return (x,p2)
 
