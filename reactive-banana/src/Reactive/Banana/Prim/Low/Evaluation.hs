@@ -1,6 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Prim.Low.Evaluation (
     step
@@ -45,7 +46,7 @@ step (inputs,pulses)
         actions = OB.inOrder outputs outputs1   -- EvalO actions in proper order
 
         state2 :: Network
-        state2  = Network
+        !state2 = Network
             { nTime    = next time1
             , nOutputs = OB.inserts outputs1 os
             , nAlwaysP = alwaysP
