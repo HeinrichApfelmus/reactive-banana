@@ -72,7 +72,18 @@ removeParents child = do
     forM_ _parentsP $ \w -> do
         Just (P parent) <- deRefWeak w  -- get parent node
         finalize w                      -- severe connection in garbage collector
-        let isGoodChild w = not . maybe True (== P child) <$> deRefWeak w
+        let isGoodChild w = deRefWeak w >>= \x ->
+              case x of
+                Just y | y /= P child -> return True
+                _                     -> do
+                  -- The old parent refers to this child. In this case we'll remove
+                  -- this child from the parent, but we also need to finalize the
+                  -- weak pointer that points to the child. We need to do this because
+                  -- otherwise the weak pointer will stay alive (even though it's
+                  -- unreachable) for as long as the child is alive
+                  -- https://github.com/HeinrichApfelmus/reactive-banana/pull/256
+                  finalize w
+                  return False
         new <- filterM isGoodChild . _childrenP =<< readRef parent
         modify' parent $ set childrenP new
     -- replace parents by empty list
