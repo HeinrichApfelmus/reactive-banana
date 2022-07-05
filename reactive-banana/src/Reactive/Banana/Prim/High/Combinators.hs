@@ -51,14 +51,15 @@ data EventNetwork = EventNetwork
 
 runStep :: EventNetwork -> Prim.Step -> IO ()
 runStep EventNetwork{ actuated, s } f = whenFlag actuated $ do
-    output <- bracketOnError
-        (takeMVar s)                          -- read and take lock
-        (putMVar s) $ \s1 -> do               -- on error, restore the original state
-              -- pollValues <- sequence polls -- poll mutable data
-              (output, s2) <- f s1            -- calculate new state
-              putMVar s s2                    -- write state
-              return output
-    output                                    -- run IO actions afterwards
+    output <- mask $ \restore -> do
+        s1 <- takeMVar s                   -- read and take lock
+        -- pollValues <- sequence polls    -- poll mutable data
+        (output, s2) <-
+            restore (f s1)                 -- calculate new state
+                `onException` putMVar s s1 -- on error, restore the original state
+        putMVar s s2                       -- write state
+        return output
+    output                                 -- run IO actions afterwards
   where
     whenFlag flag action = readIORef flag >>= \b -> when b action
 
