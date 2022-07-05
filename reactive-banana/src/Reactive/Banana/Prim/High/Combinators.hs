@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances, NamedFieldPuns, NoMonomorphismRestriction #-}
 module Reactive.Banana.Prim.High.Combinators where
 
+import           Control.Exception
 import           Control.Concurrent.MVar
 import           Control.Event.Handler
 import           Control.Monad
@@ -50,11 +51,13 @@ data EventNetwork = EventNetwork
 
 runStep :: EventNetwork -> Prim.Step -> IO ()
 runStep EventNetwork{ actuated, s } f = whenFlag actuated $ do
-    s1 <- takeMVar s                    -- read and take lock
-    -- pollValues <- sequence polls     -- poll mutable data
-    (output, s2) <- f s1                -- calculate new state
-    putMVar s s2                        -- write state
-    output                              -- run IO actions afterwards
+    bracketOnError
+      (takeMVar s)                          -- read and take lock
+      (putMVar s) $ \s1 -> do               -- on error, restore the original state
+        -- pollValues <- sequence polls     -- poll mutable data
+        (output, s2) <- f s1                -- calculate new state
+        putMVar s s2                        -- write state
+        output                              -- run IO actions afterwards
   where
     whenFlag flag action = readIORef flag >>= \b -> when b action
 
