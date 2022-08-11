@@ -11,8 +11,8 @@ Changelog for the `reactive-banana` package
   [#257]: https://github.com/HeinrichApfelmus/reactive-banana/pull/257
   [#258]: https://github.com/HeinrichApfelmus/reactive-banana/pull/258
   [#256]: https://github.com/HeinrichApfelmus/reactive-banana/pull/256
-  [#256]: https://github.com/HeinrichApfelmus/reactive-banana/pull/262
-  [#256]: https://github.com/HeinrichApfelmus/reactive-banana/pull/260
+  [#262]: https://github.com/HeinrichApfelmus/reactive-banana/pull/262
+  [#260]: https://github.com/HeinrichApfelmus/reactive-banana/pull/260
 
 **Version 1.3.0.0** (2022-03-28)
 
