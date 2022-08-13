@@ -1,5 +1,18 @@
-Changelog for the `reactive-banana** package
+Changelog for the `reactive-banana` package
 -------------------------------------------
+
+**Version 1.3.1.0** (2002-08-11)
+
+* Various internal performance improvements. [#257][], [#258][]
+* Fix a space leak in dynamic event switching. [#256][]
+* Reduce memory usage of `stepper`/`accumB`. [#260][]
+* Prevent a deadlock if the network crashes when evaluating a `Behavior` or `Event`. [#262][]
+
+  [#257]: https://github.com/HeinrichApfelmus/reactive-banana/pull/257
+  [#258]: https://github.com/HeinrichApfelmus/reactive-banana/pull/258
+  [#256]: https://github.com/HeinrichApfelmus/reactive-banana/pull/256
+  [#262]: https://github.com/HeinrichApfelmus/reactive-banana/pull/262
+  [#260]: https://github.com/HeinrichApfelmus/reactive-banana/pull/260
 
 **Version 1.3.0.0** (2022-03-28)
 
