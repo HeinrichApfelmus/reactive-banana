@@ -59,6 +59,12 @@ doAddChild (P parent) (P child) = do
     level2 <- _levelP <$> readRef parent
     let level = level1 `max` (level2 + 1)
     w <- parent `connectChild` P child
+
+    -- Remove any dead children. These three lines are new.
+    let alive w = maybe False (const True) <$> deRefWeak w
+    children' <- filterM alive . _childrenP =<< readRef parent
+    modify' parent $ set childrenP children'
+
     modify' child $ set levelP level . update parentsP (w:)
 doAddChild (P parent) node = void $ parent `connectChild` node
 doAddChild (L _) _ = error "doAddChild: Cannot add children to LatchWrite"
