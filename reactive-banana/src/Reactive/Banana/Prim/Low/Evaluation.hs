@@ -26,7 +26,7 @@ import Reactive.Banana.Prim.Low.Util
 
 -- vault
 import qualified Data.Vault.Lazy as Lazy
-import OpenTelemetry.Trace (inSpan, defaultSpanArguments, getGlobalTracerProvider, makeTracer, InstrumentationLibrary (InstrumentationLibrary), tracerOptions)
+import OpenTelemetry.Trace (inSpan, defaultSpanArguments, getGlobalTracerProvider, makeTracer, InstrumentationLibrary (InstrumentationLibrary), tracerOptions, Span, addAttribute, inSpan')
 import Data.String (fromString)
 
 
@@ -86,16 +86,25 @@ runEvalOs = mapM_ join
 
 -- | Update all pulses in the graph, starting from a given set of nodes
 evaluatePulses :: [SomeNode] -> EvalP ()
-evaluatePulses roots = wrapEvalP $ \r -> go r =<< insertNodes r roots Q.empty
+evaluatePulses roots = wrapEvalP $ \r -> do
+    instrument "evaluatePulses" $ \s -> do
+      n <- go 0 r =<< insertNodes r roots Q.empty
+      addAttribute s "steps" n
   where
-    go :: RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> Queue SomeNode -> IO ()
-    go r q =
+    go :: Int -> RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> Queue SomeNode -> IO Int
+    go !n r q =
       case ({-# SCC minView #-} Q.minView q) of
-        Nothing -> return ()
+        Nothing -> return n
         Just (node, q) -> do
           children <- unwrapEvalP r (evaluateNode node)
           q <- insertNodes r children q
-          go r q
+          go (n + 1) r q
+
+    instrument :: String -> (Span -> IO a) -> IO a
+    instrument name m = do
+      tracerProvider <- getGlobalTracerProvider
+      let tracer = makeTracer tracerProvider (InstrumentationLibrary "reactive-banana" "1.3.1.0") tracerOptions
+      inSpan' tracer (fromString name) defaultSpanArguments m
 
 
 {- | Recalculate a given node and return all children nodes
