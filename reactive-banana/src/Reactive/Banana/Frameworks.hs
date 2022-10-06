@@ -2,54 +2,75 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Reactive.Banana.Frameworks (
-    -- * Synopsis
-    -- | Connect to the outside world by building 'EventNetwork's
-    -- and running them.
+  -- * Synopsis
 
-    -- * Simple use
-    interpretAsHandler,
+  -- | Connect to the outside world by building 'EventNetwork's
+  -- and running them.
 
-    -- * Overview
-    -- $build
+  -- * Simple use
+  interpretAsHandler,
 
-    -- * Building event networks with input/output
-    -- ** Core functions
-    compile, MomentIO,
-    module Control.Event.Handler,
-    fromAddHandler, fromChanges, fromPoll,
-    reactimate, Future, reactimate',
-    changes,
-    -- $changes
-    imposeChanges,
-    execute, liftIOLater,
-    -- $liftIO
-    module Control.Monad.IO.Class,
+  -- * Overview
+  -- $build
 
-    -- ** Utility functions
-    -- | This section collects a few convience functions
-    -- built from the core functions.
-    interpretFrameworks, newEvent, mapEventIO, newBehavior,
+  -- * Building event networks with input/output
 
-    -- * Running event networks
-    EventNetwork, actuate, pause,
+  -- ** Core functions
+  compile,
+  MomentIO,
+  module Control.Event.Handler,
+  fromAddHandler,
+  fromChanges,
+  fromPoll,
+  reactimate,
+  Future,
+  reactimate',
+  changes,
+  -- $changes
+  imposeChanges,
+  execute,
+  liftIOLater,
+  -- $liftIO
+  module Control.Monad.IO.Class,
 
-    ) where
+  -- ** Utility functions
 
-import           Control.Event.Handler
-import           Control.Monad
-import           Control.Monad.IO.Class
-import           Data.IORef
-import           Reactive.Banana.Combinators
+  -- | This section collects a few convience functions
+  -- built from the core functions.
+  interpretFrameworks,
+  newEvent,
+  mapEventIO,
+  newBehavior,
+
+  -- * Running event networks
+  EventNetwork,
+  actuate,
+  pause,
+) where
+
+-- base
+import Control.Monad
+import Control.Monad.IO.Class
+import Data.IORef
+
+-- reactive-banana
+import Control.Event.Handler
+import Reactive.Banana.Combinators
 import qualified Reactive.Banana.Prim.High.Combinators as Prim
-import           Reactive.Banana.Types
+import Reactive.Banana.Types
+import GHC.Stack (HasCallStack, callStack, CallStack)
+import OpenTelemetry.Trace (getGlobalTracerProvider, makeTracer, InstrumentationLibrary (InstrumentationLibrary), tracerOptions, inSpan'', defaultSpanArguments)
+import Data.String (fromString)
 
 
 {-----------------------------------------------------------------------------
     Documentation
 ------------------------------------------------------------------------------}
-{-$build
+
+{- $build
 
 After having read all about 'Event's and 'Behavior's,
 you want to hook them up to an existing event-based framework,
@@ -118,12 +139,13 @@ The library uses this to register event handlers with your event-based framework
 
 * Use 'compile' to put everything together in an 'EventNetwork's
 and use 'actuate' to start handling events.
-
 -}
+
 
 {-----------------------------------------------------------------------------
     Combinators
 ------------------------------------------------------------------------------}
+
 {- | Output.
 Execute the 'IO' action whenever the event occurs.
 
@@ -147,86 +169,101 @@ huge callback function. The 'IO' action are not run in a separate thread.
 The callback function will throw an exception if one of your 'IO' actions
 does so as well.
 Your event-based framework will have to handle this situation.
-
 -}
-reactimate :: Event (IO ()) -> MomentIO ()
-reactimate = MIO . Prim.addReactimate . Prim.mapE return . unE
+reactimate :: HasCallStack => Event (IO ()) -> MomentIO ()
+reactimate e = MIO $ Prim.addReactimate $ Prim.mapE (\io -> return (instrument callStack "reactimate" io)) $ unE e
+  where
+    instrument :: CallStack -> String -> IO a -> IO a
+    instrument cs name m = do
+      tracerProvider <- getGlobalTracerProvider
+      let tracer = makeTracer tracerProvider (InstrumentationLibrary "reactive-banana" "1.3.1.0") tracerOptions
+      inSpan'' tracer cs (fromString name) defaultSpanArguments (const m)
 
--- | Output.
--- Execute the 'IO' action whenever the event occurs.
---
--- This version of 'reactimate' can deal with values obtained
--- from the 'changes' function.
+
+{- | Output.
+ Execute the 'IO' action whenever the event occurs.
+
+ This version of 'reactimate' can deal with values obtained
+ from the 'changes' function.
+-}
 reactimate' :: Event (Future (IO ())) -> MomentIO ()
 reactimate' = MIO . Prim.addReactimate . Prim.mapE unF . unE
 
 
--- | Input,
--- obtain an 'Event' from an 'AddHandler'.
---
--- When the event network is actuated,
--- this will register a callback function such that
--- an event will occur whenever the callback function is called.
-fromAddHandler ::AddHandler a -> MomentIO (Event a)
+{- | Input,
+ obtain an 'Event' from an 'AddHandler'.
+
+ When the event network is actuated,
+ this will register a callback function such that
+ an event will occur whenever the callback function is called.
+-}
+fromAddHandler :: AddHandler a -> MomentIO (Event a)
 fromAddHandler = MIO . fmap E . Prim.fromAddHandler
 
--- | Input,
--- obtain a 'Behavior' by frequently polling mutable data, like the current time.
---
--- The resulting 'Behavior' will be updated on whenever the event
--- network processes an input event.
---
--- This function is occasionally useful, but
--- the recommended way to obtain 'Behaviors' is by using 'fromChanges'.
---
--- Ideally, the argument IO action just polls a mutable variable,
--- it should not perform expensive computations.
--- Neither should its side effects affect the event network significantly.
+
+{- | Input,
+ obtain a 'Behavior' by frequently polling mutable data, like the current time.
+
+ The resulting 'Behavior' will be updated on whenever the event
+ network processes an input event.
+
+ This function is occasionally useful, but
+ the recommended way to obtain 'Behaviors' is by using 'fromChanges'.
+
+ Ideally, the argument IO action just polls a mutable variable,
+ it should not perform expensive computations.
+ Neither should its side effects affect the event network significantly.
+-}
 fromPoll :: IO a -> MomentIO (Behavior a)
 fromPoll = MIO . fmap B . Prim.fromPoll
 
--- | Input,
--- obtain a 'Behavior' from an 'AddHandler' that notifies changes.
---
--- This is essentially just an application of the 'stepper' combinator.
+
+{- | Input,
+ obtain a 'Behavior' from an 'AddHandler' that notifies changes.
+
+ This is essentially just an application of the 'stepper' combinator.
+-}
 fromChanges :: a -> AddHandler a -> MomentIO (Behavior a)
 fromChanges initial changes = do
-    e <- fromAddHandler changes
-    stepper initial e
+  e <- fromAddHandler changes
+  stepper initial e
 
--- | Output,
--- return an 'Event' that is adapted to the changes of a 'Behavior'.
---
--- Remember that semantically, a 'Behavior' is a function @Behavior a = Time -> a@.
--- This means that a Behavior does not have a notion of \"changes\" associated with it.
--- For instance, the following Behaviors are equal:
---
--- > stepper 0 []
--- > = stepper 0 [(time1, 0), (time2, 0)]
--- > = stepper 0 $ zip [time1,time2..] (repeat 0)
---
--- In principle, to perform IO actions with the value of a Behavior,
--- one has to sample it using an 'Event' and the 'apply' function.
---
--- However, in practice, Behaviors are usually step functions.
--- For reasons of efficiency, the library provides a way
--- to obtain an Event that /mostly/ coincides with the steps of a Behavior,
--- so that sampling is only done at a few select points in time.
--- The idea is that
---
--- > changes =<< stepper x e  =  return e
---
--- Please use 'changes' only in a ways that do /not/ distinguish
--- between the different expressions for the same Behavior above.
---
--- Note that the value of the event is actually the /new/ value,
--- i.e. that value slightly after this point in time. (See the documentation of 'stepper').
--- This is more convenient.
--- However, the value will not become available until after event processing is complete;
--- this is indicated by the type 'Future'.
--- It can be used only in the context of 'reactimate''.
+
+{- | Output,
+ return an 'Event' that is adapted to the changes of a 'Behavior'.
+
+ Remember that semantically, a 'Behavior' is a function @Behavior a = Time -> a@.
+ This means that a Behavior does not have a notion of \"changes\" associated with it.
+ For instance, the following Behaviors are equal:
+
+ > stepper 0 []
+ > = stepper 0 [(time1, 0), (time2, 0)]
+ > = stepper 0 $ zip [time1,time2..] (repeat 0)
+
+ In principle, to perform IO actions with the value of a Behavior,
+ one has to sample it using an 'Event' and the 'apply' function.
+
+ However, in practice, Behaviors are usually step functions.
+ For reasons of efficiency, the library provides a way
+ to obtain an Event that /mostly/ coincides with the steps of a Behavior,
+ so that sampling is only done at a few select points in time.
+ The idea is that
+
+ > changes =<< stepper x e  =  return e
+
+ Please use 'changes' only in a ways that do /not/ distinguish
+ between the different expressions for the same Behavior above.
+
+ Note that the value of the event is actually the /new/ value,
+ i.e. that value slightly after this point in time. (See the documentation of 'stepper').
+ This is more convenient.
+ However, the value will not become available until after event processing is complete;
+ this is indicated by the type 'Future'.
+ It can be used only in the context of 'reactimate''.
+-}
 changes :: Behavior a -> MomentIO (Event (Future a))
 changes = return . E . Prim.mapE F . Prim.changesB . unB
+
 
 {- $changes
 
@@ -245,18 +282,20 @@ However, this approach is not recommended, because the result 'Event'
 will occur /slightly/ later than the event returned by 'changes'.
 In fact, there is no guarantee whatsoever about what /slightly/ means
 in this context. Still, it is useful in some cases.
-
 -}
 
--- | Impose a different sampling event on a 'Behavior'.
---
--- The 'Behavior' will have the same values as before, but the event returned
--- by the 'changes' function will now happen simultaneously with the
--- imposed event.
---
--- Note: This function is useful only in very specific circumstances.
+
+{- | Impose a different sampling event on a 'Behavior'.
+
+ The 'Behavior' will have the same values as before, but the event returned
+ by the 'changes' function will now happen simultaneously with the
+ imposed event.
+
+ Note: This function is useful only in very specific circumstances.
+-}
 imposeChanges :: Behavior a -> Event () -> Behavior a
 imposeChanges b e = B $ Prim.imposeChanges (unB b) (Prim.mapE (const ()) (unE e))
+
 
 {- | Dynamically add input and output to an existing event network.
 
@@ -286,132 +325,157 @@ use the 'reactimate' and 'reactimate'' functions instead.
 execute :: Event (MomentIO a) -> MomentIO (Event a)
 execute = MIO . fmap E . Prim.executeE . Prim.mapE unMIO . unE
 
--- $liftIO
---
--- > liftIO :: Frameworks t => IO a -> Moment t a
---
--- Lift an 'IO' action into the 'Moment' monad.
 
--- | Lift an 'IO' action into the 'Moment' monad,
--- but defer its execution until compilation time.
--- This can be useful for recursive definitions using 'MonadFix'.
+{- $liftIO
+
+ > liftIO :: Frameworks t => IO a -> Moment t a
+
+ Lift an 'IO' action into the 'Moment' monad.
+-}
+
+
+{- | Lift an 'IO' action into the 'Moment' monad,
+ but defer its execution until compilation time.
+ This can be useful for recursive definitions using 'MonadFix'.
+-}
 liftIOLater :: IO () -> MomentIO ()
 liftIOLater = MIO . Prim.liftIOLater
 
--- | Compile the description of an event network
--- into an 'EventNetwork'
--- that you can 'actuate', 'pause' and so on.
+
+{- | Compile the description of an event network
+ into an 'EventNetwork'
+ that you can 'actuate', 'pause' and so on.
+-}
 compile :: MomentIO () -> IO EventNetwork
 compile = fmap EN . Prim.compile . unMIO
+
 
 {-----------------------------------------------------------------------------
     Running event networks
 ------------------------------------------------------------------------------}
--- | Data type that represents a compiled event network.
--- It may be paused or already running.
-newtype EventNetwork = EN { unEN :: Prim.EventNetwork }
 
--- | Actuate an event network.
--- The inputs will register their event handlers, so that
--- the networks starts to produce outputs in response to input events.
+{- | Data type that represents a compiled event network.
+ It may be paused or already running.
+-}
+newtype EventNetwork = EN {unEN :: Prim.EventNetwork}
+
+
+{- | Actuate an event network.
+ The inputs will register their event handlers, so that
+ the networks starts to produce outputs in response to input events.
+-}
 actuate :: EventNetwork -> IO ()
 actuate = Prim.actuate . unEN
 
--- | Pause an event network.
--- Immediately stop producing output.
--- (In a future version, it will also unregister all event handlers for inputs.)
--- Hence, the network stops responding to input events,
--- but it's state will be preserved.
---
--- You can resume the network with 'actuate'.
---
--- Note: You can stop a network even while it is processing events,
--- i.e. you can use 'pause' as an argument to 'reactimate'.
--- The network will /not/ stop immediately though, only after
--- the current event has been processed completely.
+
+{- | Pause an event network.
+ Immediately stop producing output.
+ (In a future version, it will also unregister all event handlers for inputs.)
+ Hence, the network stops responding to input events,
+ but it's state will be preserved.
+
+ You can resume the network with 'actuate'.
+
+ Note: You can stop a network even while it is processing events,
+ i.e. you can use 'pause' as an argument to 'reactimate'.
+ The network will /not/ stop immediately though, only after
+ the current event has been processed completely.
+-}
 pause :: EventNetwork -> IO ()
-pause   = Prim.pause . unEN
+pause = Prim.pause . unEN
+
 
 {-----------------------------------------------------------------------------
     Utilities
 ------------------------------------------------------------------------------}
--- | Build an 'Event' together with an 'IO' action that can
--- fire occurrences of this event. Variant of 'newAddHandler'.
---
--- This function is mainly useful for passing callback functions
--- inside a 'reactimate'.
+
+{- | Build an 'Event' together with an 'IO' action that can
+ fire occurrences of this event. Variant of 'newAddHandler'.
+
+ This function is mainly useful for passing callback functions
+ inside a 'reactimate'.
+-}
 newEvent :: MomentIO (Event a, Handler a)
 newEvent = do
-    (addHandler, fire) <- liftIO newAddHandler
-    e <- fromAddHandler addHandler
-    return (e,fire)
+  (addHandler, fire) <- liftIO newAddHandler
+  e <- fromAddHandler addHandler
+  return (e, fire)
 
--- | Build a 'Behavior' together with an 'IO' action that can
--- update this behavior with new values.
---
--- Implementation:
---
--- > newBehavior a = do
--- >     (e, fire) <- newEvent
--- >     b         <- stepper a e
--- >     return (b, fire)
+
+{- | Build a 'Behavior' together with an 'IO' action that can
+ update this behavior with new values.
+
+ Implementation:
+
+ > newBehavior a = do
+ >     (e, fire) <- newEvent
+ >     b         <- stepper a e
+ >     return (b, fire)
+-}
 newBehavior :: a -> MomentIO (Behavior a, Handler a)
 newBehavior a = do
-    (e, fire) <- newEvent
-    b         <- stepper a e
-    return (b, fire)
+  (e, fire) <- newEvent
+  b <- stepper a e
+  return (b, fire)
 
--- | Build a new 'Event' that contains the result
--- of an IO computation.
--- The input and result events will /not/ be simultaneous anymore,
--- the latter will occur /later/ than the former.
---
--- Please use the 'fmap' for 'Event' if your computation is pure.
---
--- Implementation:
---
--- > mapEventIO f e1 = do
--- >     (e2, handler) <- newEvent
--- >     reactimate $ (\a -> f a >>= handler) <$> e1
--- >     return e2
+
+{- | Build a new 'Event' that contains the result
+ of an IO computation.
+ The input and result events will /not/ be simultaneous anymore,
+ the latter will occur /later/ than the former.
+
+ Please use the 'fmap' for 'Event' if your computation is pure.
+
+ Implementation:
+
+ > mapEventIO f e1 = do
+ >     (e2, handler) <- newEvent
+ >     reactimate $ (\a -> f a >>= handler) <$> e1
+ >     return e2
+-}
 mapEventIO :: (a -> IO b) -> Event a -> MomentIO (Event b)
 mapEventIO f e1 = do
-    (e2, handler) <- newEvent
-    reactimate $ (f >=> handler) <$> e1
-    return e2
+  (e2, handler) <- newEvent
+  reactimate $ (f >=> handler) <$> e1
+  return e2
+
 
 {-----------------------------------------------------------------------------
     Simple use
 ------------------------------------------------------------------------------}
--- | Interpret an event processing function by building an 'EventNetwork'
--- and running it. Useful for testing, but uses 'MomentIO'.
--- See 'interpret' for a plain variant.
+
+{- | Interpret an event processing function by building an 'EventNetwork'
+ and running it. Useful for testing, but uses 'MomentIO'.
+ See 'interpret' for a plain variant.
+-}
 interpretFrameworks :: (Event a -> MomentIO (Event b)) -> [Maybe a] -> IO [Maybe b]
 interpretFrameworks f xs = do
-    output                    <- newIORef Nothing
-    (addHandler, runHandlers) <- newAddHandler
-    network                   <- compile $ do
-        e1 <- fromAddHandler addHandler
-        e2 <- f e1
-        reactimate $ writeIORef output . Just <$> e2
+  output <- newIORef Nothing
+  (addHandler, runHandlers) <- newAddHandler
+  network <- compile $ do
+    e1 <- fromAddHandler addHandler
+    e2 <- f e1
+    reactimate $ writeIORef output . Just <$> e2
 
-    actuate network
-    forM xs $ \x -> do
-        case x of
-            Nothing -> return Nothing
-            Just x  -> do
-                runHandlers x
-                b <- readIORef output
-                writeIORef output Nothing
-                return b
+  actuate network
+  forM xs $ \x -> do
+    case x of
+      Nothing -> return Nothing
+      Just x -> do
+        runHandlers x
+        b <- readIORef output
+        writeIORef output Nothing
+        return b
 
--- | Simple way to write a single event handler with
--- functional reactive programming.
+
+{- | Simple way to write a single event handler with
+ functional reactive programming.
+-}
 interpretAsHandler :: (Event a -> Moment (Event b)) -> AddHandler a -> AddHandler b
 interpretAsHandler f addHandlerA = AddHandler $ \handlerB -> do
-    network <- compile $ do
-        e1 <- fromAddHandler addHandlerA
-        e2 <- liftMoment (f e1)
-        reactimate $ handlerB <$> e2
-    actuate network
-    return (pause network)
+  network <- compile $ do
+    e1 <- fromAddHandler addHandlerA
+    e2 <- liftMoment (f e1)
+    reactimate $ handlerB <$> e2
+  actuate network
+  return (pause network)
