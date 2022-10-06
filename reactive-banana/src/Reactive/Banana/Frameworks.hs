@@ -61,7 +61,7 @@ import Control.Event.Handler
 import Reactive.Banana.Combinators
 import qualified Reactive.Banana.Prim.High.Combinators as Prim
 import Reactive.Banana.Types
-import GHC.Stack (HasCallStack, callStack, CallStack)
+import GHC.Stack (HasCallStack, callStack, CallStack, withFrozenCallStack)
 import OpenTelemetry.Trace (getGlobalTracerProvider, makeTracer, InstrumentationLibrary (InstrumentationLibrary), tracerOptions, inSpan'', defaultSpanArguments)
 import Data.String (fromString)
 
@@ -433,8 +433,8 @@ newBehavior a = do
  >     reactimate $ (\a -> f a >>= handler) <$> e1
  >     return e2
 -}
-mapEventIO :: (a -> IO b) -> Event a -> MomentIO (Event b)
-mapEventIO f e1 = do
+mapEventIO :: HasCallStack => (a -> IO b) -> Event a -> MomentIO (Event b)
+mapEventIO f e1 = withFrozenCallStack $ do
   (e2, handler) <- newEvent
   reactimate $ (f >=> handler) <$> e1
   return e2
