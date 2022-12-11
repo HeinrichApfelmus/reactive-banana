@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/HeinrichApfelmus/reactive-banana.svg)](https://travis-ci.org/HeinrichApfelmus/reactive-banana) 
+[![Hackage](https://img.shields.io/hackage/v/reactive-banana.svg)](https://hackage.haskell.org/package/reactive-banana)
 
 # Reactive-banana
 
