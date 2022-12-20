@@ -87,14 +87,20 @@ Test-Suite tests
     default-language:   Haskell98
     type:               exitcode-stdio-1.0
     hs-source-dirs:     tests
-    main-is:            Main.hs
-    other-modules:      Plumbing
+    main-is:            Reactive/Banana/Test/High/Combinators.hs
+    other-modules:      Reactive.Banana.Test.High.Plumbing
     build-depends:      base >= 4.2 && < 5,
+                        containers,
+                        hashable,
+                        pqueue,
+                        reactive-banana,
+                        semigroups,
+                        transformers,
                         tasty,
                         tasty-hunit,
-                        reactive-banana, vault, containers,
-                        semigroups, transformers,
-                        unordered-containers, hashable, psqueues, pqueue, these
+                        unordered-containers,
+                        vault,
+                        these
 
 
 Benchmark benchmark

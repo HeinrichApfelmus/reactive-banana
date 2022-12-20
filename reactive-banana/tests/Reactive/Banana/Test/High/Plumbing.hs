@@ -3,8 +3,7 @@
 ------------------------------------------------------------------------------}
 -- * Synopsis
 -- | Merge model and implementation into a single type. Not pretty.
-
-module Plumbing where
+module Reactive.Banana.Test.High.Plumbing where
 
 import Control.Applicative
 import Control.Monad (liftM, ap)
