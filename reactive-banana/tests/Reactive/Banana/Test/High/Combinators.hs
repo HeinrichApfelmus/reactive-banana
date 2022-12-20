@@ -4,10 +4,11 @@
 {-# LANGUAGE RecursiveDo #-}
 {-----------------------------------------------------------------------------
     reactive-banana
-
-    Test cases and examples
 ------------------------------------------------------------------------------}
-module Main where
+-- | Exemplar test for various high-level combinators.
+module Reactive.Banana.Test.High.Combinators
+    ( tests
+    ) where
 
 import Control.Arrow
 import Control.Monad (when, join)
@@ -17,8 +18,6 @@ import Test.Tasty.HUnit (testCase, assertBool)
 
 import Control.Applicative
 import Reactive.Banana.Test.High.Plumbing
-
-main = defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Combinators, high level"

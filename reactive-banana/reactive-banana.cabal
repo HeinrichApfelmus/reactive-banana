@@ -53,6 +53,7 @@ Library
                         unordered-containers >= 0.2.1.0 && < 0.3,
                         hashable >= 1.1 && < 1.5,
                         pqueue >= 1.0 && < 1.5,
+                        stm >= 2.5 && < 2.6,
                         these >= 0.2 && < 1.2
 
     exposed-modules:
@@ -87,8 +88,9 @@ Test-Suite tests
     default-language:   Haskell98
     type:               exitcode-stdio-1.0
     hs-source-dirs:     tests
-    main-is:            Reactive/Banana/Test/High/Combinators.hs
-    other-modules:      Reactive.Banana.Test.High.Plumbing
+    main-is:            reactive-banana-tests.hs
+    other-modules:      Reactive.Banana.Test.High.Combinators,
+                        Reactive.Banana.Test.High.Plumbing
     build-depends:      base >= 4.2 && < 5,
                         containers,
                         hashable,
