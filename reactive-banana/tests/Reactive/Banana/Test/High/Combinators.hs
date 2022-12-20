@@ -1,21 +1,28 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE RecursiveDo #-}
 {-----------------------------------------------------------------------------
     reactive-banana
-
-    Test cases and examples
 ------------------------------------------------------------------------------}
-{-# LANGUAGE FlexibleContexts, Rank2Types, NoMonomorphismRestriction, RecursiveDo #-}
-
-import Control.Arrow
-import Control.Monad (when, join)
-
-import Test.Tasty (defaultMain, testGroup, TestTree)
-import Test.Tasty.HUnit (testCase, assertBool)
+-- | Exemplar test for various high-level combinators.
+module Reactive.Banana.Test.High.Combinators
+    ( tests
+    ) where
 
 import Control.Applicative
-import Plumbing
+import Control.Arrow
+import Control.Monad
+    ( when, join )
+import Test.Tasty
+    ( defaultMain, testGroup, TestTree )
+import Test.Tasty.HUnit
+    ( testCase, assertBool )
 
+import Reactive.Banana.Test.High.Plumbing
 
-main = defaultMain $ testGroup "Tests"
+tests :: TestTree
+tests = testGroup "Combinators, high level"
     [ testGroup "Simple"
         [ testModelMatch "id"      id
         , testModelMatch "never1"  never1
