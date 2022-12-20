@@ -10,13 +10,15 @@ module Reactive.Banana.Test.High.Combinators
     ( tests
     ) where
 
-import Control.Arrow
-import Control.Monad (when, join)
-
-import Test.Tasty (defaultMain, testGroup, TestTree)
-import Test.Tasty.HUnit (testCase, assertBool)
-
 import Control.Applicative
+import Control.Arrow
+import Control.Monad
+    ( when, join )
+import Test.Tasty
+    ( defaultMain, testGroup, TestTree )
+import Test.Tasty.HUnit
+    ( testCase, assertBool )
+
 import Reactive.Banana.Test.High.Plumbing
 
 tests :: TestTree
