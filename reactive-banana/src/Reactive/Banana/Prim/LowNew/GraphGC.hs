@@ -9,6 +9,7 @@ module Reactive.Banana.Prim.LowNew.GraphGC
     , new
     , insertEdge
     , clearPredecessors
+    , walkSuccessors
     , removeGarbage
     ) where
 
@@ -17,7 +18,7 @@ import Data.IORef
 import Data.Unique.Really
     ( Unique )
 import Reactive.Banana.Prim.LowNew.Graph 
-    ( Graph )
+    ( Graph, Step )
 import Reactive.Banana.Prim.LowNew.Ref
     ( Ref, WeakRef )
 
@@ -133,6 +134,18 @@ clearPredecessors x GraphGC{graphRef} = do
         g{ graph = Graph.clearPredecessors (Ref.getUnique x) graph }
     finalizeIncomingEdges GraphD{graph} =
         mapM_ (Ref.finalize . snd) . Graph.getIncoming graph $ Ref.getUnique x
+
+-- | Walk through all successors. See 'Graph.walkSuccessors'.
+walkSuccessors
+    :: Monad m
+    => [Ref v] -> (WeakRef v -> m Step) -> GraphGC v -> IO (m [WeakRef v])
+walkSuccessors roots step GraphGC{..} = do
+    GraphD{graph,references} <- readIORef graphRef
+    let fromUnique = (references Map.!)
+    pure
+        . fmap (map fromUnique)
+        . Graph.walkSuccessors (map Ref.getUnique roots) (step . fromUnique)
+        $ graph
 
 {-----------------------------------------------------------------------------
     Garbage Collection

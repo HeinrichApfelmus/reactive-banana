@@ -72,10 +72,13 @@ mkSquare n = TestGraph{vertices,edges}
 ------------------------------------------------------------------------------}
 -- | Interesting generator for 'TestGraph'.
 genTestGraph :: Gen TestGraph
-genTestGraph = Q.frequency
+genTestGraph = shuffleEdges =<< Q.frequency
     [ (1, genLinearChain)
     , (1, genSquare)
     ]
+
+shuffleEdges :: TestGraph -> Gen TestGraph
+shuffleEdges g@TestGraph{edges} = (\e -> g{edges = e})<$> Q.shuffle edges
 
 genLinearChain :: Gen TestGraph
 genLinearChain = Q.sized $ pure . mkLinearChain
