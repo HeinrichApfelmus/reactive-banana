@@ -66,6 +66,7 @@ Library
                         Reactive.Banana.Prim.Mid,
                         Reactive.Banana.Prim.High.Cached,
                         Reactive.Banana.Prim.LowNew.Graph,
+                        Reactive.Banana.Prim.LowNew.GraphGC,
                         Reactive.Banana.Prim.LowNew.GraphTraversal,
                         Reactive.Banana.Prim.LowNew.Ref
 
@@ -94,9 +95,13 @@ Test-Suite tests
     hs-source-dirs:     tests
     main-is:            reactive-banana-tests.hs
     other-modules:      Reactive.Banana.Test.High.Combinators,
-                        Reactive.Banana.Test.High.Plumbing
-    build-depends:      base >= 4.2 && < 5,
+                        Reactive.Banana.Test.High.Plumbing,
+                        Reactive.Banana.Test.Low.Gen,
+                        Reactive.Banana.Test.Low.Graph,
+                        Reactive.Banana.Test.Low.GraphGC
+    build-depends:      base >= 4.7 && < 5,
                         containers,
+                        deepseq >= 1.4.3.0 && < 1.5,
                         hashable,
                         pqueue,
                         reactive-banana,
@@ -104,6 +109,8 @@ Test-Suite tests
                         transformers,
                         tasty,
                         tasty-hunit,
+                        tasty-quickcheck >= 0.10.1.2 && < 0.11,
+                        QuickCheck >= 2.10 && < 2.15,
                         unordered-containers,
                         vault,
                         these
