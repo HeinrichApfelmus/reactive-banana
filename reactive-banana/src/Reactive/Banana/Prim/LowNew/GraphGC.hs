@@ -8,6 +8,7 @@ module Reactive.Banana.Prim.LowNew.GraphGC
     , listReachableVertices
     , new
     , insertEdge
+    , clearPredecessors
     , removeGarbage
     ) where
 
@@ -121,6 +122,17 @@ insertEdge (x,y) g@GraphGC{graphRef} = do
                 . Map.insert uy (Ref.getWeakRef y)
                 $ references
             }
+
+-- | Remove all the edges that connect the vertex to its predecessors.
+clearPredecessors :: Ref v -> GraphGC v -> IO ()
+clearPredecessors x GraphGC{graphRef} = do
+    g <- atomicModifyIORef graphRef $ \g -> (removeIncomingEdges g, g)
+    finalizeIncomingEdges g
+  where
+    removeIncomingEdges g@GraphD{graph} =
+        g{ graph = Graph.clearPredecessors (Ref.getUnique x) graph }
+    finalizeIncomingEdges GraphD{graph} =
+        mapM_ (Ref.finalize . snd) . Graph.getIncoming graph $ Ref.getUnique x
 
 {-----------------------------------------------------------------------------
     Garbage Collection
