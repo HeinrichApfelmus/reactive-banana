@@ -89,14 +89,16 @@ jobs:
       - name: Build dependencies
         run: cabal build reactive-banana:lib:reactive-banana --disable-optimization --only-dependencies --with-compiler ghc-${{matrix.ghc}}
 
+      # We need to build the library and tests with the default optimization level
+      # in order to test garbage collection
       - name: Build library
-        run: cabal build reactive-banana:lib:reactive-banana --disable-optimization --with-compiler ghc-${{matrix.ghc}}
+        run: cabal build reactive-banana:lib:reactive-banana --with-compiler ghc-${{matrix.ghc}}
 
       - name: Build tests
-        run: cabal build reactive-banana:test:tests --disable-optimization --with-compiler ghc-${{matrix.ghc}}
+        run: cabal build reactive-banana:test:tests --with-compiler ghc-${{matrix.ghc}}
 
       - name: Run tests
-        run: cabal run reactive-banana:test:tests --disable-optimization --with-compiler ghc-${{matrix.ghc}}
+        run: cabal run reactive-banana:test:tests --with-compiler ghc-${{matrix.ghc}}
 
       - name: Generate docs
         run: cabal haddock reactive-banana --disable-optimization --with-compiler ghc-${{matrix.ghc}}
