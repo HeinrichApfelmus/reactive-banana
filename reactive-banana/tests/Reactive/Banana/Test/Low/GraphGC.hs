@@ -16,7 +16,7 @@ import Data.Map.Strict
     ( Map )
 import Data.Unique.Really
     ( Unique )
-import Reactive.Banana.Prim.LowNew.Graph 
+import Reactive.Banana.Prim.Low.Graph 
     ( Graph )
 import Reactive.Banana.Prim.LowNew.GraphGC
     ( GraphGC )
@@ -43,7 +43,7 @@ import qualified Test.QuickCheck.Monadic as Q
 import qualified Reactive.Banana.Test.Low.Graph as Q
 import qualified Reactive.Banana.Test.Low.Gen as Q
 
-import qualified Reactive.Banana.Prim.LowNew.Graph as Graph
+import qualified Reactive.Banana.Prim.Low.Graph as Graph
 import qualified Reactive.Banana.Prim.LowNew.GraphGC as GraphGC
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
 

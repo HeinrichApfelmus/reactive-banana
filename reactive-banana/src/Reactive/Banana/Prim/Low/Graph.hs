@@ -5,7 +5,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Prim.LowNew.Graph
+module Reactive.Banana.Prim.Low.Graph
     ( Graph
     , empty
     , getOutgoing

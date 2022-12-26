@@ -17,15 +17,15 @@ import Data.IORef
     ( IORef, atomicModifyIORef, newIORef, readIORef )
 import Data.Unique.Really
     ( Unique )
-import Reactive.Banana.Prim.LowNew.Graph 
+import Reactive.Banana.Prim.Low.Graph 
     ( Graph, Step )
 import Reactive.Banana.Prim.Low.Ref
     ( Ref, WeakRef )
 
 import qualified Control.Concurrent.STM as STM
 import qualified Data.HashMap.Strict as Map
+import qualified Reactive.Banana.Prim.Low.Graph as Graph
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
-import qualified Reactive.Banana.Prim.LowNew.Graph as Graph
 
 type Map = Map.HashMap
 

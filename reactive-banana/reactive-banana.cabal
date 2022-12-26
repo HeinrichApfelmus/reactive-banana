@@ -65,8 +65,8 @@ Library
                         Reactive.Banana.Model,
                         Reactive.Banana.Prim.Mid,
                         Reactive.Banana.Prim.High.Cached,
+                        Reactive.Banana.Prim.Low.Graph,
                         Reactive.Banana.Prim.Low.Ref,
-                        Reactive.Banana.Prim.LowNew.Graph,
                         Reactive.Banana.Prim.LowNew.GraphGC,
                         Reactive.Banana.Prim.LowNew.GraphTraversal
 
