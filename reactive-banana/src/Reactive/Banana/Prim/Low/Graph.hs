@@ -35,7 +35,7 @@ import Data.Hashable
     ( Hashable )
 import Data.Maybe
     ( fromMaybe )
-import Reactive.Banana.Prim.LowNew.GraphTraversal
+import Reactive.Banana.Prim.Low.GraphTraversal
     ( reversePostOrder )
 
 import qualified Data.List as L
