@@ -13,8 +13,12 @@ module Reactive.Banana.Prim.Low.GraphGC
     , removeGarbage
     ) where
 
+import Control.Applicative
+    ( (<|>) )
 import Data.IORef
     ( IORef, atomicModifyIORef, newIORef, readIORef )
+import Data.Maybe
+    ( fromJust )
 import Data.Unique.Really
     ( Unique )
 import Reactive.Banana.Prim.Low.Graph 
@@ -141,7 +145,10 @@ walkSuccessors
     => [Ref v] -> (WeakRef v -> m Step) -> GraphGC v -> IO (m [WeakRef v])
 walkSuccessors roots step GraphGC{..} = do
     GraphD{graph,references} <- readIORef graphRef
-    let fromUnique = (references Map.!)
+    let rootsMap = Map.fromList
+            [ (Ref.getUnique r, Ref.getWeakRef r) | r <- roots ]
+        fromUnique u = fromJust $
+            Map.lookup u references <|> Map.lookup u rootsMap
     pure
         . fmap (map fromUnique)
         . Graph.walkSuccessors (map Ref.getUnique roots) (step . fromUnique)
