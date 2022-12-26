@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Prim.LowNew.GraphTraversal
+module Reactive.Banana.Prim.Low.GraphTraversal
     ( GraphM
     , reversePostOrder1
     , reversePostOrder

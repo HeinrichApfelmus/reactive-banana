@@ -65,10 +65,10 @@ Library
                         Reactive.Banana.Model,
                         Reactive.Banana.Prim.Mid,
                         Reactive.Banana.Prim.High.Cached,
-                        Reactive.Banana.Prim.Low.Ref,
-                        Reactive.Banana.Prim.LowNew.Graph,
-                        Reactive.Banana.Prim.LowNew.GraphGC,
-                        Reactive.Banana.Prim.LowNew.GraphTraversal
+                        Reactive.Banana.Prim.Low.Graph,
+                        Reactive.Banana.Prim.Low.GraphGC,
+                        Reactive.Banana.Prim.Low.GraphTraversal,
+                        Reactive.Banana.Prim.Low.Ref
 
     other-modules:
                         Control.Monad.Trans.ReaderWriterIO,
@@ -76,7 +76,6 @@ Library
                         Reactive.Banana.Prim.Low.Compile,
                         Reactive.Banana.Prim.Low.Dependencies,
                         Reactive.Banana.Prim.Low.Evaluation,
-                        Reactive.Banana.Prim.Low.Graph,
                         Reactive.Banana.Prim.Low.IO,
                         Reactive.Banana.Prim.Low.OrderedBag,
                         Reactive.Banana.Prim.Low.Plumbing,

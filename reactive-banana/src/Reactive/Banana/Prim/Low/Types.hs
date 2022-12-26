@@ -8,12 +8,10 @@ module Reactive.Banana.Prim.Low.Types where
 import           Control.Monad.Trans.RWSIO
 import           Control.Monad.Trans.ReaderWriterIO
 import           Data.Hashable
-import           Data.Semigroup
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
 import           System.Mem.Weak
 
-import Reactive.Banana.Prim.Low.Graph            (Graph)
 import Reactive.Banana.Prim.Low.OrderedBag as OB (OrderedBag)
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
 
@@ -52,7 +50,10 @@ instance Monoid BuildW where
 
 type BuildIO = Build
 
-type DependencyBuilder = (Endo (Graph SomeNode), [(SomeNode, SomeNode)])
+data AddDependency parent child
+    = InsertEdge parent child
+    | ChangeParent parent child
+type DependencyBuilder = [AddDependency SomeNode SomeNode]
 
 {-----------------------------------------------------------------------------
     Synonyms

@@ -8,7 +8,7 @@ module Reactive.Banana.Test.Low.Graph
     , mkGraph
     ) where
 
-import Reactive.Banana.Prim.LowNew.Graph 
+import Reactive.Banana.Prim.Low.Graph 
     ( Graph )
 import Reactive.Banana.Test.Low.Gen
     ( DeltaGraph (..), TestGraph (..), Vertex )
@@ -23,7 +23,7 @@ import qualified Data.List as List
 import qualified Test.QuickCheck as Q
 import qualified Reactive.Banana.Test.Low.Gen as Q
 
-import qualified Reactive.Banana.Prim.LowNew.Graph as Graph
+import qualified Reactive.Banana.Prim.Low.Graph as Graph
 
 tests :: TestTree
 tests = testGroup "Graph"
