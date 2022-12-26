@@ -9,10 +9,10 @@ module Reactive.Banana.Prim.Low.Dependencies (
     ) where
 
 import           Control.Monad
-import           Data.Monoid
 import           System.Mem.Weak
+import Reactive.Banana.Prim.Low.GraphTraversal
+    ( reversePostOrder )
 
-import qualified Reactive.Banana.Prim.Low.Graph as Graph
 import           Reactive.Banana.Prim.Low.Types
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
 
@@ -21,22 +21,19 @@ import qualified Reactive.Banana.Prim.Low.Ref as Ref
 ------------------------------------------------------------------------------}
 -- | Add a new child node to a parent node.
 addChild :: SomeNode -> SomeNode -> DependencyBuilder
-addChild parent child = (Endo $ Graph.insertEdge (parent,child), mempty)
+addChild parent child = [InsertEdge parent child]
 
 -- | Assign a new parent to a child node.
 -- INVARIANT: The child may have only one parent node.
 changeParent :: Pulse a -> Pulse b -> DependencyBuilder
-changeParent child parent = (mempty, [(P child, P parent)])
+changeParent child parent = [ChangeParent (P parent) (P child)]
 
 -- | Execute the information in the dependency builder
 -- to change network topology.
 buildDependencies :: DependencyBuilder -> IO ()
-buildDependencies (Endo f, parents) = do
-    sequence_ [x `doAddChild` y | x <- Graph.listParents gr, y <- Graph.getChildren gr x]
-    sequence_ [x `doChangeParent` y | (P x, P y) <- parents]
-    where
-    gr :: Graph.Graph SomeNode
-    gr = f Graph.emptyGraph
+buildDependencies changes = do
+    sequence_ [x `doAddChild` y | InsertEdge x y <- changes]
+    sequence_ [x `doChangeParent` y | ChangeParent (P x) (P y) <- changes]
 
 {-----------------------------------------------------------------------------
     Set dependencies of individual notes
@@ -105,7 +102,7 @@ doChangeParent child parent = do
 
     -- lower all parents of the node if the parent was higher than the node
     when (d > 0) $ do
-        parents <- Graph.reversePostOrder (P parent) getParents
+        parents <- reversePostOrder [P parent] getParents
         forM_ parents $ \case
             P node -> Ref.modify' node $ update levelP (subtract d)
             L _    -> error "doChangeParent: Cannot change parent of LatchWrite"
