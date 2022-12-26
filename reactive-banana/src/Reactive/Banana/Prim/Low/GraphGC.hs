@@ -3,7 +3,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Prim.LowNew.GraphGC
+module Reactive.Banana.Prim.Low.GraphGC
     ( GraphGC
     , listReachableVertices
     , new
