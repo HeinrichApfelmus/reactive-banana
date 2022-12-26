@@ -2,6 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 module Reactive.Banana.Prim.Low.Evaluation (
     step
@@ -30,6 +31,7 @@ step (inputs,pulses)
         Network{ nTime = time1
         , nOutputs = outputs1
         , nAlwaysP = alwaysP
+        , nGraphGC
         }
     = do
 
@@ -49,6 +51,7 @@ step (inputs,pulses)
             { nTime    = next time1
             , nOutputs = OB.inserts outputs1 os
             , nAlwaysP = alwaysP
+            , nGraphGC
             }
     return (runEvalOs $ map snd actions, state2)
 

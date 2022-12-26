@@ -14,6 +14,7 @@ import           System.Mem.Weak
 
 import Reactive.Banana.Prim.Low.OrderedBag as OB (OrderedBag)
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
+import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
 
 {-----------------------------------------------------------------------------
     Network
@@ -23,8 +24,10 @@ data Network = Network
     { nTime           :: !Time                 -- Current time.
     , nOutputs        :: !(OrderedBag Output)  -- Remember outputs to prevent garbage collection.
     , nAlwaysP        :: !(Pulse ())   -- Pulse that always fires.
+    , nGraphGC        :: Dependencies
     }
 
+type Dependencies  = GraphGC.GraphGC ()
 type Inputs        = ([SomeNode], Lazy.Vault)
 type EvalNetwork a = Network -> IO (a, Network)
 type Step          = EvalNetwork (IO ())

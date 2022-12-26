@@ -10,6 +10,7 @@ import Data.Functor
 import Data.IORef
 
 import           Reactive.Banana.Prim.Mid.Combinators (mapP)
+import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
 import           Reactive.Banana.Prim.Low.IO
 import qualified Reactive.Banana.Prim.Low.OrderedBag  as OB
 import           Reactive.Banana.Prim.Low.Plumbing
@@ -21,7 +22,7 @@ import           Reactive.Banana.Prim.Low.Types
 -- | Change a 'Network' of pulses and latches by
 -- executing a 'BuildIO' action.
 compile :: BuildIO a -> Network -> IO (a, Network)
-compile m Network{nTime, nOutputs, nAlwaysP} = do
+compile m Network{nTime, nOutputs, nAlwaysP, nGraphGC} = do
     (a, topology, os) <- runBuildIO (nTime, nAlwaysP) m
     doit topology
 
@@ -29,16 +30,19 @@ compile m Network{nTime, nOutputs, nAlwaysP} = do
             { nTime    = next nTime
             , nOutputs = OB.inserts nOutputs os
             , nAlwaysP
+            , nGraphGC
             }
     return (a,state2)
 
 emptyNetwork :: IO Network
 emptyNetwork = do
   (alwaysP, _, _) <- runBuildIO undefined $ newPulse "alwaysP" (return $ Just ())
+  nGraphGC <- GraphGC.new
   pure Network
     { nTime    = next beginning
     , nOutputs = OB.empty
     , nAlwaysP = alwaysP
+    , nGraphGC
     }
 
 {-----------------------------------------------------------------------------
