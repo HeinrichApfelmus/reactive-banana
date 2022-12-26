@@ -36,7 +36,7 @@ type Build  = ReaderWriterIOT BuildR BuildW IO
 type BuildR = (Time, Pulse ())
     -- ( current time
     -- , pulse that always fires)
-newtype BuildW = BuildW (DependencyBuilder, [Output], Action, Maybe (Build ()))
+newtype BuildW = BuildW (DependencyChanges, [Output], Action, Maybe (Build ()))
     -- reader : current timestamp
     -- writer : ( actions that change the network topology
     --          , outputs to be added to the network
@@ -53,10 +53,10 @@ instance Monoid BuildW where
 
 type BuildIO = Build
 
-data AddDependency parent child
+data DependencyChange parent child
     = InsertEdge parent child
-    | ChangeParent parent child
-type DependencyBuilder = [AddDependency SomeNode SomeNode]
+    | ChangeParentTo child parent
+type DependencyChanges = [DependencyChange SomeNode SomeNode]
 
 {-----------------------------------------------------------------------------
     Synonyms
