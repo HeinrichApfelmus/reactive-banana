@@ -1,6 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Reactive.Banana.Prim.Low.IO where
@@ -27,20 +28,18 @@ debug _ = id
 newInput :: forall a. Build (Pulse a, a -> Step)
 newInput = mdo
     always <- alwaysP
-    key    <- liftIO Lazy.newKey
-    pulse  <- liftIO $ Ref.new $ Pulse
-        { _keyP      = key
+    _key   <- liftIO Lazy.newKey
+    nodeP  <- liftIO $ Ref.new $ P $ PulseD
+        { _keyP      = _key
         , _seenP     = agesAgo
         , _evalP     = readPulseP pulse    -- get its own value
-        , _childrenP = []
-        , _parentsP  = []
-        , _levelP    = ground
         , _nameP     = "newInput"
         }
+    let pulse = Pulse{_key,_nodeP=nodeP}
     -- Also add the  alwaysP  pulse to the inputs.
     let run :: a -> Step
-        run a = step ([P pulse, P always], Lazy.insert key (Just a) Lazy.empty)
-    return (pulse, run)
+        run a = step ([nodeP, _nodeP always], Lazy.insert _key (Just a) Lazy.empty)
+    pure (pulse, run)
 
 -- | Register a handler to be executed whenever a pulse occurs.
 --

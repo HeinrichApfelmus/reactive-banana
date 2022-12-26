@@ -9,7 +9,11 @@ module Reactive.Banana.Prim.Low.GraphGC
     , new
     , insertEdge
     , clearPredecessors
+
+    , Step (..)
     , walkSuccessors
+    , walkSuccessors_
+
     , removeGarbage
     ) where
 
@@ -153,6 +157,13 @@ walkSuccessors roots step GraphGC{..} = do
         . fmap (map fromUnique)
         . Graph.walkSuccessors (map Ref.getUnique roots) (step . fromUnique)
         $ graph
+
+-- | Walk through all successors. See 'Graph.walkSuccessors_'.
+walkSuccessors_ ::
+    Monad m => [Ref v] -> (WeakRef v -> m Step) -> GraphGC v -> IO (m ())
+walkSuccessors_ roots step g = do
+    action <- walkSuccessors roots step g
+    pure $ action >> pure ()
 
 {-----------------------------------------------------------------------------
     Garbage Collection

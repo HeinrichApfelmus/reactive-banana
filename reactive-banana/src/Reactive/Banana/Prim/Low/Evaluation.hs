@@ -10,17 +10,13 @@ module Reactive.Banana.Prim.Low.Evaluation (
 
 import Control.Monad ( join )
 import           Control.Monad.IO.Class
-import qualified Control.Monad.Trans.RWSIO          as RWS
-import qualified Data.PQueue.Prio.Min               as Q
-import qualified Data.Vault.Lazy                    as Lazy
 
 import qualified Reactive.Banana.Prim.Low.Dependencies as Deps
+import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
 import qualified Reactive.Banana.Prim.Low.OrderedBag as OB
 import           Reactive.Banana.Prim.Low.Plumbing
 import           Reactive.Banana.Prim.Low.Types
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
-
-type Queue = Q.MinPQueue Level
 
 {-----------------------------------------------------------------------------
     Evaluation step
@@ -40,10 +36,11 @@ step (inputs,pulses)
     ((_, (latchUpdates, outputs)), dependencyChanges, os)
             <- runBuildIO (time1, alwaysP)
             $  runEvalP pulses
-            $  evaluatePulses inputs
+            $  evaluatePulses inputs nGraphGC
 
     doit latchUpdates                            -- update latch values from pulses
     Deps.applyChanges dependencyChanges nGraphGC -- rearrange graph topology
+    GraphGC.removeGarbage nGraphGC               -- remove garbage as appropriate
     let actions :: [(Output, EvalO)]
         actions = OB.inOrder outputs outputs1    -- EvalO actions in proper order
 
@@ -63,60 +60,47 @@ runEvalOs = mapM_ join
     Traversal in dependency order
 ------------------------------------------------------------------------------}
 -- | Update all pulses in the graph, starting from a given set of nodes
-evaluatePulses :: [SomeNode] -> EvalP ()
-evaluatePulses roots = wrapEvalP $ \r -> go r =<< insertNodes r roots Q.empty
-    where
-    go :: RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> Queue SomeNode -> IO ()
-    go r q =
-        case ({-# SCC minView #-} Q.minView q) of
-            Nothing         -> return ()
-            Just (node, q)  -> do
-                children <- unwrapEvalP r (evaluateNode node)
-                q        <- insertNodes r children q
-                go r q
+evaluatePulses :: [SomeNode] -> Dependencies -> EvalP ()
+evaluatePulses inputs g = do
+    action <- liftIO $ GraphGC.walkSuccessors_ inputs evaluateWeakNode g
+    action
+
+evaluateWeakNode :: Ref.WeakRef SomeNodeD -> EvalP GraphGC.Step
+evaluateWeakNode w = do
+    mnode <- liftIO $ Ref.deRefWeak w
+    case mnode of
+        Nothing -> pure GraphGC.Stop
+        Just node -> evaluateNode node
 
 -- | Recalculate a given node and return all children nodes
 -- that need to evaluated subsequently.
-evaluateNode :: SomeNode -> EvalP [SomeNode]
-evaluateNode (P p) = {-# SCC evaluateNodeP #-} do
-    Pulse{..} <- Ref.read p
-    ma        <- _evalP
-    writePulseP _keyP ma
-    case ma of
-        Nothing -> return []
-        Just _  -> liftIO $ Ref.deRefWeaks _childrenP
-evaluateNode (L lw) = {-# SCC evaluateNodeL #-} do
-    time           <- askTime
-    LatchWrite{..} <- Ref.read lw
-    mlatch         <- liftIO $ Ref.deRefWeak _latchLW -- retrieve destination latch
+evaluateNode :: SomeNode -> EvalP GraphGC.Step
+evaluateNode someNode = do
+    node <- Ref.read someNode
+    case node of
+        P PulseD{_evalP,_keyP} -> {-# SCC evaluateNodeP #-} do
+            ma <- _evalP
+            writePulseP _keyP ma
+            pure $ case ma of
+                Nothing -> GraphGC.Stop
+                Just _  -> GraphGC.Next
+        L lw -> {-# SCC evaluateLatchWrite #-} do
+            evaluateLatchWrite lw
+            pure GraphGC.Stop
+        O o -> {-# SCC evaluateNodeO #-} do
+            m <- _evalO o -- calculate output action
+            rememberOutput (someNode,m)
+            pure GraphGC.Stop
+
+evaluateLatchWrite :: LatchWriteD -> EvalP ()
+evaluateLatchWrite LatchWriteD{_evalLW,_latchLW} = do
+    time   <- askTime
+    mlatch <- liftIO $ Ref.deRefWeak _latchLW -- retrieve destination latch
     case mlatch of
-        Nothing    -> return ()
+        Nothing    -> pure ()
         Just latch -> do
             a <- _evalLW                    -- calculate new latch value
-            -- liftIO $ Strict.evaluate a      -- see Note [LatchStrictness]
+            -- liftIO $ Strict.evaluate a   -- see Note [LatchStrictness]
             rememberLatchUpdate $           -- schedule value to be set later
                 Ref.modify' latch $ \l ->
                     a `seq` l { _seenL = time, _valueL = a }
-    return []
-evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
-    Output{..} <- Ref.read o
-    m          <- _evalO                    -- calculate output action
-    rememberOutput (o,m)
-    return []
-
--- | Insert nodes into the queue
-insertNodes :: RWS.Tuple BuildR (EvalPW, BuildW) Lazy.Vault -> [SomeNode] -> Queue SomeNode -> IO (Queue SomeNode)
-insertNodes (RWS.Tuple (time,_) _ _) = go
-    where
-    go :: [SomeNode] -> Queue SomeNode -> IO (Queue SomeNode)
-    go []              q = return q
-    go (node@(P p):xs) q = do
-        Pulse{..} <- Ref.read p
-        if time <= _seenP
-            then go xs q        -- pulse has already been put into the queue once
-            else do             -- pulse needs to be scheduled for evaluation
-                Ref.put p $! (let p = Pulse{..} in p { _seenP = time })
-                go xs $! Q.insert _levelP node q
-    go (node:xs)      q = go xs $! Q.insert ground node q
-            -- O and L nodes have only one parent, so
-            -- we can insert them at an arbitrary level
