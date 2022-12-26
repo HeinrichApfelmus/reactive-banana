@@ -76,7 +76,6 @@ Library
                         Reactive.Banana.Prim.Low.Compile,
                         Reactive.Banana.Prim.Low.Dependencies,
                         Reactive.Banana.Prim.Low.Evaluation,
-                        Reactive.Banana.Prim.Low.Graph,
                         Reactive.Banana.Prim.Low.IO,
                         Reactive.Banana.Prim.Low.OrderedBag,
                         Reactive.Banana.Prim.Low.Plumbing,
