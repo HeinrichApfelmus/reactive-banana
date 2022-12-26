@@ -128,11 +128,11 @@ addOutput p = do
 {-----------------------------------------------------------------------------
     Build monad
 ------------------------------------------------------------------------------}
-runBuildIO :: BuildR -> BuildIO a -> IO (a, Action, [Output])
+runBuildIO :: BuildR -> BuildIO a -> IO (a, DependencyChanges, [Output])
 runBuildIO i m = do
     (a, BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold mempty m
     doit liftIOLaters          -- execute late IOs
-    return (a,Action $ Deps.applyChanges topologyUpdates undefined,os)
+    return (a,topologyUpdates,os)
   where
     -- Recursively execute the  buildLater  calls.
     unfold :: BuildW -> BuildIO a -> IO (a, BuildW)

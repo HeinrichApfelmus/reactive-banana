@@ -10,6 +10,7 @@ import Data.Functor
 import Data.IORef
 
 import           Reactive.Banana.Prim.Mid.Combinators (mapP)
+import qualified Reactive.Banana.Prim.Low.Dependencies as Deps
 import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
 import           Reactive.Banana.Prim.Low.IO
 import qualified Reactive.Banana.Prim.Low.OrderedBag  as OB
@@ -23,9 +24,9 @@ import           Reactive.Banana.Prim.Low.Types
 -- executing a 'BuildIO' action.
 compile :: BuildIO a -> Network -> IO (a, Network)
 compile m Network{nTime, nOutputs, nAlwaysP, nGraphGC} = do
-    (a, topology, os) <- runBuildIO (nTime, nAlwaysP) m
-    doit topology
+    (a, dependencyChanges, os) <- runBuildIO (nTime, nAlwaysP) m
 
+    Deps.applyChanges dependencyChanges nGraphGC
     let state2 = Network
             { nTime    = next nTime
             , nOutputs = OB.inserts nOutputs os

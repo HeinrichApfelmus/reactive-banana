@@ -14,6 +14,7 @@ import qualified Control.Monad.Trans.RWSIO          as RWS
 import qualified Data.PQueue.Prio.Min               as Q
 import qualified Data.Vault.Lazy                    as Lazy
 
+import qualified Reactive.Banana.Prim.Low.Dependencies as Deps
 import qualified Reactive.Banana.Prim.Low.OrderedBag as OB
 import           Reactive.Banana.Prim.Low.Plumbing
 import           Reactive.Banana.Prim.Low.Types
@@ -36,15 +37,15 @@ step (inputs,pulses)
     = do
 
     -- evaluate pulses
-    ((_, (latchUpdates, outputs)), topologyUpdates, os)
+    ((_, (latchUpdates, outputs)), dependencyChanges, os)
             <- runBuildIO (time1, alwaysP)
             $  runEvalP pulses
             $  evaluatePulses inputs
 
-    doit latchUpdates                           -- update latch values from pulses
-    doit topologyUpdates                        -- rearrange graph topology
+    doit latchUpdates                            -- update latch values from pulses
+    Deps.applyChanges dependencyChanges nGraphGC -- rearrange graph topology
     let actions :: [(Output, EvalO)]
-        actions = OB.inOrder outputs outputs1   -- EvalO actions in proper order
+        actions = OB.inOrder outputs outputs1    -- EvalO actions in proper order
 
         state2 :: Network
         !state2 = Network
