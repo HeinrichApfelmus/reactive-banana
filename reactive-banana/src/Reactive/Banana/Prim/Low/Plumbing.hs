@@ -15,7 +15,7 @@ import           System.IO.Unsafe
 
 import qualified Reactive.Banana.Prim.Low.Dependencies as Deps
 import           Reactive.Banana.Prim.Low.Types
-import           Reactive.Banana.Prim.Low.Util
+import qualified Reactive.Banana.Prim.Low.Ref as Ref
 import Data.Maybe (fromMaybe)
 
 {-----------------------------------------------------------------------------
@@ -25,7 +25,7 @@ import Data.Maybe (fromMaybe)
 newPulse :: String -> EvalP (Maybe a) -> Build (Pulse a)
 newPulse name eval = liftIO $ do
     key <- Lazy.newKey
-    newRef $ Pulse
+    Ref.new $ Pulse
         { _keyP      = key
         , _seenP     = agesAgo
         , _evalP     = eval
@@ -49,7 +49,7 @@ this is a recipe for desaster.
 neverP :: Build (Pulse a)
 neverP = liftIO $ do
     key <- Lazy.newKey
-    newRef $ Pulse
+    Ref.new $ Pulse
         { _keyP      = key
         , _seenP     = agesAgo
         , _evalP     = return Nothing
@@ -61,7 +61,7 @@ neverP = liftIO $ do
 
 -- | Return a 'Latch' that has a constant value
 pureL :: a -> Latch a
-pureL a = unsafePerformIO $ newRef $ Latch
+pureL a = unsafePerformIO $ Ref.new $ Latch
     { _seenL  = beginning
     , _valueL = a
     , _evalL  = return a
@@ -70,11 +70,11 @@ pureL a = unsafePerformIO $ newRef $ Latch
 -- | Make new 'Latch' that can be updated by a 'Pulse'
 newLatch :: forall a. a -> Build (Pulse a -> Build (), Latch a)
 newLatch a = mdo
-    latch <- liftIO $ newRef $ Latch
+    latch <- liftIO $ Ref.new $ Latch
         { _seenL  = beginning
         , _valueL = a
         , _evalL  = do
-            Latch {..} <- readRef latch
+            Latch {..} <- Ref.read latch
             RW.tell _seenL  -- indicate timestamp
             return _valueL  -- indicate value
         }
@@ -83,13 +83,13 @@ newLatch a = mdo
 
         updateOn :: Pulse a -> Build ()
         updateOn p = do
-            w  <- liftIO $ mkWeakRefValue latch latch
-            lw <- liftIO $ newRef $ LatchWrite
+            w  <- liftIO $ Ref.mkWeak latch latch Nothing
+            lw <- liftIO $ Ref.new $ LatchWrite
                 { _evalLW  = fromMaybe err <$> readPulseP p
                 , _latchLW = w
                 }
             -- writer is alive only as long as the latch is alive
-            _  <- liftIO $ mkWeakRefValue latch lw
+            _  <- liftIO $ Ref.mkWeak latch lw Nothing
             P p `addChild` L lw
 
     return (updateOn, latch)
@@ -97,11 +97,11 @@ newLatch a = mdo
 -- | Make a new 'Latch' that caches a previous computation.
 cachedLatch :: EvalL a -> Latch a
 cachedLatch eval = unsafePerformIO $ mdo
-    latch <- newRef $ Latch
+    latch <- Ref.new $ Latch
         { _seenL  = agesAgo
         , _valueL = error "Undefined value of a cached latch."
         , _evalL  = do
-            Latch{..} <- liftIO $ readRef latch
+            Latch{..} <- liftIO $ Ref.read latch
             -- calculate current value (lazy!) with timestamp
             (a,time)  <- RW.listen eval
             liftIO $ if time <= _seenL
@@ -109,7 +109,7 @@ cachedLatch eval = unsafePerformIO $ mdo
                 else do                 -- update value
                     let _seenL  = time
                     let _valueL = a
-                    a `seq` put latch (Latch {..})
+                    a `seq` Ref.put latch (Latch {..})
                     return a
         }
     return latch
@@ -119,8 +119,8 @@ cachedLatch eval = unsafePerformIO $ mdo
 -- TODO: Return function to unregister the output again.
 addOutput :: Pulse EvalO -> Build ()
 addOutput p = do
-    o <- liftIO $ newRef $ Output
-        { _evalO = fromMaybe (return $ debug "nop") <$> readPulseP p
+    o <- liftIO $ Ref.new $ Output
+        { _evalO = fromMaybe (pure $ pure ()) <$> readPulseP p
         }
     P p `addChild` O o
     RW.tell $ BuildW (mempty, [o], mempty, mempty)
@@ -176,7 +176,7 @@ dependOn :: Pulse child -> Pulse parent -> Build ()
 dependOn child parent = P parent `addChild` P child
 
 keepAlive :: Pulse child -> Pulse parent -> Build ()
-keepAlive child parent = liftIO $ void $ mkWeakRefValue child parent
+keepAlive child parent = liftIO $ void $ Ref.mkWeak child parent Nothing
 
 addChild :: SomeNode -> SomeNode -> Build ()
 addChild parent child =
@@ -196,12 +196,12 @@ liftIOLater x = RW.tell $ BuildW (mempty, mempty, Action x, mempty)
 -- but discard timestamp information.
 readLatchIO :: Latch a -> IO a
 readLatchIO latch = do
-    Latch{..} <- readRef latch
+    Latch{..} <- Ref.read latch
     liftIO $ fst <$> RW.runReaderWriterIOT _evalL ()
 
 getValueL :: Latch a -> EvalL a
 getValueL latch = do
-    Latch{..} <- readRef latch
+    Latch{..} <- Ref.read latch
     _evalL
 
 {-----------------------------------------------------------------------------
@@ -222,7 +222,7 @@ askTime = fst <$> RWS.ask
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
 readPulseP p = do
-    Pulse{..} <- readRef p
+    Pulse{..} <- Ref.read p
     join . Lazy.lookup _keyP <$> RWS.get
 
 writePulseP :: Lazy.Key (Maybe a) -> Maybe a -> EvalP ()

@@ -15,7 +15,7 @@ import           System.Mem.Weak
 
 import Reactive.Banana.Prim.Low.Graph            (Graph)
 import Reactive.Banana.Prim.Low.OrderedBag as OB (OrderedBag)
-import Reactive.Banana.Prim.Low.Util
+import qualified Reactive.Banana.Prim.Low.Ref as Ref
 
 {-----------------------------------------------------------------------------
     Network
@@ -83,7 +83,7 @@ update (Lens get set) f = \s -> set (f $ get s) s
 {-----------------------------------------------------------------------------
     Pulse and Latch
 ------------------------------------------------------------------------------}
-type Pulse  a = Ref (Pulse' a)
+type Pulse  a = Ref.Ref (Pulse' a)
 data Pulse' a = Pulse
     { _keyP      :: Lazy.Key (Maybe a) -- Key to retrieve pulse from cache.
     , _seenP     :: !Time              -- See note [Timestamp].
@@ -95,21 +95,21 @@ data Pulse' a = Pulse
     }
 
 instance Show (Pulse a) where
-    show p = _nameP (unsafePerformIO $ readRef p) ++ " " ++ show (hashWithSalt 0 p)
+    show p = _nameP (unsafePerformIO $ Ref.read p) ++ " " ++ show (hashWithSalt 0 p)
 
-type Latch  a = Ref (Latch' a)
+type Latch  a = Ref.Ref (Latch' a)
 data Latch' a = Latch
     { _seenL  :: !Time               -- Timestamp for the current value.
     , _valueL :: a                   -- Current value.
     , _evalL  :: EvalL a             -- Recalculate current latch value.
     }
-type LatchWrite = Ref LatchWrite'
+type LatchWrite = Ref.Ref LatchWrite'
 data LatchWrite' = forall a. LatchWrite
     { _evalLW  :: EvalP a            -- Calculate value to write.
     , _latchLW :: Weak (Latch a)     -- Destination 'Latch' to write to.
     }
 
-type Output  = Ref Output'
+type Output  = Ref.Ref Output'
 data Output' = Output
     { _evalO     :: EvalP EvalO
     }
@@ -125,16 +125,16 @@ instance Hashable SomeNode where
     hashWithSalt s (O x) = hashWithSalt s x
 
 instance Eq SomeNode where
-    (P x) == (P y) = equalRef x y
-    (L x) == (L y) = equalRef x y
-    (O x) == (O y) = equalRef x y
+    (P x) == (P y) = Ref.equal x y
+    (L x) == (L y) = Ref.equal x y
+    (O x) == (O y) = Ref.equal x y
     _     == _     = False
 
 {-# INLINE mkWeakNodeValue #-}
 mkWeakNodeValue :: SomeNode -> v -> IO (Weak v)
-mkWeakNodeValue (P x) = mkWeakRefValue x
-mkWeakNodeValue (L x) = mkWeakRefValue x
-mkWeakNodeValue (O x) = mkWeakRefValue x
+mkWeakNodeValue (P x) v = Ref.mkWeak x v Nothing
+mkWeakNodeValue (L x) v = Ref.mkWeak x v Nothing
+mkWeakNodeValue (O x) v = Ref.mkWeak x v Nothing
 
 -- Lenses for various parameters
 seenP :: Lens (Pulse' a) Time
@@ -175,7 +175,7 @@ type EvalL    = ReaderWriterIOT () Time IO
     Show functions for debugging
 ------------------------------------------------------------------------------}
 printNode :: SomeNode -> IO String
-printNode (P p) = _nameP <$> readRef p
+printNode (P p) = _nameP <$> Ref.read p
 printNode (L _) = return "L"
 printNode (O _) = return "O"
 

@@ -12,7 +12,7 @@ import Reactive.Banana.Prim.Mid.Combinators (mapP)
 import Reactive.Banana.Prim.Low.Evaluation  (step)
 import Reactive.Banana.Prim.Low.Plumbing
 import Reactive.Banana.Prim.Low.Types
-import Reactive.Banana.Prim.Low.Util
+import qualified Reactive.Banana.Prim.Low.Ref as Ref
 
 debug :: String -> a -> a
 debug _ = id
@@ -28,7 +28,7 @@ newInput :: forall a. Build (Pulse a, a -> Step)
 newInput = mdo
     always <- alwaysP
     key    <- liftIO Lazy.newKey
-    pulse  <- liftIO $ newRef $ Pulse
+    pulse  <- liftIO $ Ref.new $ Pulse
         { _keyP      = key
         , _seenP     = agesAgo
         , _evalP     = readPulseP pulse    -- get its own value

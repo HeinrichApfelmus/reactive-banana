@@ -14,7 +14,7 @@ import           System.Mem.Weak
 
 import qualified Reactive.Banana.Prim.Low.Graph as Graph
 import           Reactive.Banana.Prim.Low.Types
-import           Reactive.Banana.Prim.Low.Util
+import qualified Reactive.Banana.Prim.Low.Ref as Ref
 
 {-----------------------------------------------------------------------------
     Accumulate dependency information for nodes
@@ -49,17 +49,17 @@ connectChild
                 -- ^ Weak reference with the child as key and the parent as value.
 connectChild parent child = do
     w <- mkWeakNodeValue child child
-    modify' parent $ update childrenP (w:)
+    Ref.modify' parent $ update childrenP (w:)
     mkWeakNodeValue child (P parent)        -- child keeps parent alive
 
 -- | Add a child node to a parent node and update evaluation order.
 doAddChild :: SomeNode -> SomeNode -> IO ()
 doAddChild (P parent) (P child) = do
-    level1 <- _levelP <$> readRef child
-    level2 <- _levelP <$> readRef parent
+    level1 <- _levelP <$> Ref.read child
+    level2 <- _levelP <$> Ref.read parent
     let level = level1 `max` (level2 + 1)
     w <- parent `connectChild` P child
-    modify' child $ set levelP level . update parentsP (w:)
+    Ref.modify' child $ set levelP level . update parentsP (w:)
 doAddChild (P parent) node = void $ parent `connectChild` node
 doAddChild (L _) _ = error "doAddChild: Cannot add children to LatchWrite"
 doAddChild (O _) _ = error "doAddChild: Cannot add children to Output"
@@ -67,12 +67,12 @@ doAddChild (O _) _ = error "doAddChild: Cannot add children to Output"
 -- | Remove a node from its parents and all parents from this node.
 removeParents :: Pulse a -> IO ()
 removeParents child = do
-    c@Pulse{_parentsP} <- readRef child
+    c@Pulse{_parentsP} <- Ref.read child
     -- delete this child (and dead children) from all parent nodes
     forM_ _parentsP $ \w -> do
-        Just (P parent) <- deRefWeak w  -- get parent node
+        Just (P parent) <- Ref.deRefWeak w  -- get parent node
         finalize w                      -- severe connection in garbage collector
-        let isGoodChild w = deRefWeak w >>= \x ->
+        let isGoodChild w = Ref.deRefWeak w >>= \x ->
               case x of
                 Just y | y /= P child -> return True
                 _                     -> do
@@ -84,10 +84,10 @@ removeParents child = do
                   -- https://github.com/HeinrichApfelmus/reactive-banana/pull/256
                   finalize w
                   return False
-        new <- filterM isGoodChild . _childrenP =<< readRef parent
-        modify' parent $ set childrenP new
+        new <- filterM isGoodChild . _childrenP =<< Ref.read parent
+        Ref.modify' parent $ set childrenP new
     -- replace parents by empty list
-    put child $ c{_parentsP = []}
+    Ref.put child $ c{_parentsP = []}
 
 -- | Set the parent of a pulse to a different pulse.
 doChangeParent :: Pulse a -> Pulse b -> IO ()
@@ -95,11 +95,11 @@ doChangeParent child parent = do
     -- remove all previous parents and connect to new parent
     removeParents child
     w <- parent `connectChild` P child
-    modify' child $ update parentsP (w:)
+    Ref.modify' child $ update parentsP (w:)
 
     -- calculate level difference between parent and node
-    levelParent <- _levelP <$> readRef parent
-    levelChild  <- _levelP <$> readRef child
+    levelParent <- _levelP <$> Ref.read parent
+    levelChild  <- _levelP <$> Ref.read child
     let d = levelParent - levelChild + 1
     -- level parent - d = level child - 1
 
@@ -107,7 +107,7 @@ doChangeParent child parent = do
     when (d > 0) $ do
         parents <- Graph.reversePostOrder (P parent) getParents
         forM_ parents $ \case
-            P node -> modify' node $ update levelP (subtract d)
+            P node -> Ref.modify' node $ update levelP (subtract d)
             L _    -> error "doChangeParent: Cannot change parent of LatchWrite"
             O _    -> error "doChangeParent: Cannot change parent of Output"
 
@@ -115,5 +115,5 @@ doChangeParent child parent = do
     Helper functions
 ------------------------------------------------------------------------------}
 getParents :: SomeNode -> IO [SomeNode]
-getParents (P p) = deRefWeaks . _parentsP =<< readRef p
+getParents (P p) = Ref.deRefWeaks . _parentsP =<< Ref.read p
 getParents _     = return []

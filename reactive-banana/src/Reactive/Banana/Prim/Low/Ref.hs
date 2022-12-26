@@ -4,7 +4,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Prim.LowNew.Ref
+module Reactive.Banana.Prim.Low.Ref
     ( -- * Mutable references with 'Unique'
       Ref
     , getUnique
@@ -107,9 +107,9 @@ type WeakRef v = Weak.Weak (Ref v)
 -- See 'System.Mem.Weak.mkWeak'.
 mkWeak
     :: Ref k -- ^ key
-    -> Ref v -- ^ value
+    -> v -- ^ value
     -> Maybe (IO ()) -- ^ finalizer
-    -> IO (WeakRef v)
+    -> IO (Weak.Weak v)
 mkWeak (Ref _ r _) = mkWeakIORef r
 
 -- | Finalize a 'WeakRef'.
@@ -121,7 +121,7 @@ finalize = Weak.finalize
 -- | Dereference a 'WeakRef'.
 --
 -- See 'System.Mem.Weak.deRefWeak'.
-deRefWeak :: WeakRef v -> IO (Maybe (Ref v))
+deRefWeak :: Weak.Weak v -> IO (Maybe v)
 deRefWeak = Weak.deRefWeak
 
 -- | Dereference a list of weak pointers while discarding dead ones.

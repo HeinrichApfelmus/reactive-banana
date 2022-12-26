@@ -12,12 +12,11 @@ import           Control.Monad.IO.Class
 import qualified Control.Monad.Trans.RWSIO          as RWS
 import qualified Data.PQueue.Prio.Min               as Q
 import qualified Data.Vault.Lazy                    as Lazy
-import           System.Mem.Weak
 
 import qualified Reactive.Banana.Prim.Low.OrderedBag as OB
 import           Reactive.Banana.Prim.Low.Plumbing
 import           Reactive.Banana.Prim.Low.Types
-import           Reactive.Banana.Prim.Low.Util
+import qualified Reactive.Banana.Prim.Low.Ref as Ref
 
 type Queue = Q.MinPQueue Level
 
@@ -76,28 +75,27 @@ evaluatePulses roots = wrapEvalP $ \r -> go r =<< insertNodes r roots Q.empty
 -- that need to evaluated subsequently.
 evaluateNode :: SomeNode -> EvalP [SomeNode]
 evaluateNode (P p) = {-# SCC evaluateNodeP #-} do
-    Pulse{..} <- readRef p
+    Pulse{..} <- Ref.read p
     ma        <- _evalP
     writePulseP _keyP ma
     case ma of
         Nothing -> return []
-        Just _  -> liftIO $ deRefWeaks _childrenP
+        Just _  -> liftIO $ Ref.deRefWeaks _childrenP
 evaluateNode (L lw) = {-# SCC evaluateNodeL #-} do
     time           <- askTime
-    LatchWrite{..} <- readRef lw
-    mlatch         <- liftIO $ deRefWeak _latchLW -- retrieve destination latch
+    LatchWrite{..} <- Ref.read lw
+    mlatch         <- liftIO $ Ref.deRefWeak _latchLW -- retrieve destination latch
     case mlatch of
         Nothing    -> return ()
         Just latch -> do
             a <- _evalLW                    -- calculate new latch value
             -- liftIO $ Strict.evaluate a      -- see Note [LatchStrictness]
             rememberLatchUpdate $           -- schedule value to be set later
-                modify' latch $ \l ->
+                Ref.modify' latch $ \l ->
                     a `seq` l { _seenL = time, _valueL = a }
     return []
 evaluateNode (O o) = {-# SCC evaluateNodeO #-} do
-    debug "evaluateNode O"
-    Output{..} <- readRef o
+    Output{..} <- Ref.read o
     m          <- _evalO                    -- calculate output action
     rememberOutput (o,m)
     return []
@@ -109,11 +107,11 @@ insertNodes (RWS.Tuple (time,_) _ _) = go
     go :: [SomeNode] -> Queue SomeNode -> IO (Queue SomeNode)
     go []              q = return q
     go (node@(P p):xs) q = do
-        Pulse{..} <- readRef p
+        Pulse{..} <- Ref.read p
         if time <= _seenP
             then go xs q        -- pulse has already been put into the queue once
             else do             -- pulse needs to be scheduled for evaluation
-                put p $! (let p = Pulse{..} in p { _seenP = time })
+                Ref.put p $! (let p = Pulse{..} in p { _seenP = time })
                 go xs $! Q.insert _levelP node q
     go (node:xs)      q = go xs $! Q.insert ground node q
             -- O and L nodes have only one parent, so
