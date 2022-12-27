@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Reactive.Banana.Prim.Low.Types where
+module Reactive.Banana.Prim.Mid.Types where
 
 import           Control.Monad.Trans.RWSIO
 import           Control.Monad.Trans.ReaderWriterIO

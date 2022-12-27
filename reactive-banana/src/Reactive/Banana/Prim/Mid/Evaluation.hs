@@ -4,19 +4,19 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-module Reactive.Banana.Prim.Low.Evaluation (
+module Reactive.Banana.Prim.Mid.Evaluation (
     step
     ) where
 
 import Control.Monad ( join )
 import           Control.Monad.IO.Class
 
-import qualified Reactive.Banana.Prim.Low.Dependencies as Deps
 import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
 import qualified Reactive.Banana.Prim.Low.OrderedBag as OB
-import           Reactive.Banana.Prim.Low.Plumbing
-import           Reactive.Banana.Prim.Low.Types
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
+import qualified Reactive.Banana.Prim.Mid.Dependencies as Deps
+import           Reactive.Banana.Prim.Mid.Plumbing
+import           Reactive.Banana.Prim.Mid.Types
 
 {-----------------------------------------------------------------------------
     Evaluation step

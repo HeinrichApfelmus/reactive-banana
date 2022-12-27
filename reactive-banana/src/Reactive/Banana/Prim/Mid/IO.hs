@@ -4,15 +4,15 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Reactive.Banana.Prim.Low.IO where
+module Reactive.Banana.Prim.Mid.IO where
 
 import           Control.Monad.IO.Class
 import qualified Data.Vault.Lazy        as Lazy
 
 import Reactive.Banana.Prim.Mid.Combinators (mapP)
-import Reactive.Banana.Prim.Low.Evaluation  (step)
-import Reactive.Banana.Prim.Low.Plumbing
-import Reactive.Banana.Prim.Low.Types
+import Reactive.Banana.Prim.Mid.Evaluation  (step)
+import Reactive.Banana.Prim.Mid.Plumbing
+import Reactive.Banana.Prim.Mid.Types
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
 
 debug :: String -> a -> a

@@ -3,15 +3,15 @@
 ------------------------------------------------------------------------------}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE LambdaCase #-}
-module Reactive.Banana.Prim.Low.Dependencies
+module Reactive.Banana.Prim.Mid.Dependencies
     ( -- | Utilities for operating on node dependencies.
       addChild
     , changeParent
     , applyChanges
     ) where
 
-import           Reactive.Banana.Prim.Low.Types
 import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
+import           Reactive.Banana.Prim.Mid.Types
 
 {-----------------------------------------------------------------------------
     Accumulate dependency information for nodes

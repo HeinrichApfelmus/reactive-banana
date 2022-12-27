@@ -5,7 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Reactive.Banana.Prim.Low.Plumbing where
+module Reactive.Banana.Prim.Mid.Plumbing where
 
 import Control.Monad
     ( join )
@@ -21,9 +21,9 @@ import           Data.IORef
 import qualified Data.Vault.Lazy                    as Lazy
 import           System.IO.Unsafe
 
-import qualified Reactive.Banana.Prim.Low.Dependencies as Deps
-import           Reactive.Banana.Prim.Low.Types
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
+import qualified Reactive.Banana.Prim.Mid.Dependencies as Deps
+import           Reactive.Banana.Prim.Mid.Types
 
 {-----------------------------------------------------------------------------
     Build primitive pulses and latches
