@@ -1,18 +1,15 @@
 FIXME
 -----
 
+* Implement automated space profiles as part of the test suite.
+
 * New name for  execute   and  observe ?
 
 * Implement optimzation that latches check their timestamp against
   the current time first before chasing dependencies.
 
-* Garbage collection:
-
-  Does it make a difference whether we use  weak  pointers for the
-  _parentP field or not? What about dependencies via  readPulseP ?
-  the goal is tobe able to garbage collect whole chains at once,
-  otherwise it would take too much time.
-
+* Detect cycles when trying to define Pulse recursively. #228
+  Add a regression test for it.
 
 Implementation Notes
 --------------------
@@ -38,16 +35,13 @@ Optimization Possibilities
     I.e. when they are not connected to an output,
     a switch or a latch. However, this is probably tricky to detect.
 
+    I think that this has been solved by garbage collecting them?
+
 * Remove events that are children of `neverP`.
 
     Note that `switchP` can change the child-parent relationship,
     so this optimization is only safe when the `neverP` will
     never be replaced by a different parent.
-
-* Garbage collect events that are no longer alive
-
-    Note that we might still be able to switch in events,
-    so this really has to be integrated with host language garbage collection.
 
 
 Design Questions
