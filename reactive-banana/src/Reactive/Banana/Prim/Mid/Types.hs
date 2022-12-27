@@ -67,12 +67,6 @@ type DependencyChanges = [DependencyChange SomeNode SomeNode]
 {-----------------------------------------------------------------------------
     Synonyms
 ------------------------------------------------------------------------------}
--- | Priority used to determine evaluation order for pulses.
-type Level = Int
-
-ground :: Level
-ground = 0
-
 -- | 'IO' actions as a monoid with respect to sequencing.
 newtype Action = Action { doit :: IO () }
 instance Semigroup Action where
