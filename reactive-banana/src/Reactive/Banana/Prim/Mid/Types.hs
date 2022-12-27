@@ -75,15 +75,6 @@ instance Monoid Action where
     mempty = Action $ return ()
     mappend = (<>)
 
--- | Lens-like functionality.
-data Lens s a = Lens (s -> a) (a -> s -> s)
-
-set :: Lens s a -> a -> s -> s
-set (Lens _   set)   = set
-
-update :: Lens s a -> (a -> a) -> s -> s
-update (Lens get set) f = \s -> set (f $ get s) s
-
 {-----------------------------------------------------------------------------
     Pulse and Latch
 ------------------------------------------------------------------------------}
@@ -133,16 +124,6 @@ data SomeNodeD
 {-# INLINE mkWeakNodeValue #-}
 mkWeakNodeValue :: SomeNode -> v -> IO (Weak v)
 mkWeakNodeValue x v = Ref.mkWeak x v Nothing
-
--- Lenses for various parameters
-seenP :: Lens (PulseD a) Time
-seenP = Lens _seenP  (\a s -> s { _seenP = a })
-
-seenL :: Lens (LatchD a) Time
-seenL = Lens _seenL  (\a s -> s { _seenL = a })
-
-valueL :: Lens (LatchD a) a
-valueL = Lens _valueL (\a s -> s { _valueL = a })
 
 -- | Evaluation monads.
 type EvalPW   = (EvalLW, [(Output, EvalO)])
