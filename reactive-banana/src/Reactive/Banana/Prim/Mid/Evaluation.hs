@@ -5,6 +5,7 @@
 ------------------------------------------------------------------------------}
 module Reactive.Banana.Prim.Mid.Evaluation
     ( step
+    , applyDependencyChanges
     ) where
 
 import Control.Monad
@@ -15,7 +16,6 @@ import Control.Monad.IO.Class
 import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
 import qualified Reactive.Banana.Prim.Low.OrderedBag as OB
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
-import qualified Reactive.Banana.Prim.Mid.Dependencies as Deps
 import           Reactive.Banana.Prim.Mid.Plumbing
 import           Reactive.Banana.Prim.Mid.Types
 
@@ -39,11 +39,12 @@ step (inputs,pulses)
             $  runEvalP pulses
             $  evaluatePulses inputs nGraphGC
 
-    doit latchUpdates                            -- update latch values from pulses
-    Deps.applyChanges dependencyChanges nGraphGC -- rearrange graph topology
-    GraphGC.removeGarbage nGraphGC               -- remove garbage as appropriate
+    doit latchUpdates                          -- update latch values from pulses
+    applyDependencyChanges dependencyChanges   -- rearrange graph topology
+        nGraphGC
+    GraphGC.removeGarbage nGraphGC             -- remove unreachable pulses
     let actions :: [(Output, EvalO)]
-        actions = OB.inOrder outputs outputs1    -- EvalO actions in proper order
+        actions = OB.inOrder outputs outputs1  -- EvalO actions in proper order
 
         state2 :: Network
         !state2 = Network
@@ -56,6 +57,23 @@ step (inputs,pulses)
 
 runEvalOs :: [EvalO] -> IO ()
 runEvalOs = mapM_ join
+
+{-----------------------------------------------------------------------------
+    Dependency changes
+------------------------------------------------------------------------------}
+-- | Apply all dependency changes to the 'GraphGC'.
+applyDependencyChanges :: DependencyChanges -> Dependencies -> IO ()
+applyDependencyChanges changes g = do
+    sequence_ [applyDependencyChange c g | c@(InsertEdge _ _) <- changes]
+    sequence_ [applyDependencyChange c g | c@(ChangeParentTo _ _) <- changes]
+
+applyDependencyChange
+    :: DependencyChange SomeNode SomeNode -> Dependencies -> IO ()
+applyDependencyChange (InsertEdge parent child) =
+    GraphGC.insertEdge (parent, child)
+applyDependencyChange (ChangeParentTo child parent) = do
+    _ <- GraphGC.clearPredecessors child
+    GraphGC.insertEdge (parent, child)
 
 {-----------------------------------------------------------------------------
     Traversal in dependency order

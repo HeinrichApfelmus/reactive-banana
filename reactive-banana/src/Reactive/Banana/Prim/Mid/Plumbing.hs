@@ -23,7 +23,6 @@ import qualified Control.Monad.Trans.ReaderWriterIO as RW
 import qualified Data.Vault.Lazy                    as Lazy
 
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
-import qualified Reactive.Banana.Prim.Mid.Dependencies as Deps
 import           Reactive.Banana.Prim.Mid.Types
 
 {-----------------------------------------------------------------------------
@@ -185,11 +184,14 @@ keepAlive child parent = liftIO $ void $
 
 addChild :: SomeNode -> SomeNode -> Build ()
 addChild parent child =
-    RW.tell $ BuildW (Deps.addChild parent child, mempty, mempty, mempty)
+    RW.tell $ BuildW ([InsertEdge parent child], mempty, mempty, mempty)
 
 changeParent :: Pulse child -> Pulse parent -> Build ()
-changeParent node parent =
-    RW.tell $ BuildW (Deps.changeParent node parent, mempty, mempty, mempty)
+changeParent pulse0 parent0 =
+    RW.tell $ BuildW ([ChangeParentTo pulse parent], mempty, mempty, mempty)
+   where
+     pulse = _nodeP pulse0
+     parent = _nodeP parent0
 
 liftIOLater :: IO () -> Build ()
 liftIOLater x = RW.tell $ BuildW (mempty, mempty, Action x, mempty)
