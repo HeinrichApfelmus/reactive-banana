@@ -1,15 +1,16 @@
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
-module Reactive.Banana.Prim.Mid.Evaluation (
-    step
+module Reactive.Banana.Prim.Mid.Evaluation
+    ( step
     ) where
 
-import Control.Monad ( join )
-import           Control.Monad.IO.Class
+import Control.Monad
+    ( join )
+import Control.Monad.IO.Class
+    ( liftIO )
 
 import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
 import qualified Reactive.Banana.Prim.Low.OrderedBag as OB

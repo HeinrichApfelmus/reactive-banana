@@ -1,8 +1,7 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE LambdaCase #-}
 module Reactive.Banana.Prim.Mid.Dependencies
     ( -- | Utilities for operating on node dependencies.
       addChild

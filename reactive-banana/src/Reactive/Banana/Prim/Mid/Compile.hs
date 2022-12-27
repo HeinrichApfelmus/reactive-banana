@@ -1,16 +1,19 @@
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE NamedFieldPuns #-}
 module Reactive.Banana.Prim.Mid.Compile where
 
-import Control.Exception (evaluate)
+import Control.Exception
+    ( evaluate )
 import Data.Functor
+    ( void )
 import Data.IORef
+    ( newIORef, readIORef, writeIORef )
 
 import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
-import qualified Reactive.Banana.Prim.Low.OrderedBag  as OB
+import qualified Reactive.Banana.Prim.Low.OrderedBag as OB
 import           Reactive.Banana.Prim.Mid.Combinators (mapP)
 import qualified Reactive.Banana.Prim.Mid.Dependencies as Deps
 import           Reactive.Banana.Prim.Mid.IO

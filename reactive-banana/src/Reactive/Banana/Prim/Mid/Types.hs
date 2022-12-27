@@ -1,18 +1,24 @@
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleInstances #-}
 module Reactive.Banana.Prim.Mid.Types where
 
-import           Control.Monad.Trans.RWSIO
-import           Control.Monad.Trans.ReaderWriterIO
-import           Data.Hashable
-import qualified Data.Vault.Lazy                    as Lazy
-import           System.IO.Unsafe
-import           System.Mem.Weak
+import Data.Hashable
+    ( hashWithSalt )
+import Control.Monad.Trans.RWSIO
+    ( RWSIOT )
+import Control.Monad.Trans.ReaderWriterIO
+    ( ReaderWriterIOT )
+import Reactive.Banana.Prim.Low.OrderedBag
+    ( OrderedBag )
+import System.IO.Unsafe
+    ( unsafePerformIO )
+import System.Mem.Weak
+    ( Weak )
 
-import Reactive.Banana.Prim.Low.OrderedBag as OB (OrderedBag)
+import qualified Data.Vault.Lazy as Lazy
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
 import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
 

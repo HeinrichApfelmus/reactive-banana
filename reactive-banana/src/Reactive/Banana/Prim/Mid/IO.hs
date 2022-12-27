@@ -1,12 +1,13 @@
-{-----------------------------------------------------------------------------
-    reactive-banana
-------------------------------------------------------------------------------}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-----------------------------------------------------------------------------
+    reactive-banana
+------------------------------------------------------------------------------}
 module Reactive.Banana.Prim.Mid.IO where
 
-import           Control.Monad.IO.Class
+import Control.Monad.IO.Class
+    ( liftIO )
 import qualified Data.Vault.Lazy        as Lazy
 
 import Reactive.Banana.Prim.Mid.Combinators (mapP)

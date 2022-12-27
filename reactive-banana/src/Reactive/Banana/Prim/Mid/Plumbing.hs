@@ -1,25 +1,26 @@
-{-----------------------------------------------------------------------------
-    reactive-banana
-------------------------------------------------------------------------------}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-----------------------------------------------------------------------------
+    reactive-banana
+------------------------------------------------------------------------------}
 module Reactive.Banana.Prim.Mid.Plumbing where
 
 import Control.Monad
-    ( join )
+    ( join, void )
 import Control.Monad.IO.Class
     ( liftIO )
+import Data.IORef
+    ( newIORef, writeIORef, readIORef )
 import Data.Maybe
     ( fromMaybe )
+import System.IO.Unsafe
+    ( unsafePerformIO, unsafeInterleaveIO )
 
 import qualified Control.Monad.Trans.RWSIO          as RWS
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
-import           Data.Functor
-import           Data.IORef
 import qualified Data.Vault.Lazy                    as Lazy
-import           System.IO.Unsafe
 
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
 import qualified Reactive.Banana.Prim.Mid.Dependencies as Deps

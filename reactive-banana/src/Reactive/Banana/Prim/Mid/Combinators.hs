@@ -1,11 +1,14 @@
+{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecursiveDo, ScopedTypeVariables #-}
 module Reactive.Banana.Prim.Mid.Combinators where
 
 import Control.Monad
+    ( join )
 import Control.Monad.IO.Class
+    ( liftIO )
 
 import Reactive.Banana.Prim.Mid.Plumbing
     ( newPulse, newLatch, cachedLatch
@@ -13,8 +16,10 @@ import Reactive.Banana.Prim.Mid.Plumbing
     , getValueL
     , readPulseP, readLatchP, readLatchFutureP, liftBuildP,
     )
-import qualified Reactive.Banana.Prim.Mid.Plumbing (pureL)
-import           Reactive.Banana.Prim.Mid.Types    (Latch, Future, Pulse, Build, EvalP)
+import qualified Reactive.Banana.Prim.Mid.Plumbing
+    ( pureL )
+import Reactive.Banana.Prim.Mid.Types
+    ( Latch, Future, Pulse, Build, EvalP )
 
 debug :: String -> a -> a
 -- debug s = trace s
