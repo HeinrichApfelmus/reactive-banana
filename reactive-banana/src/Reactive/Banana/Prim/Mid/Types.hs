@@ -33,6 +33,9 @@ data Network = Network
     , nGraphGC        :: Dependencies
     }
 
+getSize :: Network -> IO Int
+getSize = GraphGC.getSize . nGraphGC
+
 type Dependencies  = GraphGC.GraphGC SomeNodeD
 type Inputs        = ([SomeNode], Lazy.Vault)
 type EvalNetwork a = Network -> IO (a, Network)

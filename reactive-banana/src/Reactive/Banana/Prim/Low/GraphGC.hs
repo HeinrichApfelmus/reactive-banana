@@ -6,6 +6,7 @@
 module Reactive.Banana.Prim.Low.GraphGC
     ( GraphGC
     , listReachableVertices
+    , getSize
     , new
     , insertEdge
     , clearPredecessors
@@ -91,6 +92,9 @@ new = GraphGC <$> newIORef newGraphD <*> STM.newTQueueIO
         { graph = Graph.empty
         , references = Map.empty
         }
+
+getSize :: GraphGC v -> IO Int
+getSize GraphGC{graphRef} = Graph.size . graph <$> readIORef graphRef
 
 -- | List all vertices that are reachable and have at least
 -- one edge incident on them.
