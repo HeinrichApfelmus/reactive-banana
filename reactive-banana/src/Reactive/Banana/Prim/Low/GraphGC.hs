@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-----------------------------------------------------------------------------
@@ -45,8 +46,8 @@ type WeakEdge v = WeakRef v
 
 -- Graph data
 data GraphD v = GraphD
-    { graph :: Graph Unique (WeakEdge v)
-    , references :: Map Unique (WeakRef v)
+    { graph :: !(Graph Unique (WeakEdge v))
+    , references :: !(Map Unique (WeakRef v))
     }
 
 {- | A directed graph whose edges are mutable
