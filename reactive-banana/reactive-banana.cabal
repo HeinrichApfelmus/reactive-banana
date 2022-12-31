@@ -94,6 +94,7 @@ Test-Suite tests
     other-modules:      Reactive.Banana.Test.High.Combinators,
                         Reactive.Banana.Test.High.Plumbing,
                         Reactive.Banana.Test.High.Space,
+                        Reactive.Banana.Test.Mid.Space,
                         Reactive.Banana.Test.Low.Gen,
                         Reactive.Banana.Test.Low.Graph,
                         Reactive.Banana.Test.Low.GraphGC

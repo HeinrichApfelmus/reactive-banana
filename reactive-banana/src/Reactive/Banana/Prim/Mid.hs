@@ -9,7 +9,7 @@ module Reactive.Banana.Prim.Mid (
     -- have a look at "Reactive.Banana" instead.
 
     -- * Evaluation
-    Step, Network, emptyNetwork, getSize,
+    Step, EvalNetwork, Network, emptyNetwork, getSize,
 
     -- * Build FRP networks
     Build, liftIOLater, BuildIO, liftBuild, buildLater, buildLaterReadNow, compile,
