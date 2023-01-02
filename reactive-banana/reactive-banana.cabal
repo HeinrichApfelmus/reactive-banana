@@ -73,15 +73,14 @@ Library
     other-modules:
                         Control.Monad.Trans.ReaderWriterIO,
                         Control.Monad.Trans.RWSIO,
-                        Reactive.Banana.Prim.Low.Compile,
-                        Reactive.Banana.Prim.Low.Dependencies,
-                        Reactive.Banana.Prim.Low.Evaluation,
-                        Reactive.Banana.Prim.Low.IO,
                         Reactive.Banana.Prim.Low.OrderedBag,
-                        Reactive.Banana.Prim.Low.Plumbing,
-                        Reactive.Banana.Prim.Low.Types,
                         Reactive.Banana.Prim.Mid.Combinators,
+                        Reactive.Banana.Prim.Mid.Compile,
+                        Reactive.Banana.Prim.Mid.Evaluation,
+                        Reactive.Banana.Prim.Mid.IO,
+                        Reactive.Banana.Prim.Mid.Plumbing,
                         Reactive.Banana.Prim.Mid.Test,
+                        Reactive.Banana.Prim.Mid.Types,
                         Reactive.Banana.Prim.High.Combinators,
                         Reactive.Banana.Types
 
@@ -94,6 +93,8 @@ Test-Suite tests
     main-is:            reactive-banana-tests.hs
     other-modules:      Reactive.Banana.Test.High.Combinators,
                         Reactive.Banana.Test.High.Plumbing,
+                        Reactive.Banana.Test.High.Space,
+                        Reactive.Banana.Test.Mid.Space,
                         Reactive.Banana.Test.Low.Gen,
                         Reactive.Banana.Test.Low.Graph,
                         Reactive.Banana.Test.Low.GraphGC

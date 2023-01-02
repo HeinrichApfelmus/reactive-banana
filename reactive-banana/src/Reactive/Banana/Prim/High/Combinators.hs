@@ -45,12 +45,12 @@ interpret f = Prim.interpret $ \pulse -> runReaderT (g pulse) undefined
 -- | Data type representing an event network.
 data EventNetwork = EventNetwork
     { actuated :: IORef Bool
+    , size :: IORef Int
     , s :: MVar Prim.Network
     }
 
-
 runStep :: EventNetwork -> Prim.Step -> IO ()
-runStep EventNetwork{ actuated, s } f = whenFlag actuated $ do
+runStep EventNetwork{ actuated, s, size } f = whenFlag actuated $ do
     output <- mask $ \restore -> do
         s1 <- takeMVar s                   -- read and take lock
         -- pollValues <- sequence polls    -- poll mutable data
@@ -58,11 +58,14 @@ runStep EventNetwork{ actuated, s } f = whenFlag actuated $ do
             restore (f s1)                 -- calculate new state
                 `onException` putMVar s s1 -- on error, restore the original state
         putMVar s s2                       -- write state
+        writeIORef size =<< Prim.getSize s2
         return output
     output                                 -- run IO actions afterwards
   where
     whenFlag flag action = readIORef flag >>= \b -> when b action
 
+getSize :: EventNetwork -> IO Int
+getSize EventNetwork{size} = readIORef size
 
 actuate :: EventNetwork -> IO ()
 actuate EventNetwork{ actuated } = writeIORef actuated True
@@ -75,12 +78,14 @@ compile :: Moment () -> IO EventNetwork
 compile setup = do
     actuated <- newIORef False                   -- flag to set running status
     s        <- newEmptyMVar                     -- setup callback machinery
+    size     <- newIORef 0
 
-    let eventNetwork = EventNetwork{ actuated, s }
+    let eventNetwork = EventNetwork{ actuated, s, size }
 
     (_output, s0) <-                             -- compile initial graph
         Prim.compile (runReaderT setup eventNetwork) =<< Prim.emptyNetwork
     putMVar s s0                                -- set initial state
+    writeIORef size =<< Prim.getSize s0
 
     return eventNetwork
 

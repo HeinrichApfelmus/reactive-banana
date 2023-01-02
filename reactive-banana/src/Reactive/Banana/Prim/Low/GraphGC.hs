@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-----------------------------------------------------------------------------
@@ -6,15 +7,27 @@
 module Reactive.Banana.Prim.Low.GraphGC
     ( GraphGC
     , listReachableVertices
+    , getSize
     , new
     , insertEdge
     , clearPredecessors
+
+    , Step (..)
     , walkSuccessors
+    , walkSuccessors_
+
     , removeGarbage
+    
+    -- * Debugging
+    , printDot
     ) where
 
+import Control.Applicative
+    ( (<|>) )
 import Data.IORef
     ( IORef, atomicModifyIORef, newIORef, readIORef )
+import Data.Maybe
+    ( fromJust )
 import Data.Unique.Really
     ( Unique )
 import Reactive.Banana.Prim.Low.Graph 
@@ -36,8 +49,8 @@ type WeakEdge v = WeakRef v
 
 -- Graph data
 data GraphD v = GraphD
-    { graph :: Graph Unique (WeakEdge v)
-    , references :: Map Unique (WeakRef v)
+    { graph :: !(Graph Unique (WeakEdge v))
+    , references :: !(Map Unique (WeakRef v))
     }
 
 {- | A directed graph whose edges are mutable
@@ -83,6 +96,9 @@ new = GraphGC <$> newIORef newGraphD <*> STM.newTQueueIO
         { graph = Graph.empty
         , references = Map.empty
         }
+
+getSize :: GraphGC v -> IO Int
+getSize GraphGC{graphRef} = Graph.size . graph <$> readIORef graphRef
 
 -- | List all vertices that are reachable and have at least
 -- one edge incident on them.
@@ -141,11 +157,21 @@ walkSuccessors
     => [Ref v] -> (WeakRef v -> m Step) -> GraphGC v -> IO (m [WeakRef v])
 walkSuccessors roots step GraphGC{..} = do
     GraphD{graph,references} <- readIORef graphRef
-    let fromUnique = (references Map.!)
+    let rootsMap = Map.fromList
+            [ (Ref.getUnique r, Ref.getWeakRef r) | r <- roots ]
+        fromUnique u = fromJust $
+            Map.lookup u references <|> Map.lookup u rootsMap
     pure
         . fmap (map fromUnique)
         . Graph.walkSuccessors (map Ref.getUnique roots) (step . fromUnique)
         $ graph
+
+-- | Walk through all successors. See 'Graph.walkSuccessors_'.
+walkSuccessors_ ::
+    Monad m => [Ref v] -> (WeakRef v -> m Step) -> GraphGC v -> IO (m ())
+walkSuccessors_ roots step g = do
+    action <- walkSuccessors roots step g
+    pure $ action >> pure ()
 
 {-----------------------------------------------------------------------------
     Garbage Collection
@@ -154,7 +180,7 @@ walkSuccessors roots step GraphGC{..} = do
 -- as garbage by the Haskell garbage collector.
 removeGarbage :: GraphGC v -> IO ()
 removeGarbage g@GraphGC{deletions} = do
-    xs <- STM.atomically $ STM.tryReadTQueue deletions
+    xs <- STM.atomically $ STM.flushTQueue deletions
     mapM_ (deleteVertex g) xs
 
 -- Delete all edges associated with a vertex from the 'GraphGC'.
@@ -172,6 +198,16 @@ deleteVertex GraphGC{graphRef} x =
 finalizeVertex :: GraphGC v -> Unique -> IO ()
 finalizeVertex GraphGC{deletions} =
     STM.atomically . STM.writeTQueue deletions
+
+{-----------------------------------------------------------------------------
+    Debugging
+------------------------------------------------------------------------------}
+-- | Show the underlying graph in @graphviz@ dot file format.
+printDot :: (Unique -> WeakRef v -> IO String) -> GraphGC v -> IO String
+printDot format GraphGC{graphRef} = do
+    GraphD{graph,references} <- readIORef graphRef
+    strings <- Map.traverseWithKey format references
+    pure $ Graph.showDot (strings Map.!) graph
 
 {-----------------------------------------------------------------------------
     Helper functions

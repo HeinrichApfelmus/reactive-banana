@@ -33,7 +33,7 @@ module Reactive.Banana.Frameworks (
     interpretFrameworks, newEvent, mapEventIO, newBehavior,
 
     -- * Running event networks
-    EventNetwork, actuate, pause,
+    EventNetwork, actuate, pause, getSize,
 
     ) where
 
@@ -331,6 +331,12 @@ actuate = Prim.actuate . unEN
 -- the current event has been processed completely.
 pause :: EventNetwork -> IO ()
 pause   = Prim.pause . unEN
+
+-- | PROVISIONAL.
+-- Measure of the number of events in the event network.
+-- Useful for understanding space usage.
+getSize :: EventNetwork -> IO Int
+getSize = Prim.getSize . unEN
 
 {-----------------------------------------------------------------------------
     Utilities

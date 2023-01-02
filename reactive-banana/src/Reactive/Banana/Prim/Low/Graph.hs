@@ -27,6 +27,9 @@ module Reactive.Banana.Prim.Low.Graph
     -- * Internal
     , Level
     , getLevel
+
+    -- * Debugging
+    , showDot
     ) where
 
 import Data.Functor.Identity
@@ -44,6 +47,7 @@ import qualified Data.HashSet as Set
 import qualified Data.PQueue.Prio.Min as Q
 
 type Queue = Q.MinPQueue
+type Map = Map.HashMap
 type Set = Set.HashSet
 
 {-----------------------------------------------------------------------------
@@ -73,15 +77,15 @@ For efficiency, only the connected vertices are stored.
 data Graph v e = Graph
     { -- | Mapping from each vertex to its direct successors
       -- (possibly empty).
-      outgoing :: Map.HashMap v [(e,v)]
+      outgoing :: !(Map v (Map v e))
 
       -- | Mapping from each vertex to its direct predecessors
       -- (possibly empty).
-    , incoming :: Map.HashMap v [(v,e)]
+    , incoming :: !(Map v (Map v e))
 
       -- | Mapping from each vertex to its 'Level'.
       -- Invariant: If x precedes y, then x has a lower level than y.
-    , levels :: !(Map.HashMap v Level)
+    , levels :: !(Map v Level)
     } deriving (Eq, Show)
 
 -- | The graph with no edges.
@@ -94,11 +98,15 @@ empty = Graph
 
 -- | Get all direct successors of a vertex in a 'Graph'.
 getOutgoing :: (Eq v, Hashable v) => Graph v e -> v -> [(e,v)]
-getOutgoing Graph{outgoing} x = fromMaybe [] $ Map.lookup x outgoing
+getOutgoing Graph{outgoing} x =
+    map shuffle $ Map.toList $ fromMaybe Map.empty $ Map.lookup x outgoing
+  where
+      shuffle (x,y) = (y,x)
 
 -- | Get all direct predecessors of a vertex in a 'Graph'.
 getIncoming :: (Eq v, Hashable v) => Graph v e -> v -> [(v,e)]
-getIncoming Graph{incoming} x = fromMaybe [] $ Map.lookup x incoming
+getIncoming Graph{incoming} x =
+    Map.toList $ fromMaybe Map.empty $ Map.lookup x incoming
 
 -- | Get the 'Level' of a vertex in a 'Graph'.
 getLevel :: (Eq v, Hashable v) => Graph v e -> v -> Level
@@ -123,12 +131,12 @@ size Graph{incoming,outgoing} =
 insertEdge :: (Eq v, Hashable v) => (v,v) -> e -> Graph v e -> Graph v e
 insertEdge (x,y) exy g0@Graph{..} = Graph
     { outgoing
-        = Map.insertWith (\new old -> new <> old) x [(exy,y)]
-        $ insertDefaultIfNotMember y []
+        = Map.insertWith (\new old -> new <> old) x (Map.singleton y exy)
+        $ insertDefaultIfNotMember y Map.empty
         $ outgoing
     , incoming
-        = Map.insertWith (\new old -> new <> old) y [(x,exy)]
-        . insertDefaultIfNotMember x []
+        = Map.insertWith (\new old -> new <> old) y (Map.singleton x exy)
+        . insertDefaultIfNotMember x Map.empty
         $ incoming
     , levels
         = adjustLevels
@@ -153,7 +161,7 @@ insertEdge (x,y) exy g0@Graph{..} = Graph
 -- Helper function: Insert a default value if the key is not a member yet
 insertDefaultIfNotMember
     :: (Eq k, Hashable k)
-    => k -> a -> Map.HashMap k a -> Map.HashMap k a
+    => k -> a -> Map k a -> Map k a
 insertDefaultIfNotMember x def = Map.insertWith (\_ old -> old) x def
 
 {-----------------------------------------------------------------------------
@@ -175,21 +183,17 @@ deleteVertex x = clearPredecessors x . clearSuccessors x
 clearPredecessors :: (Eq v, Hashable v) => v -> Graph v e -> Graph v e
 clearPredecessors x g@Graph{..} = g
     { outgoing = foldr ($) outgoing
-        [ Map.adjust (delete x) z | (z,_) <- getIncoming g x ]
+        [ Map.adjust (Map.delete x) z | (z,_) <- getIncoming g x ]
     , incoming = Map.delete x incoming
     }
-  where
-    delete a = filter $ (a /=) . snd
 
 -- | Remove all the edges that connect the given vertex to its successors.
 clearSuccessors :: (Eq v, Hashable v) => v -> Graph v e -> Graph v e
 clearSuccessors x g@Graph{..} = g
     { outgoing = Map.delete x outgoing
     , incoming = foldr ($) incoming
-        [ Map.adjust (delete x) z | (_,z) <- getOutgoing g x ]
+        [ Map.adjust (Map.delete x) z | (_,z) <- getOutgoing g x ]
     }
-  where
-    delete a = filter $ (a /=) . fst
 
 -- | Apply `deleteVertex` to all vertices which are not predecessors
 -- of any of the vertices in the given list.
@@ -198,7 +202,7 @@ collectGarbage roots g@Graph{incoming,outgoing} = g
     { incoming = Map.filterWithKey (\v _ -> isReachable v) incoming
         -- incoming edges of reachable members are reachable by definition
     , outgoing
-        = Map.map (filter (isReachable . snd))
+        = Map.map (Map.filterWithKey (\v _ -> isReachable v))
         $ Map.filterWithKey (\v _ -> isReachable v) outgoing
     }
   where
@@ -267,3 +271,20 @@ walkSuccessors_
     => [v] -> (v -> m Step) -> Graph v e -> m ()
 walkSuccessors_ xs step g = walkSuccessors xs step g >> pure ()
 
+{-----------------------------------------------------------------------------
+    Debugging
+------------------------------------------------------------------------------}
+-- | Map to a string in @graphviz@ dot file format.
+showDot
+    :: (Eq v, Hashable v)
+    => (v -> String) -> Graph v e -> String
+showDot fv g = unlines $
+    [ "digraph mygraph {"
+    , "  node [shape=box];"
+    ] <> map showVertex (listConnectedVertices g)
+    <> ["}"]
+  where
+    showVertex x =
+        concat [ "  " <> showEdge x y <> "; " | (_,y) <- getOutgoing g x ]
+    showEdge x y = escape x <> " -> " <> escape y
+    escape = show . fv

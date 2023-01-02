@@ -67,7 +67,7 @@ prop_performGC =
     let g = Q.mkGraph g0
         expected = Graph.collectGarbage roots g
     in  Q.cover 10 (Graph.size g == Graph.size expected)
-            "no vertices unreachable"
+            "no   vertices unreachable"
         $ Q.cover 75 (Graph.size g > Graph.size expected)
             "some vertices unreachable"
         $ Q.cover 15 (Graph.size g > 2*Graph.size expected)

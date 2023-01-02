@@ -1,7 +1,7 @@
+{-# LANGUAGE RecursiveDo #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecursiveDo #-}
 module Reactive.Banana.Prim.Mid.Test where
 
 import Reactive.Banana.Prim.Mid

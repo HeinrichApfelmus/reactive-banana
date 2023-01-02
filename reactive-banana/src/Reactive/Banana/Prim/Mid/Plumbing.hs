@@ -1,22 +1,29 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecordWildCards, RecursiveDo, ScopedTypeVariables #-}
-module Reactive.Banana.Prim.Low.Plumbing where
+module Reactive.Banana.Prim.Mid.Plumbing where
 
-import           Control.Monad                                (join)
-import           Control.Monad.IO.Class
+import Control.Monad
+    ( join, void )
+import Control.Monad.IO.Class
+    ( liftIO )
+import Data.IORef
+    ( newIORef, writeIORef, readIORef )
+import Data.Maybe
+    ( fromMaybe )
+import System.IO.Unsafe
+    ( unsafePerformIO, unsafeInterleaveIO )
+
 import qualified Control.Monad.Trans.RWSIO          as RWS
 import qualified Control.Monad.Trans.ReaderWriterIO as RW
-import           Data.Functor
-import           Data.IORef
 import qualified Data.Vault.Lazy                    as Lazy
-import           System.IO.Unsafe
 
-import qualified Reactive.Banana.Prim.Low.Dependencies as Deps
-import           Reactive.Banana.Prim.Low.Types
 import qualified Reactive.Banana.Prim.Low.Ref as Ref
-import Data.Maybe (fromMaybe)
+import           Reactive.Banana.Prim.Mid.Types
 
 {-----------------------------------------------------------------------------
     Build primitive pulses and latches
@@ -24,16 +31,14 @@ import Data.Maybe (fromMaybe)
 -- | Make 'Pulse' from evaluation function
 newPulse :: String -> EvalP (Maybe a) -> Build (Pulse a)
 newPulse name eval = liftIO $ do
-    key <- Lazy.newKey
-    Ref.new $ Pulse
-        { _keyP      = key
+    _key <- Lazy.newKey
+    _nodeP <- Ref.new $ P $ PulseD
+        { _keyP      = _key
         , _seenP     = agesAgo
         , _evalP     = eval
-        , _childrenP = []
-        , _parentsP  = []
-        , _levelP    = ground
         , _nameP     = name
         }
+    pure $ Pulse{_key,_nodeP}
 
 {-
 * Note [PulseCreation]
@@ -48,16 +53,14 @@ this is a recipe for desaster.
 -- | 'Pulse' that never fires.
 neverP :: Build (Pulse a)
 neverP = liftIO $ do
-    key <- Lazy.newKey
-    Ref.new $ Pulse
-        { _keyP      = key
+    _key <- Lazy.newKey
+    _nodeP <- Ref.new $ P $ PulseD
+        { _keyP      = _key
         , _seenP     = agesAgo
-        , _evalP     = return Nothing
-        , _childrenP = []
-        , _parentsP  = []
-        , _levelP    = ground
+        , _evalP     = pure Nothing
         , _nameP     = "neverP"
         }
+    pure $ Pulse{_key,_nodeP}
 
 -- | Return a 'Latch' that has a constant value
 pureL :: a -> Latch a
@@ -84,13 +87,13 @@ newLatch a = mdo
         updateOn :: Pulse a -> Build ()
         updateOn p = do
             w  <- liftIO $ Ref.mkWeak latch latch Nothing
-            lw <- liftIO $ Ref.new $ LatchWrite
+            lw <- liftIO $ Ref.new $ L $ LatchWriteD
                 { _evalLW  = fromMaybe err <$> readPulseP p
                 , _latchLW = w
                 }
             -- writer is alive only as long as the latch is alive
             _  <- liftIO $ Ref.mkWeak latch lw Nothing
-            P p `addChild` L lw
+            _nodeP p `addChild` lw
 
     return (updateOn, latch)
 
@@ -119,21 +122,21 @@ cachedLatch eval = unsafePerformIO $ mdo
 -- TODO: Return function to unregister the output again.
 addOutput :: Pulse EvalO -> Build ()
 addOutput p = do
-    o <- liftIO $ Ref.new $ Output
+    o <- liftIO $ Ref.new $ O $ Output
         { _evalO = fromMaybe (pure $ pure ()) <$> readPulseP p
         }
-    P p `addChild` O o
+    _nodeP p `addChild` o
     RW.tell $ BuildW (mempty, [o], mempty, mempty)
 
 {-----------------------------------------------------------------------------
     Build monad
 ------------------------------------------------------------------------------}
-runBuildIO :: BuildR -> BuildIO a -> IO (a, Action, [Output])
+runBuildIO :: BuildR -> BuildIO a -> IO (a, DependencyChanges, [Output])
 runBuildIO i m = do
-        (a, BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold mempty m
-        doit liftIOLaters          -- execute late IOs
-        return (a,Action $ Deps.buildDependencies topologyUpdates,os)
-    where
+    (a, BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold mempty m
+    doit liftIOLaters          -- execute late IOs
+    return (a,topologyUpdates,os)
+  where
     -- Recursively execute the  buildLater  calls.
     unfold :: BuildW -> BuildIO a -> IO (a, BuildW)
     unfold w m = do
@@ -173,18 +176,22 @@ readLatchB :: Latch a -> Build a
 readLatchB = liftIO . readLatchIO
 
 dependOn :: Pulse child -> Pulse parent -> Build ()
-dependOn child parent = P parent `addChild` P child
+dependOn child parent = _nodeP parent `addChild` _nodeP child
 
 keepAlive :: Pulse child -> Pulse parent -> Build ()
-keepAlive child parent = liftIO $ void $ Ref.mkWeak child parent Nothing
+keepAlive child parent = liftIO $ void $
+    Ref.mkWeak (_nodeP child) (_nodeP parent) Nothing
 
 addChild :: SomeNode -> SomeNode -> Build ()
 addChild parent child =
-    RW.tell $ BuildW (Deps.addChild parent child, mempty, mempty, mempty)
+    RW.tell $ BuildW ([InsertEdge parent child], mempty, mempty, mempty)
 
 changeParent :: Pulse child -> Pulse parent -> Build ()
-changeParent node parent =
-    RW.tell $ BuildW (Deps.changeParent node parent, mempty, mempty, mempty)
+changeParent pulse0 parent0 =
+    RW.tell $ BuildW ([ChangeParentTo pulse parent], mempty, mempty, mempty)
+   where
+     pulse = _nodeP pulse0
+     parent = _nodeP parent0
 
 liftIOLater :: IO () -> Build ()
 liftIOLater x = RW.tell $ BuildW (mempty, mempty, Action x, mempty)
@@ -221,9 +228,8 @@ askTime :: EvalP Time
 askTime = fst <$> RWS.ask
 
 readPulseP :: Pulse a -> EvalP (Maybe a)
-readPulseP p = do
-    Pulse{..} <- Ref.read p
-    join . Lazy.lookup _keyP <$> RWS.get
+readPulseP Pulse{_key} =
+    join . Lazy.lookup _key <$> RWS.get
 
 writePulseP :: Lazy.Key (Maybe a) -> Maybe a -> EvalP ()
 writePulseP key a = do

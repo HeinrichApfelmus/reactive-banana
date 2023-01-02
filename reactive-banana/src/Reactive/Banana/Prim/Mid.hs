@@ -9,7 +9,7 @@ module Reactive.Banana.Prim.Mid (
     -- have a look at "Reactive.Banana" instead.
 
     -- * Evaluation
-    Step, Network, emptyNetwork,
+    Step, EvalNetwork, Network, emptyNetwork, getSize,
 
     -- * Build FRP networks
     Build, liftIOLater, BuildIO, liftBuild, buildLater, buildLaterReadNow, compile,
@@ -33,20 +33,23 @@ module Reactive.Banana.Prim.Mid (
     pureL, mapL, applyL, accumL, applyP,
 
     -- * Dynamic event switching
-    switchL, executeP, switchP
+    switchL, executeP, switchP,
 
     -- * Notes
     -- $recursion
+    
+    -- * Debugging
+    printDot
   ) where
 
 
 import Control.Monad.IO.Class
-import Reactive.Banana.Prim.Low.Compile
-import Reactive.Banana.Prim.Low.IO
-import Reactive.Banana.Prim.Low.Plumbing
-    ( neverP, alwaysP, liftBuild, buildLater, buildLaterReadNow, liftIOLater )
-import Reactive.Banana.Prim.Low.Types
 import Reactive.Banana.Prim.Mid.Combinators
+import Reactive.Banana.Prim.Mid.Compile
+import Reactive.Banana.Prim.Mid.IO
+import Reactive.Banana.Prim.Mid.Plumbing
+    ( neverP, alwaysP, liftBuild, buildLater, buildLaterReadNow, liftIOLater )
+import Reactive.Banana.Prim.Mid.Types
 import Reactive.Banana.Prim.High.Cached
 
 {-----------------------------------------------------------------------------

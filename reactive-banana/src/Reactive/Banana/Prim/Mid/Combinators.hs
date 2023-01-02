@@ -1,20 +1,25 @@
+{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE RecursiveDo, ScopedTypeVariables #-}
 module Reactive.Banana.Prim.Mid.Combinators where
 
 import Control.Monad
+    ( join )
 import Control.Monad.IO.Class
+    ( liftIO )
 
-import Reactive.Banana.Prim.Low.Plumbing
+import Reactive.Banana.Prim.Mid.Plumbing
     ( newPulse, newLatch, cachedLatch
     , dependOn, keepAlive, changeParent
     , getValueL
     , readPulseP, readLatchP, readLatchFutureP, liftBuildP,
     )
-import qualified Reactive.Banana.Prim.Low.Plumbing (pureL)
-import           Reactive.Banana.Prim.Low.Types    (Latch, Future, Pulse, Build, EvalP)
+import qualified Reactive.Banana.Prim.Mid.Plumbing
+    ( pureL )
+import Reactive.Banana.Prim.Mid.Types
+    ( Latch, Future, Pulse, Build, EvalP )
 
 debug :: String -> a -> a
 -- debug s = trace s
@@ -85,7 +90,7 @@ applyP f x = do
     return p
 
 pureL :: a -> Latch a
-pureL = Reactive.Banana.Prim.Low.Plumbing.pureL
+pureL = Reactive.Banana.Prim.Mid.Plumbing.pureL
 
 -- specialization of   mapL f = applyL (pureL f)
 mapL :: (a -> b) -> Latch a -> Latch b

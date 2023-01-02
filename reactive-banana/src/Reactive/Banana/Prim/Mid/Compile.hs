@@ -1,19 +1,24 @@
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE NamedFieldPuns #-}
-module Reactive.Banana.Prim.Low.Compile where
+module Reactive.Banana.Prim.Mid.Compile where
 
-import Control.Exception (evaluate)
+import Control.Exception
+    ( evaluate )
 import Data.Functor
+    ( void )
 import Data.IORef
+    ( newIORef, readIORef, writeIORef )
 
+import qualified Reactive.Banana.Prim.Low.GraphGC as GraphGC
+import qualified Reactive.Banana.Prim.Low.OrderedBag as OB
 import           Reactive.Banana.Prim.Mid.Combinators (mapP)
-import           Reactive.Banana.Prim.Low.IO
-import qualified Reactive.Banana.Prim.Low.OrderedBag  as OB
-import           Reactive.Banana.Prim.Low.Plumbing
-import           Reactive.Banana.Prim.Low.Types
+import           Reactive.Banana.Prim.Mid.Evaluation (applyDependencyChanges)
+import           Reactive.Banana.Prim.Mid.IO
+import           Reactive.Banana.Prim.Mid.Plumbing
+import           Reactive.Banana.Prim.Mid.Types
 
 {-----------------------------------------------------------------------------
    Compilation
@@ -21,24 +26,27 @@ import           Reactive.Banana.Prim.Low.Types
 -- | Change a 'Network' of pulses and latches by
 -- executing a 'BuildIO' action.
 compile :: BuildIO a -> Network -> IO (a, Network)
-compile m Network{nTime, nOutputs, nAlwaysP} = do
-    (a, topology, os) <- runBuildIO (nTime, nAlwaysP) m
-    doit topology
+compile m Network{nTime, nOutputs, nAlwaysP, nGraphGC} = do
+    (a, dependencyChanges, os) <- runBuildIO (nTime, nAlwaysP) m
 
+    applyDependencyChanges dependencyChanges nGraphGC
     let state2 = Network
             { nTime    = next nTime
             , nOutputs = OB.inserts nOutputs os
             , nAlwaysP
+            , nGraphGC
             }
     return (a,state2)
 
 emptyNetwork :: IO Network
 emptyNetwork = do
   (alwaysP, _, _) <- runBuildIO undefined $ newPulse "alwaysP" (return $ Just ())
+  nGraphGC <- GraphGC.new
   pure Network
     { nTime    = next beginning
     , nOutputs = OB.empty
     , nAlwaysP = alwaysP
+    , nGraphGC
     }
 
 {-----------------------------------------------------------------------------
@@ -71,7 +79,7 @@ interpret f xs = do
             writeIORef o Nothing
             return (ma,s2)
 
-    mapAccumM go state xs         -- run several steps
+    fst <$> mapAccumM go state xs         -- run several steps
 
 -- | Execute an FRP network with a sequence of inputs.
 -- Make sure that outputs are evaluated, but don't display their values.
@@ -95,12 +103,13 @@ runSpaceProfile f xs = do
     mapAccumM_ fire network xs
 
 -- | 'mapAccum' for a monad.
-mapAccumM :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m [b]
-mapAccumM _ _  []     = return []
-mapAccumM f s0 (x:xs) = do
-    (b,s1) <- f x s0
-    bs     <- mapAccumM f s1 xs
-    return (b:bs)
+mapAccumM :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m ([b],s)
+mapAccumM f s0 = go s0 []
+  where
+    go s1 bs []     = pure (reverse bs,s1)
+    go s1 bs (x:xs) = do
+        (b,s2) <- f x s1
+        go s2 (b:bs) xs
 
 -- | Strict 'mapAccum' for a monad. Discards results.
 mapAccumM_ :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m ()
