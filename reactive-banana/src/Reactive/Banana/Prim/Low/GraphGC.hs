@@ -17,6 +17,9 @@ module Reactive.Banana.Prim.Low.GraphGC
     , walkSuccessors_
 
     , removeGarbage
+    
+    -- * Debugging
+    , printDot
     ) where
 
 import Control.Applicative
@@ -195,6 +198,16 @@ deleteVertex GraphGC{graphRef} x =
 finalizeVertex :: GraphGC v -> Unique -> IO ()
 finalizeVertex GraphGC{deletions} =
     STM.atomically . STM.writeTQueue deletions
+
+{-----------------------------------------------------------------------------
+    Debugging
+------------------------------------------------------------------------------}
+-- | Show the underlying graph in @graphviz@ dot file format.
+printDot :: (Unique -> WeakRef v -> IO String) -> GraphGC v -> IO String
+printDot format GraphGC{graphRef} = do
+    GraphD{graph,references} <- readIORef graphRef
+    strings <- Map.traverseWithKey format references
+    pure $ Graph.showDot (strings Map.!) graph
 
 {-----------------------------------------------------------------------------
     Helper functions

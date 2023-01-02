@@ -7,6 +7,8 @@ module Reactive.Banana.Prim.Mid.Types where
 
 import Data.Hashable
     ( hashWithSalt )
+import Data.Unique.Really
+    ( Unique )
 import Control.Monad.Trans.RWSIO
     ( RWSIOT )
 import Control.Monad.Trans.ReaderWriterIO
@@ -100,6 +102,9 @@ instance Show (Pulse a) where
               P pulseD -> _nameP pulseD
               _ -> ""
 
+showUnique :: Unique -> String
+showUnique = show . hashWithSalt 0
+
 type Latch  a = Ref.Ref (LatchD a)
 data LatchD a = Latch
     { _seenL  :: !Time               -- Timestamp for the current value.
@@ -154,6 +159,16 @@ printNode node = do
         P p -> _nameP p
         L _ -> "L"
         O _ -> "O"
+
+-- | Show the graph of the 'Network' in @graphviz@ dot file format.
+printDot :: Network -> IO String
+printDot = GraphGC.printDot format . nGraphGC
+  where
+    format u weakref = do
+         mnode <- Ref.deRefWeak weakref
+         ((showUnique u <> ": ") <>) <$> case mnode of
+             Nothing -> pure "(x_x)"
+             Just node -> printNode node
 
 {-----------------------------------------------------------------------------
     Time monoid

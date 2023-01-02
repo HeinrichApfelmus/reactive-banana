@@ -33,10 +33,13 @@ module Reactive.Banana.Prim.Mid (
     pureL, mapL, applyL, accumL, applyP,
 
     -- * Dynamic event switching
-    switchL, executeP, switchP
+    switchL, executeP, switchP,
 
     -- * Notes
     -- $recursion
+    
+    -- * Debugging
+    printDot
   ) where
 
 

@@ -79,7 +79,7 @@ interpret f xs = do
             writeIORef o Nothing
             return (ma,s2)
 
-    mapAccumM go state xs         -- run several steps
+    fst <$> mapAccumM go state xs         -- run several steps
 
 -- | Execute an FRP network with a sequence of inputs.
 -- Make sure that outputs are evaluated, but don't display their values.
@@ -103,12 +103,13 @@ runSpaceProfile f xs = do
     mapAccumM_ fire network xs
 
 -- | 'mapAccum' for a monad.
-mapAccumM :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m [b]
-mapAccumM _ _  []     = return []
-mapAccumM f s0 (x:xs) = do
-    (b,s1) <- f x s0
-    bs     <- mapAccumM f s1 xs
-    return (b:bs)
+mapAccumM :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m ([b],s)
+mapAccumM f s0 = go s0 []
+  where
+    go s1 bs []     = pure (reverse bs,s1)
+    go s1 bs (x:xs) = do
+        (b,s2) <- f x s1
+        go s2 (b:bs) xs
 
 -- | Strict 'mapAccum' for a monad. Discards results.
 mapAccumM_ :: Monad m => (a -> s -> m (b,s)) -> s -> [a] -> m ()

@@ -21,7 +21,7 @@ import qualified Control.Concurrent as System
 import qualified System.Mem as System
 
 import Reactive.Banana.Prim.Mid
-    ( Build, BuildIO, Pulse, Latch )
+    ( Build, BuildIO, Network, Pulse, Latch )
 import qualified Reactive.Banana.Prim.Mid as Prim
 
 tests :: TestTree
@@ -51,8 +51,8 @@ executeAccum1 p1 = do
 -- | Execute an FRP network with a sequence of inputs
 -- with intermittend of garbage collection and record network sizes.
 runNetworkSizes
-    :: (Pulse Int -> BuildIO (Pulse ignore))
-    -> [Int] -> IO [Int]
+    :: (Pulse a -> BuildIO (Pulse ignore))
+    -> [a] -> IO ([Int], Network)
 runNetworkSizes f xs = do
     (step,network) <- Prim.compile build =<< Prim.emptyNetwork
 
@@ -80,7 +80,7 @@ testBoundedNetworkSize
     -> TestTree
 testBoundedNetworkSize name f = testProperty name $
     Q.once $ Q.monadicIO $ do
-        sizes <- liftIO $ runNetworkSizes f [1..n]
+        (sizes,_) <- liftIO $ runNetworkSizes f [1..n]
         Q.monitor
             $ Q.counterexample "network size grows"
             . Q.counterexample ("network sizes: " <> show sizes)
@@ -91,3 +91,14 @@ testBoundedNetworkSize name f = testProperty name $
 
 performSufficientGC :: IO ()
 performSufficientGC = System.performMinorGC
+
+{-----------------------------------------------------------------------------
+    Debugging
+------------------------------------------------------------------------------}
+-- | Print network after a given sequence of inputs
+printNetwork
+    :: (Pulse Int -> BuildIO (Pulse ignore))
+    -> [Int] -> IO String
+printNetwork f xs = do
+    (_, network) <- runNetworkSizes executeAccum1 xs
+    Prim.printDot network

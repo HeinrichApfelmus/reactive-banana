@@ -27,6 +27,9 @@ module Reactive.Banana.Prim.Low.Graph
     -- * Internal
     , Level
     , getLevel
+
+    -- * Debugging
+    , showDot
     ) where
 
 import Data.Functor.Identity
@@ -268,3 +271,20 @@ walkSuccessors_
     => [v] -> (v -> m Step) -> Graph v e -> m ()
 walkSuccessors_ xs step g = walkSuccessors xs step g >> pure ()
 
+{-----------------------------------------------------------------------------
+    Debugging
+------------------------------------------------------------------------------}
+-- | Map to a string in @graphviz@ dot file format.
+showDot
+    :: (Eq v, Hashable v)
+    => (v -> String) -> Graph v e -> String
+showDot fv g = unlines $
+    [ "digraph mygraph {"
+    , "  node [shape=box];"
+    ] <> map showVertex (listConnectedVertices g)
+    <> ["}"]
+  where
+    showVertex x =
+        concat [ "  " <> showEdge x y <> "; " | (_,y) <- getOutgoing g x ]
+    showEdge x y = escape x <> " -> " <> escape y
+    escape = show . fv
