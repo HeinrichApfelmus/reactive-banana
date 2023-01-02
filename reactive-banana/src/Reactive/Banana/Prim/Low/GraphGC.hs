@@ -180,7 +180,7 @@ walkSuccessors_ roots step g = do
 -- as garbage by the Haskell garbage collector.
 removeGarbage :: GraphGC v -> IO ()
 removeGarbage g@GraphGC{deletions} = do
-    xs <- STM.atomically $ STM.tryReadTQueue deletions
+    xs <- STM.atomically $ STM.flushTQueue deletions
     mapM_ (deleteVertex g) xs
 
 -- Delete all edges associated with a vertex from the 'GraphGC'.
