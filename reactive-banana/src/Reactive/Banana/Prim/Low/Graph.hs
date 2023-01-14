@@ -11,6 +11,7 @@ module Reactive.Banana.Prim.Low.Graph
     , getOutgoing
     , getIncoming
     , size
+    , edgeCount
     , listConnectedVertices
 
     , deleteVertex
@@ -123,6 +124,13 @@ listConnectedVertices Graph{incoming,outgoing} =
 size :: (Eq v, Hashable v) => Graph v e -> Int
 size Graph{incoming,outgoing} =
     Map.size $ (() <$ outgoing) `Map.union` (() <$ incoming)
+
+-- | Number of edges.
+edgeCount :: (Eq v, Hashable v) => Graph v e -> Int
+edgeCount Graph{incoming,outgoing} =
+    (count incoming + count outgoing) `div` 2
+  where
+    count = Map.foldl' (\a v -> Map.size v + a) 0
 
 {-----------------------------------------------------------------------------
     Insertion
