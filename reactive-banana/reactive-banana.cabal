@@ -114,6 +114,20 @@ Test-Suite tests
                         vault,
                         these
 
+Benchmark space
+  default-language:     Haskell2010
+  type:                 exitcode-stdio-1.0
+  build-depends:        base
+                      , reactive-banana
+                      , tasty-quickcheck
+                      , tasty
+                      , QuickCheck
+  hs-source-dirs:       tests
+  main-is:              space.hs
+  other-modules:        Reactive.Banana.Test.Mid.Space
+                      , Reactive.Banana.Test.High.Space
+  ghc-options:        -rtsopts -eventlog
+
 
 Benchmark benchmark
   default-language:     Haskell2010

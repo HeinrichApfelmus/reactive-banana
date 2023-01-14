@@ -2,9 +2,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 -- | Exemplar tests for space usage and garbage collection.
-module Reactive.Banana.Test.Mid.Space
-    ( tests
-    ) where
+module Reactive.Banana.Test.Mid.Space where
 
 import Control.Monad.IO.Class
     ( liftIO )

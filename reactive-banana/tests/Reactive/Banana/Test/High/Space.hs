@@ -3,9 +3,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 -- | Exemplar tests for space usage and garbage collection.
-module Reactive.Banana.Test.High.Space
-    ( tests
-    ) where
+module Reactive.Banana.Test.High.Space where
 
 import Control.Monad
     ( forM )
