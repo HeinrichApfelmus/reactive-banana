@@ -72,15 +72,18 @@ pureL a = unsafePerformIO $ Ref.new $ Latch
 
 -- | Make new 'Latch' that can be updated by a 'Pulse'
 newLatch :: forall a. a -> Build (Pulse a -> Build (), Latch a)
-newLatch a = mdo
-    latch <- liftIO $ Ref.new $ Latch
-        { _seenL  = beginning
-        , _valueL = a
-        , _evalL  = do
-            Latch {..} <- Ref.read latch
-            RW.tell _seenL  -- indicate timestamp
-            return _valueL  -- indicate value
-        }
+newLatch a = do
+    latch <- liftIO $ mdo
+        latch <- Ref.new $ Latch
+            { _seenL  = beginning
+            , _valueL = a
+            , _evalL  = do
+                Latch {..} <- Ref.read latch
+                RW.tell _seenL  -- indicate timestamp
+                return _valueL  -- indicate value
+            }
+        pure latch
+
     let
         err        = error "incorrect Latch write"
 
