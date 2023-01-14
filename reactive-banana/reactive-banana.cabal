@@ -116,9 +116,14 @@ Test-Suite tests
 
 
 Benchmark benchmark
-  default-language:   Haskell2010
-  type:          exitcode-stdio-1.0
-  build-depends: base, tasty-bench, reactive-banana, containers, random, tasty
-  hs-source-dirs: benchmark
-  main-is: Main.hs
-  ghc-options:  "-with-rtsopts=-A32m"
+  default-language:     Haskell2010
+  type:                 exitcode-stdio-1.0
+  build-depends:        base
+                      , reactive-banana
+                      , containers
+                      , random
+                      , tasty
+                      , tasty-bench
+  hs-source-dirs:       benchmark
+  main-is:              Main.hs
+  ghc-options:          "-with-rtsopts=-A32m"
