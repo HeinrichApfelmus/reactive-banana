@@ -11,6 +11,7 @@ module Reactive.Banana.Prim.Low.Graph
     , getOutgoing
     , getIncoming
     , size
+    , edgeCount
     , listConnectedVertices
 
     , deleteVertex
@@ -124,6 +125,13 @@ size :: (Eq v, Hashable v) => Graph v e -> Int
 size Graph{incoming,outgoing} =
     Map.size $ (() <$ outgoing) `Map.union` (() <$ incoming)
 
+-- | Number of edges.
+edgeCount :: (Eq v, Hashable v) => Graph v e -> Int
+edgeCount Graph{incoming,outgoing} =
+    (count incoming + count outgoing) `div` 2
+  where
+    count = Map.foldl' (\a v -> Map.size v + a) 0
+
 {-----------------------------------------------------------------------------
     Insertion
 ------------------------------------------------------------------------------}
@@ -177,7 +185,9 @@ deleteEdge (x,y) g = Graph
 
 -- | Remove all edges incident on this vertex from the 'Graph'.
 deleteVertex :: (Eq v, Hashable v) => v -> Graph v e -> Graph v e
-deleteVertex x = clearPredecessors x . clearSuccessors x
+deleteVertex x = clearLevels . clearPredecessors x . clearSuccessors x
+  where
+    clearLevels g@Graph{levels} = g{levels = Map.delete x levels}
 
 -- | Remove all the edges that connect the given vertex to its predecessors.
 clearPredecessors :: (Eq v, Hashable v) => v -> Graph v e -> Graph v e
