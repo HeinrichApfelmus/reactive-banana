@@ -95,8 +95,8 @@ performSufficientGC = System.performMinorGC
 ------------------------------------------------------------------------------}
 -- | Print network after a given sequence of inputs
 printNetwork
-    :: (Pulse Int -> BuildIO (Pulse ignore))
-    -> [Int] -> IO String
+    :: (Pulse a -> BuildIO (Pulse ignore))
+    -> [a] -> IO String
 printNetwork f xs = do
     (_, network) <- runNetworkSizes executeAccum1 xs
     Prim.printDot network
