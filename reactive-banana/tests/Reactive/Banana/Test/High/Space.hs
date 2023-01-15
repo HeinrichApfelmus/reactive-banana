@@ -26,8 +26,9 @@ tests :: TestTree
 tests = testGroup "Space usage, high level"
     [ testGroup "Network size stays bounded"
         [ testBoundedNetworkSize "execute" execute1
-        , testBoundedNetworkSize "execute accumE, issue #261" executeAccumE1
         , testBoundedNetworkSize "observe accumE, issue #261" observeAccumE1
+        , testBoundedNetworkSize "execute accumE, issue #261" executeAccumE1
+        , testBoundedNetworkSize "switch accumE, issue #261" switchAccumE1
         ]
     ]
 
@@ -37,11 +38,17 @@ tests = testGroup "Space usage, high level"
 execute1 :: Event Int -> MomentIO (Event (Event Int))
 execute1 e = execute $ (\i -> liftIO $ Memory.evaluate (i <$ e)) <$> e
 
+observeAccumE1 :: Event Int -> MomentIO (Event (Event ()))
+observeAccumE1 e = pure $ observeE (accumE () never <$ e)
+
 executeAccumE1 :: Event Int -> MomentIO (Event (Event ()))
 executeAccumE1 e = execute (accumE () (id <$ e) <$ e)
 
-observeAccumE1 :: Event Int -> MomentIO (Event (Event ()))
-observeAccumE1 e = pure $ observeE (accumE () never <$ e)
+switchAccumE1 :: Event Int -> MomentIO (Event ())
+switchAccumE1 e = do
+    let e2 :: Event (Event ())
+        e2 = observeE (accumE () (id <$ e) <$ e)
+    switchE never e2
 
 {-----------------------------------------------------------------------------
     Test harness
