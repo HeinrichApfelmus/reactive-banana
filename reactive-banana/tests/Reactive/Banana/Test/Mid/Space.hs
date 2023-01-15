@@ -59,7 +59,7 @@ runNetworkSizes f xs = do
             outputs -- don't forget to execute outputs
             performSufficientGC
             System.yield
-            size <- Prim.getSize network2
+            size <- Memory.evaluate =<< Prim.getSize network2
             pure (size, network2)
 
     Prim.mapAccumM fire network xs

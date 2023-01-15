@@ -69,7 +69,7 @@ runNetworkSizes f xs = do
         fire i
         performSufficientGC
         System.yield
-        getSize network
+        Memory.evaluate =<< getSize network
 
 -- | Test whether the network size stays bounded.
 testBoundedNetworkSize
