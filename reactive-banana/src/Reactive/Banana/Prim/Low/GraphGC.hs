@@ -24,6 +24,8 @@ module Reactive.Banana.Prim.Low.GraphGC
 
 import Control.Applicative
     ( (<|>) )
+import Control.Monad
+    ( unless )
 import Data.IORef
     ( IORef, atomicModifyIORef', newIORef, readIORef )
 import Data.Maybe
@@ -117,11 +119,10 @@ listReachableVertices GraphGC{graphRef} = do
 -- | Insert an edge from the first vertex to the second vertex.
 insertEdge :: (Ref v, Ref v) -> GraphGC v -> IO ()
 insertEdge (x,y) g@GraphGC{graphRef} = do
-    -- TODO: Reduce the number of finalizers if the vertex is
-    -- already in the graph
-    Ref.addFinalizer x (finalizeVertex g ux)
-    Ref.addFinalizer y (finalizeVertex g uy)
-    insertTheEdge =<< makeWeakPointerThatRepresentsEdge
+    (xKnown, yKnown) <-
+        insertTheEdge =<< makeWeakPointerThatRepresentsEdge
+    unless xKnown $ Ref.addFinalizer x (finalizeVertex g ux)
+    unless yKnown $ Ref.addFinalizer y (finalizeVertex g uy)
   where
     ux = Ref.getUnique x
     uy = Ref.getUnique y
@@ -129,16 +130,21 @@ insertEdge (x,y) g@GraphGC{graphRef} = do
     makeWeakPointerThatRepresentsEdge =
         Ref.mkWeak y x Nothing
 
-    insertTheEdge we = atomicModifyIORef'_ graphRef $
-        \GraphD{graph,references} -> GraphD
-            { graph
-                = Graph.insertEdge (ux,uy) we
-                $ graph
-            , references
-                = Map.insert ux (Ref.getWeakRef x)
-                . Map.insert uy (Ref.getWeakRef y)
-                $ references
-            }
+    insertTheEdge we = atomicModifyIORef' graphRef $
+        \GraphD{graph,references} ->
+            ( GraphD
+                { graph
+                    = Graph.insertEdge (ux,uy) we
+                    $ graph
+                , references
+                    = Map.insert ux (Ref.getWeakRef x)
+                    . Map.insert uy (Ref.getWeakRef y)
+                    $ references
+                }
+            ,   ( ux `Map.member` references
+                , uy `Map.member` references
+                ) 
+            )
 
 -- | Remove all the edges that connect the vertex to its predecessors.
 clearPredecessors :: Ref v -> GraphGC v -> IO ()
