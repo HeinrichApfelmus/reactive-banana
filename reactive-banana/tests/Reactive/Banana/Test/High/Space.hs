@@ -3,9 +3,7 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 -- | Exemplar tests for space usage and garbage collection.
-module Reactive.Banana.Test.High.Space
-    ( tests
-    ) where
+module Reactive.Banana.Test.High.Space where
 
 import Control.Monad
     ( forM )
@@ -51,9 +49,9 @@ observeAccumE1 e = pure $ observeE (accumE () never <$ e)
 -- | Execute an FRP network with a sequence of inputs
 -- with intermittend of garbage collection and record network sizes.
 runNetworkSizes
-    :: (Event Int -> MomentIO (Event ignore))
-    -> Int -> IO [Int]
-runNetworkSizes f n = do
+    :: (Event a -> MomentIO (Event ignore))
+    -> [a] -> IO [Int]
+runNetworkSizes f xs = do
     (network, fire) <- setup
     run network fire
   where
@@ -67,11 +65,11 @@ runNetworkSizes f n = do
         actuate network
         pure (network, fire)
 
-    run network fire = forM [1..n] $ \i -> do
+    run network fire = forM xs $ \i -> do
         fire i
         performSufficientGC
         System.yield
-        getSize network
+        Memory.evaluate =<< getSize network
 
 -- | Test whether the network size stays bounded.
 testBoundedNetworkSize
@@ -80,7 +78,7 @@ testBoundedNetworkSize
     -> TestTree
 testBoundedNetworkSize name f = testProperty name $
     Q.once $ Q.monadicIO $ do
-        sizes <- liftIO $ runNetworkSizes f n
+        sizes <- liftIO $ runNetworkSizes f [1..n]
         Q.monitor
             $ Q.counterexample "network size grows"
             . Q.counterexample ("network sizes: " <> show sizes)

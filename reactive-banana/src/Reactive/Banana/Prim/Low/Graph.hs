@@ -271,7 +271,7 @@ walkSuccessors xs step g = go (Q.fromList $ zipLevels xs) Set.empty []
                           let successors = zipLevels $ map snd $ getOutgoing g v
                           in  insertList q1 successors
                 go q2 (Set.insert v seen) (v:visits)
-    
+
 
 insertList :: Ord k => Queue k v -> [(k,v)] -> Queue k v
 insertList = L.foldl' (\q (k,v) -> Q.insert k v q)

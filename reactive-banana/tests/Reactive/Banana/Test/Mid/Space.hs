@@ -2,10 +2,10 @@
     reactive-banana
 ------------------------------------------------------------------------------}
 -- | Exemplar tests for space usage and garbage collection.
-module Reactive.Banana.Test.Mid.Space
-    ( tests
-    ) where
+module Reactive.Banana.Test.Mid.Space where
 
+import Control.Monad
+    ( foldM )
 import Control.Monad.IO.Class
     ( liftIO )
 import Test.Tasty
@@ -48,23 +48,14 @@ executeAccum1 p1 = do
 {-----------------------------------------------------------------------------
     Test harness
 ------------------------------------------------------------------------------}
--- | Execute an FRP network with a sequence of inputs
--- with intermittend of garbage collection and record network sizes.
-runNetworkSizes
+-- | Compile an FRP network description into a state machine,
+-- which also performs garbage collection after every step.
+compileToStateMachine
     :: (Pulse a -> BuildIO (Pulse ignore))
-    -> [a] -> IO ([Int], Network)
-runNetworkSizes f xs = do
-    (step,network) <- Prim.compile build =<< Prim.emptyNetwork
-
-    let fire x network1 = do
-            (outputs, network2) <- step x network1
-            outputs -- don't forget to execute outputs
-            performSufficientGC
-            System.yield
-            size <- Prim.getSize network2
-            pure (size, network2)
-
-    Prim.mapAccumM fire network xs
+    -> IO (Network, a -> Network -> IO Network)
+compileToStateMachine f = do
+    (step,network0) <- Prim.compile build =<< Prim.emptyNetwork
+    pure (network0, doStep step)
   where
     build = do
         (p1, step) <- Prim.newInput
@@ -73,6 +64,26 @@ runNetworkSizes f xs = do
         Prim.addHandler p3 (\_ -> pure ())
         pure step
 
+    doStep step x network1 = do
+        (outputs, network2) <- step x network1
+        outputs         -- don't forget to execute outputs
+        performSufficientGC
+        System.yield    -- wait for finalizers to run
+        pure network2
+
+-- | Execute an FRP network with a sequence of inputs
+-- with intermittend of garbage collection and record network sizes.
+runNetworkSizes
+    :: (Pulse a -> BuildIO (Pulse ignore))
+    -> [a] -> IO [Int]
+runNetworkSizes f xs = do
+    (network0, step0) <- compileToStateMachine f
+    let step1 x network1 = do
+            network2 <- step0 x network1
+            size <- Memory.evaluate =<< Prim.getSize network2
+            pure (size, network2)
+    fst <$> Prim.mapAccumM step1 network0 xs
+
 -- | Test whether the network size stays bounded.
 testBoundedNetworkSize
     :: String
@@ -80,7 +91,7 @@ testBoundedNetworkSize
     -> TestTree
 testBoundedNetworkSize name f = testProperty name $
     Q.once $ Q.monadicIO $ do
-        (sizes,_) <- liftIO $ runNetworkSizes f [1..n]
+        sizes <- liftIO $ runNetworkSizes f [1..n]
         Q.monitor
             $ Q.counterexample "network size grows"
             . Q.counterexample ("network sizes: " <> show sizes)
@@ -97,8 +108,9 @@ performSufficientGC = System.performMinorGC
 ------------------------------------------------------------------------------}
 -- | Print network after a given sequence of inputs
 printNetwork
-    :: (Pulse Int -> BuildIO (Pulse ignore))
-    -> [Int] -> IO String
+    :: (Pulse a -> BuildIO (Pulse ignore))
+    -> [a] -> IO String
 printNetwork f xs = do
-    (_, network) <- runNetworkSizes executeAccum1 xs
-    Prim.printDot network
+    (network0, step) <- compileToStateMachine f
+    network1 <- foldM (flip step) network0 xs
+    Prim.printDot network1

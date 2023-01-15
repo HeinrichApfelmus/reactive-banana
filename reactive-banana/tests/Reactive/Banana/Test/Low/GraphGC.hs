@@ -77,7 +77,7 @@ prop_performGC =
             let rootRefs = map (vertices Map.!) roots
             Memory.evaluate $ Memory.rnf rootRefs
 
-            performSufficientGC
+            System.performMajorGC
             GraphGC.removeGarbage actual
             reachables <- traverse Ref.read =<<
                 GraphGC.listReachableVertices actual
@@ -98,7 +98,7 @@ prop_notPerformGC =
     $ \n -> Q.monadicIO $ liftIO $ do
         -- Trigger a garbage collection now so that it is
         -- highly unlikely to happen in the subsequent lines
-        performSufficientGC
+        System.performMinorGC
 
         let g = Q.mkLinearChain n
 
@@ -109,9 +109,6 @@ prop_notPerformGC =
 
         pure $
             Set.fromList reachables === Set.fromList [1..n]
-
-performSufficientGC :: IO ()
-performSufficientGC = System.performMinorGC
 
 {-----------------------------------------------------------------------------
     Test graphs

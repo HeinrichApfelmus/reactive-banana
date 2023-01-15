@@ -24,8 +24,10 @@ module Reactive.Banana.Prim.Low.GraphGC
 
 import Control.Applicative
     ( (<|>) )
+import Control.Monad
+    ( unless )
 import Data.IORef
-    ( IORef, atomicModifyIORef, newIORef, readIORef )
+    ( IORef, atomicModifyIORef', newIORef, readIORef )
 import Data.Maybe
     ( fromJust )
 import Data.Unique.Really
@@ -117,11 +119,10 @@ listReachableVertices GraphGC{graphRef} = do
 -- | Insert an edge from the first vertex to the second vertex.
 insertEdge :: (Ref v, Ref v) -> GraphGC v -> IO ()
 insertEdge (x,y) g@GraphGC{graphRef} = do
-    -- TODO: Reduce the number of finalizers if the vertex is
-    -- already in the graph
-    Ref.addFinalizer x (finalizeVertex g ux)
-    Ref.addFinalizer y (finalizeVertex g uy)
-    insertTheEdge =<< makeWeakPointerThatRepresentsEdge
+    (xKnown, yKnown) <-
+        insertTheEdge =<< makeWeakPointerThatRepresentsEdge
+    unless xKnown $ Ref.addFinalizer x (finalizeVertex g ux)
+    unless yKnown $ Ref.addFinalizer y (finalizeVertex g uy)
   where
     ux = Ref.getUnique x
     uy = Ref.getUnique y
@@ -129,21 +130,26 @@ insertEdge (x,y) g@GraphGC{graphRef} = do
     makeWeakPointerThatRepresentsEdge =
         Ref.mkWeak y x Nothing
 
-    insertTheEdge we = atomicModifyIORef_ graphRef $
-        \GraphD{graph,references} -> GraphD
-            { graph
-                = Graph.insertEdge (ux,uy) we
-                $ graph
-            , references
-                = Map.insert ux (Ref.getWeakRef x)
-                . Map.insert uy (Ref.getWeakRef y)
-                $ references
-            }
+    insertTheEdge we = atomicModifyIORef' graphRef $
+        \GraphD{graph,references} ->
+            ( GraphD
+                { graph
+                    = Graph.insertEdge (ux,uy) we
+                    $ graph
+                , references
+                    = Map.insert ux (Ref.getWeakRef x)
+                    . Map.insert uy (Ref.getWeakRef y)
+                    $ references
+                }
+            ,   ( ux `Map.member` references
+                , uy `Map.member` references
+                ) 
+            )
 
 -- | Remove all the edges that connect the vertex to its predecessors.
 clearPredecessors :: Ref v -> GraphGC v -> IO ()
 clearPredecessors x GraphGC{graphRef} = do
-    g <- atomicModifyIORef graphRef $ \g -> (removeIncomingEdges g, g)
+    g <- atomicModifyIORef' graphRef $ \g -> (removeIncomingEdges g, g)
     finalizeIncomingEdges g
   where
     removeIncomingEdges g@GraphD{graph} =
@@ -189,7 +195,7 @@ removeGarbage g@GraphGC{deletions} = do
 -- I think it's fine because we have a single thread that performs deletions.
 deleteVertex :: GraphGC v -> Unique -> IO ()
 deleteVertex GraphGC{graphRef} x =
-    atomicModifyIORef_ graphRef $ \GraphD{graph,references} -> GraphD
+    atomicModifyIORef'_ graphRef $ \GraphD{graph,references} -> GraphD
         { graph = Graph.deleteVertex x graph
         , references = Map.delete x references
         }
@@ -213,5 +219,5 @@ printDot format GraphGC{graphRef} = do
     Helper functions
 ------------------------------------------------------------------------------}
 -- | Atomically modify an 'IORef' without returning a result.
-atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
-atomicModifyIORef_ ref f = atomicModifyIORef ref $ \x -> (f x, ())
+atomicModifyIORef'_ :: IORef a -> (a -> a) -> IO ()
+atomicModifyIORef'_ ref f = atomicModifyIORef' ref $ \x -> (f x, ())
