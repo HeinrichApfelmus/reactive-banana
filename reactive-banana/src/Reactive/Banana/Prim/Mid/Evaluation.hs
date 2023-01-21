@@ -69,11 +69,11 @@ applyDependencyChanges changes g = do
 
 applyDependencyChange
     :: DependencyChange SomeNode SomeNode -> Dependencies -> IO ()
-applyDependencyChange (InsertEdge parent child) =
-    GraphGC.insertEdge (parent, child)
-applyDependencyChange (ChangeParentTo child parent) = do
-    _ <- GraphGC.clearPredecessors child
-    GraphGC.insertEdge (parent, child)
+applyDependencyChange (InsertEdge parent child) g =
+    GraphGC.insertEdge (parent, child) g
+applyDependencyChange (ChangeParentTo child parent) g = do
+    GraphGC.clearPredecessors child g
+    GraphGC.insertEdge (parent, child) g
 
 {-----------------------------------------------------------------------------
     Traversal in dependency order
