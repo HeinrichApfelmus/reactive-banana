@@ -27,7 +27,8 @@ import qualified Reactive.Banana.Prim.Mid as Prim
 tests :: TestTree
 tests = testGroup "Space usage, mid level"
     [ testGroup "Network size stays bounded"
-        [ testBoundedNetworkSize "executeP accumL, issue #261" executeAccum1
+        [ testBoundedNetworkSize "executeP accumL" executeAccum1
+        , testBoundedNetworkSize "switchP executeP accumL" switchAccum1
         ]
     ]
 
@@ -44,6 +45,11 @@ executeAccum1 p1 = do
         piId <- Prim.mapP (const id) p1
         (_, pi) <- Prim.accumL i piId
         pure pi
+
+switchAccum1 :: Pulse Int -> Build (Pulse Int)
+switchAccum1 p1 = do
+    p2 <- executeAccum1 p1
+    Prim.switchP p1 p2
 
 {-----------------------------------------------------------------------------
     Test harness

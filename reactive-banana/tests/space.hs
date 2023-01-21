@@ -13,9 +13,11 @@ import qualified Reactive.Banana.Test.High.Space as High
 main :: IO ()
 main = do
     say "Running..."
-    -- void $ High.runNetworkSizes High.executeAccumE1 [1..30000]
+    -- void $ High.runNetworkSizes High.executeAccumE1 [1..20000]
+    -- void $ High.runNetworkSizes High.switchAccumE1 [1..10000]
     -- void $ High.runNetworkSizes High.observeAccumE1 [1..10000]
-    void $ runMidNetwork Mid.executeAccum1 [1..50000]
+    -- void $ runMidNetwork Mid.executeAccum1 [1..50000]
+    void $ runMidNetwork Mid.switchAccum1 [1..20000]
     say "Done"
 
 say :: String -> IO ()
