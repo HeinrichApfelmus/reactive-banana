@@ -30,13 +30,6 @@ Observation:  switchL and latch evaluation
 Optimization Possibilities
 --------------------------
 
-* Don't push events when the pipeline further down cannot observe them
-
-    I.e. when they are not connected to an output,
-    a switch or a latch. However, this is probably tricky to detect.
-
-    I think that this has been solved by garbage collecting them?
-
 * Remove events that are children of `neverP`.
 
     Note that `switchP` can change the child-parent relationship,
