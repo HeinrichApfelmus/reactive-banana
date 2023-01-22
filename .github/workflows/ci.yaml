@@ -95,10 +95,10 @@ jobs:
         run: cabal build reactive-banana:lib:reactive-banana --with-compiler ghc-${{matrix.ghc}}
 
       - name: Build tests
-        run: cabal build reactive-banana:test:tests --with-compiler ghc-${{matrix.ghc}}
+        run: cabal build reactive-banana:test:unit --with-compiler ghc-${{matrix.ghc}}
 
       - name: Run tests
-        run: cabal run reactive-banana:test:tests --with-compiler ghc-${{matrix.ghc}}
+        run: cabal run reactive-banana:test:unit --with-compiler ghc-${{matrix.ghc}}
 
       - name: Generate docs
         run: cabal haddock reactive-banana --disable-optimization --with-compiler ghc-${{matrix.ghc}}

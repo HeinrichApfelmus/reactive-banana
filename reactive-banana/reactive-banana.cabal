@@ -86,10 +86,10 @@ Library
 
     ghc-options: -Wall -Wcompat -Werror=incomplete-record-updates -Werror=incomplete-uni-patterns -Werror=missing-fields -Werror=partial-fields -Wno-name-shadowing
 
-Test-Suite tests
+Test-Suite unit
     default-language:   Haskell98
     type:               exitcode-stdio-1.0
-    hs-source-dirs:     tests
+    hs-source-dirs:     test
     main-is:            reactive-banana-tests.hs
     other-modules:      Reactive.Banana.Test.High.Combinators,
                         Reactive.Banana.Test.High.Plumbing,
@@ -122,7 +122,7 @@ Benchmark space
                       , tasty-quickcheck
                       , tasty
                       , QuickCheck
-  hs-source-dirs:       tests
+  hs-source-dirs:       test
   main-is:              space.hs
   other-modules:        Reactive.Banana.Test.Mid.Space
                       , Reactive.Banana.Test.High.Space
