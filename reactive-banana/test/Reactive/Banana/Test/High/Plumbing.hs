@@ -57,10 +57,9 @@ instance Applicative Behavior where pure = pureB; (<*>) = applyB
 
 instance Functor Moment where fmap = liftM
 instance Applicative Moment where
-    pure  = return
+    pure a = M (pure a) (pure a)
     (<*>) = ap
 instance Monad Moment where
-    return a = M (return a) (return a)
     ~(M x y) >>= g = M (x >>= fstM . g) (y >>= sndM . g)
 instance MonadFix Moment where
     mfix f = M (mfix fx) (mfix fy)

@@ -26,7 +26,6 @@ instance Applicative m => Applicative (RWSIOT r w s m) where
     (<*>) = apR
 
 instance Monad m => Monad (RWSIOT r w s m) where
-    return = returnR
     (>>=)  = bindR
 
 instance MonadFix m => MonadFix (RWSIOT r w s m) where mfix = mfixR
@@ -44,9 +43,6 @@ liftR   m = R $ \_ -> m
 
 fmapR :: Functor m => (a -> b) -> RWSIOT r w s m a -> RWSIOT r w s m b
 fmapR f m = R $ \x -> fmap f (run m x)
-
-returnR :: Monad m => a -> RWSIOT r w s m a
-returnR a = R $ \_ -> return a
 
 bindR :: Monad m => RWSIOT r w s m a -> (a -> RWSIOT r w s m b) -> RWSIOT r w s m b
 bindR m k = R $ \x -> run m x >>= \a -> run (k a) x
