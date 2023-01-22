@@ -1,7 +1,15 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
-**Version 1.3.1.0** (2002-08-11)
+**Version 1.3.2.0** (2023-01-22)
+
+* Fixed multiple space leaks for dynamic event switching by completely redesigning low-level internals. Added automated tests on garbage collection and space leaks in order to make sure that the leaks stay fixed. [#261][], [#267][], [#268][]
+
+  [#268]: https://github.com/HeinrichApfelmus/reactive-banana/pull/268
+  [#267]: https://github.com/HeinrichApfelmus/reactive-banana/pull/267
+  [#261]: https://github.com/HeinrichApfelmus/reactive-banana/issues/261
+
+**Version 1.3.1.0** (2022-08-11)
 
 * Various internal performance improvements. [#257][], [#258][]
 * Fix a space leak in dynamic event switching. [#256][]
@@ -54,7 +62,6 @@ Changelog for the `reactive-banana` package
   [#211]: https://github.com/HeinrichApfelmus/reactive-banana/pull/211
   [#212]: https://github.com/HeinrichApfelmus/reactive-banana/pull/212
   [#220]: https://github.com/HeinrichApfelmus/reactive-banana/pull/219
-
 
 **version 1.2.1.0**
 

@@ -73,5 +73,5 @@ Many thanks to everyone who contributed, provided feedback or simply wrote an ap
 
 Alexander Berntsen, Oliver Charles, Samuel Gélineau, Vladimir Lopatin, Atze van der Ploeg, Mitchell Rosen, [*and many others*](CONTRIBUTORS).
 
-Special thanks to *Oliver Charles* and *Mitchell Rosen* for co-maintaining this project.
+Special thanks to [Oliver Charles](https://github.com/ocharles) and [Mitchell Rosen](https://github.com/mitchellwrosen) for co-maintaining this project!
 

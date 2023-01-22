@@ -163,7 +163,6 @@ newtype Future a = F { unF :: Prim.Future a }
 instance Functor Future where fmap f = F . fmap f . unF
 
 instance Monad Future where
-    return  = F . return
     m >>= g = F $ unF m >>= unF . g
 
 instance Applicative Future where
@@ -224,7 +223,6 @@ instance MonadMoment m => MonadMoment (CPS.WriterT w m) where liftMoment = lift 
 -- boilerplate class instances
 instance Functor Moment where fmap f = M . fmap f . unM
 instance Monad Moment where
-    return  = M . return
     m >>= g = M $ unM m >>= unM . g
 instance Applicative Moment where
     pure    = M . pure
@@ -239,7 +237,6 @@ instance Monoid a => Monoid (Moment a) where
 
 instance Functor MomentIO where fmap f = MIO . fmap f . unMIO
 instance Monad MomentIO where
-    return  = MIO . return
     m >>= g = MIO $ unMIO m >>= unMIO . g
 instance Applicative MomentIO where
     pure    = MIO . pure

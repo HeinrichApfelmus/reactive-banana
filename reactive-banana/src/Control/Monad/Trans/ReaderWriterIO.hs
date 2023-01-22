@@ -25,7 +25,6 @@ instance Applicative m => Applicative (ReaderWriterIOT r w m) where
     (<*>) = apR
 
 instance Monad m => Monad (ReaderWriterIOT r w m) where
-    return = returnR
     (>>=)  = bindR
 
 instance MonadFix m => MonadFix (ReaderWriterIOT r w m) where mfix = mfixR
@@ -50,9 +49,6 @@ liftR m = ReaderWriterIOT $ \_ _ -> m
 
 fmapR :: Functor m => (a -> b) -> ReaderWriterIOT r w m a -> ReaderWriterIOT r w m b
 fmapR f m = ReaderWriterIOT $ \x y -> fmap f (run m x y)
-
-returnR :: Monad m => a -> ReaderWriterIOT r w m a
-returnR a = ReaderWriterIOT $ \_ _ -> return a
 
 bindR :: Monad m => ReaderWriterIOT r w m a -> (a -> ReaderWriterIOT r w m b) -> ReaderWriterIOT r w m b
 bindR m k = ReaderWriterIOT $ \x y -> run m x y >>= \a -> run (k a) x y
