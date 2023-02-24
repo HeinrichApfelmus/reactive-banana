@@ -52,7 +52,10 @@ data EventNetwork = EventNetwork
 runStep :: EventNetwork -> Prim.Step -> IO ()
 runStep EventNetwork{ actuated, s, size } f = whenFlag actuated $ do
     output <- mask $ \restore -> do
-        s1 <- takeMVar s                   -- read and take lock
+        -- read and take lock
+        s1 <- tryTakeMVar s >>= \ms -> case ms of
+          Nothing -> fail "<<informative error message goes here>>"
+          Just s1 -> pure s1
         -- pollValues <- sequence polls    -- poll mutable data
         (output, s2) <-
             restore (f s1)                 -- calculate new state
