@@ -47,7 +47,7 @@ type Build  = ReaderWriterIOT BuildR BuildW IO
 type BuildR = (Time, Pulse ())
     -- ( current time
     -- , pulse that always fires)
-newtype BuildW = BuildW (DependencyChanges, [Output], Action, Maybe (Build ()))
+newtype BuildW = BuildW (DependencyChanges, [Output], IO (), Maybe (Build ()))
     -- reader : current timestamp
     -- writer : ( actions that change the network topology
     --          , outputs to be added to the network
@@ -68,17 +68,6 @@ data DependencyChange parent child
     = InsertEdge parent child
     | ChangeParentTo child parent
 type DependencyChanges = [DependencyChange SomeNode SomeNode]
-
-{-----------------------------------------------------------------------------
-    Synonyms
-------------------------------------------------------------------------------}
--- | 'IO' actions as a monoid with respect to sequencing.
-newtype Action = Action { doit :: IO () }
-instance Semigroup Action where
-    Action x <> Action y = Action (x >> y)
-instance Monoid Action where
-    mempty = Action $ return ()
-    mappend = (<>)
 
 {-----------------------------------------------------------------------------
     Pulse and Latch
@@ -135,7 +124,7 @@ mkWeakNodeValue x v = Ref.mkWeak x v Nothing
 
 -- | Evaluation monads.
 type EvalPW   = (EvalLW, [(Output, EvalO)])
-type EvalLW   = Action
+type EvalLW   = IO ()
 
 type EvalO    = Future (IO ())
 type Future   = IO
