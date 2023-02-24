@@ -263,6 +263,9 @@ walkSuccessors xs step g = go (Q.fromList $ zipLevels xs) Set.empty []
   where
     zipLevels vs = [(getLevel g v, v) | v <- vs]
 
+    insertList :: Queue Level v -> [v] -> Queue Level v
+    insertList = L.foldl' (\q v -> Q.insert (getLevel g v) v q)
+
     go :: Queue Level v -> Set v -> [v] -> m [v]
     go q0 seen visits = case Q.minView q0 of
         Nothing -> pure $ reverse visits
@@ -272,14 +275,9 @@ walkSuccessors xs step g = go (Q.fromList $ zipLevels xs) Set.empty []
                 next <- step v
                 let q2 = case next of
                       Stop -> q1
-                      Next ->
-                          let successors = zipLevels $ getOutgoingVertices g v
-                          in  insertList q1 successors
+                      Next -> insertList q1 (getOutgoingVertices g v)
                 go q2 (Set.insert v seen) (v:visits)
 
-
-insertList :: Ord k => Queue k v -> [(k,v)] -> Queue k v
-insertList = L.foldl' (\q (k,v) -> Q.insert k v q)
 
 walkSuccessors_
     :: (Monad m, Eq v, Hashable v)
