@@ -1,6 +1,10 @@
 Changelog for the `reactive-banana` package
 -------------------------------------------
 
+**Unreleased**
+
+* Added `activate` as an alias to `actuate`. `actuate` is now deprecated, albeit not with a DEPRECATED pragma (yet).
+
 **Version 1.3.2.0** (2023-01-22)
 
 * Fixed multiple space leaks for dynamic event switching by completely redesigning low-level internals. Added automated tests on garbage collection and space leaks in order to make sure that the leaks stay fixed. [#261][], [#267][], [#268][]

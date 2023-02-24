@@ -1,7 +1,7 @@
 {-----------------------------------------------------------------------------
     reactive-banana
     
-    Example: Actuate and pause an event network acting as a counter
+    Example: Activate and pause an event network acting as a counter
 ------------------------------------------------------------------------------}
 import Control.Monad (when)
 import System.IO
@@ -15,7 +15,7 @@ main = do
     displayHelpMessage
     sources <- (,,) <$> newAddHandler <*> newAddHandler <*> newAddHandler
     network <- setupNetwork sources
-    actuate network
+    activate network
     eventLoop sources network
 
 displayHelpMessage :: IO ()
@@ -24,7 +24,7 @@ displayHelpMessage = mapM_ putStrLn $
     "   +   - increase counterUp event":
     "   -   - decrease counterUp event":
     "   p   - pause event network":
-    "   a   - actuate event network":
+    "   a   - activate event network":
     "   q   - quit the program":
     "":
     []
@@ -42,7 +42,7 @@ eventLoop (eplus, eminus, espause) network = loop
             '+'   -> fire eplus ()
             '-'   -> fire eminus ()
             'p'   -> fire espause network
-            'a'   -> actuate network
+            'a'   -> activate network
             'q'   -> return ()
             _     -> putStrLn $ [s] ++ " - unknown command"
         when (s /= 'q') loop
