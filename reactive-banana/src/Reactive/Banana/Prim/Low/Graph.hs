@@ -104,6 +104,11 @@ getOutgoing Graph{outgoing} x =
   where
       shuffle (x,y) = (y,x)
 
+-- | Like 'getOutgoing', but returns only the vertices.
+getOutgoingVertices :: (Eq v, Hashable v) => Graph v e -> v -> [v]
+getOutgoingVertices Graph{outgoing} x =
+  maybe [] Map.keys (Map.lookup x outgoing)
+
 -- | Get all direct predecessors of a vertex in a 'Graph'.
 getIncoming :: (Eq v, Hashable v) => Graph v e -> v -> [(v,e)]
 getIncoming Graph{incoming} x =
@@ -202,7 +207,7 @@ clearSuccessors :: (Eq v, Hashable v) => v -> Graph v e -> Graph v e
 clearSuccessors x g@Graph{..} = g
     { outgoing = Map.delete x outgoing
     , incoming = foldr ($) incoming
-        [ Map.adjust (Map.delete x) z | (_,z) <- getOutgoing g x ]
+        [ Map.adjust (Map.delete x) z | z <- getOutgoingVertices g x ]
     }
 
 -- | Apply `deleteVertex` to all vertices which are not predecessors
@@ -234,7 +239,7 @@ collectGarbage roots g@Graph{incoming,outgoing} = g
 -- https://en.wikipedia.org/wiki/Topological_sorting
 topologicalSort :: (Eq v, Hashable v) => Graph v e -> [v]
 topologicalSort g@Graph{incoming} =
-    runIdentity $ reversePostOrder roots (Identity . map snd . getOutgoing g)
+    runIdentity $ reversePostOrder roots (Identity . getOutgoingVertices g)
   where
     -- all vertices that have no (direct) predecessors
     roots = [ x | (x,preds) <- Map.toList incoming, null preds ]
@@ -268,7 +273,7 @@ walkSuccessors xs step g = go (Q.fromList $ zipLevels xs) Set.empty []
                 let q2 = case next of
                       Stop -> q1
                       Next ->
-                          let successors = zipLevels $ map snd $ getOutgoing g v
+                          let successors = zipLevels $ getOutgoingVertices g v
                           in  insertList q1 successors
                 go q2 (Set.insert v seen) (v:visits)
 
@@ -295,6 +300,6 @@ showDot fv g = unlines $
     <> ["}"]
   where
     showVertex x =
-        concat [ "  " <> showEdge x y <> "; " | (_,y) <- getOutgoing g x ]
+        concat [ "  " <> showEdge x y <> "; " | y <- getOutgoingVertices g x ]
     showEdge x y = escape x <> " -> " <> escape y
     escape = show . fv
