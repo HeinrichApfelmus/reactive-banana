@@ -62,8 +62,11 @@ instance Semigroup BuildW where
     BuildW x1 x2 x3 x4 <> BuildW y1 y2 y3 y4 = BuildW (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4)
 
 instance Monoid BuildW where
-    mempty  = BuildW mempty mempty mempty mempty
+    mempty  = emptyBuildW
     mappend = (<>)
+
+emptyBuildW :: BuildW
+emptyBuildW = BuildW mempty mempty mempty mempty
 
 type BuildIO = Build
 
