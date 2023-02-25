@@ -63,6 +63,7 @@ neverP = liftIO $ do
     pure $ Pulse{_key,_nodeP}
 
 -- | Return a 'Latch' that has a constant value
+{-# NOINLINE pureL #-}
 pureL :: a -> Latch a
 pureL a = unsafePerformIO $ Ref.new $ Latch
     { _seenL  = beginning
