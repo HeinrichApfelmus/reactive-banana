@@ -34,7 +34,6 @@ newPulse name eval = liftIO $ do
     _key <- Lazy.newKey
     _nodeP <- Ref.new $ P $ PulseD
         { _keyP      = _key
-        , _seenP     = agesAgo
         , _evalP     = eval
         , _nameP     = name
         }
@@ -56,7 +55,6 @@ neverP = liftIO $ do
     _key <- Lazy.newKey
     _nodeP <- Ref.new $ P $ PulseD
         { _keyP      = _key
-        , _seenP     = agesAgo
         , _evalP     = pure Nothing
         , _nameP     = "neverP"
         }
