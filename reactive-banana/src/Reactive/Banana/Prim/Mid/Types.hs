@@ -90,7 +90,6 @@ data Pulse a = Pulse
 
 data PulseD a = PulseD
     { _keyP      :: Lazy.Key (Maybe a) -- Key to retrieve pulse from cache.
-    , _seenP     :: !Time              -- See note [Timestamp].
     , _evalP     :: EvalP (Maybe a)    -- Calculate current value.
     , _nameP     :: String             -- Name for debugging.
     }
@@ -107,7 +106,7 @@ showUnique = show . hashWithSalt 0
 
 type Latch  a = Ref.Ref (LatchD a)
 data LatchD a = Latch
-    { _seenL  :: !Time               -- Timestamp for the current value.
+    { _seenL  :: !Time               -- Timestamp for the current value. See Note [Timestamp]
     , _valueL :: a                   -- Current value.
     , _evalL  :: EvalL a             -- Recalculate current latch value.
     }
@@ -200,13 +199,6 @@ instance Monoid Time where
 ------------------------------------------------------------------------------}
 {- Note [Timestamp]
 
-The time stamp indicates how recent the current value is.
-
-For Pulse:
-During pulse evaluation, a time stamp equal to the current
-time indicates that the pulse has already been evaluated in this phase.
-
-For Latch:
 The timestamp indicates the last time at which the latch has been written to.
 
     agesAgo   = The latch has never been written to.

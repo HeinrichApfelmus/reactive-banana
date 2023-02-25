@@ -32,7 +32,6 @@ newInput = mdo
     _key   <- liftIO Lazy.newKey
     nodeP  <- liftIO $ Ref.new $ P $ PulseD
         { _keyP      = _key
-        , _seenP     = agesAgo
         , _evalP     = readPulseP pulse    -- get its own value
         , _nameP     = "newInput"
         }
