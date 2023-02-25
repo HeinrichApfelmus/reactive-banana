@@ -34,8 +34,11 @@ liftBuild = lift
     Interpretation
 ------------------------------------------------------------------------------}
 interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
-interpret f = Prim.interpret $ \pulse -> runReaderT (g pulse) undefined
-    where
+interpret f xs = do
+    -- This event network is unused, but it can't be undefined due to the seq in cacheAndSchedule
+    eventNetwork <- compile $ pure ()
+    Prim.interpret (\pulse -> runReaderT (g pulse) eventNetwork) xs
+  where
     g pulse = runCached =<< f (Prim.fromPure pulse)
     -- Ignore any  addHandler  inside the  Moment
 
@@ -177,7 +180,7 @@ trim b = do
 -- and make sure that it is performed in the Build monad eventually
 cacheAndSchedule :: Moment a -> Moment (Cached Moment a)
 cacheAndSchedule m = ask >>= \r -> liftBuild $ do
-    let c = cache (const m r)   -- prevent let-floating!
+    let c = cache (r `seq` m)   -- prevent let-floating!
     Prim.buildLater $ void $ runReaderT (runCached c) r
     return c
 
