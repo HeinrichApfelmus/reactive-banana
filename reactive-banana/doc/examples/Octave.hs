@@ -82,7 +82,7 @@ main :: IO ()
 main = do
     (addKeyEvent, fireKey) <- newAddHandler
     network <- compile (makeNetworkDescription addKeyEvent)
-    actuate network
+    activate network
     hSetEcho stdin False
     hSetBuffering stdin NoBuffering
     forever (getChar >>= fireKey)

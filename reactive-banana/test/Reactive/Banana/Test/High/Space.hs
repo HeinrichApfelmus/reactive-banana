@@ -69,7 +69,7 @@ runNetworkSizes f xs = do
             eout <- f ein
             reactimate $ pure () <$ eout
         performSufficientGC
-        actuate network
+        activate network
         pure (network, fire)
 
     run network fire = forM xs $ \i -> do

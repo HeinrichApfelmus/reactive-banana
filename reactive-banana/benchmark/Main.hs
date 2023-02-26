@@ -5,7 +5,7 @@ module Main ( main ) where
 import Control.Monad (replicateM, replicateM_, forM_)
 import qualified Data.IntMap.Strict as IM
 import Reactive.Banana.Combinators ( Event, Behavior, MonadMoment, filterE, accumE, switchB, accumB )
-import Reactive.Banana.Frameworks (MomentIO, newAddHandler, fromAddHandler, compile, actuate, Handler, reactimate)
+import Reactive.Banana.Frameworks (MomentIO, newAddHandler, fromAddHandler, compile, activate, Handler, reactimate)
 import Reactive.Banana ( Event, Behavior, MonadMoment )
 import System.Random (randomRIO)
 import Test.Tasty (withResource)
@@ -40,7 +40,7 @@ main = defaultMain $ [ mkBenchmarkGroup netsize | netsize <- [ 1, 2, 4, 8, 16, 3
           network <- compile $ do
             e <- fromAddHandler tick
             reactimate $ return <$> e
-          actuate network
+          activate network
           return onTick
 
 setupBenchmark :: Int -> IO ([Handler ()], Handler Int)
@@ -74,7 +74,7 @@ setupBenchmark netsize = do
       count :: MonadMoment m => Event () -> m (Behavior Int)
       count e = accumB 0 ((+1) <$ e)
 
-  actuate =<< compile networkD
+  activate =<< compile networkD
   return (triggers, trigger)
   where
     keepTail :: [a] -> [a]
