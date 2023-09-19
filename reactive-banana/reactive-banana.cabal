@@ -53,7 +53,7 @@ Library
                         vault == 0.3.*,
                         unordered-containers >= 0.2.1.0 && < 0.3,
                         hashable >= 1.1 && < 1.5,
-                        pqueue >= 1.0 && < 1.5,
+                        pqueue >= 1.0 && < 1.6,
                         stm >= 2.5 && < 2.6,
                         these >= 0.2 && < 1.3
 
