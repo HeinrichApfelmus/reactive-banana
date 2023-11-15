@@ -29,7 +29,7 @@ main = do
     displayHelpMessage
     sources <- makeSources
     network <- compile $ networkDescription sources
-    actuate network
+    activate network
     eventLoop sources
 
 displayHelpMessage :: IO ()

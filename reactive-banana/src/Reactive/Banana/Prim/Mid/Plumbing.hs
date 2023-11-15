@@ -34,7 +34,6 @@ newPulse name eval = liftIO $ do
     _key <- Lazy.newKey
     _nodeP <- Ref.new $ P $ PulseD
         { _keyP      = _key
-        , _seenP     = agesAgo
         , _evalP     = eval
         , _nameP     = name
         }
@@ -56,13 +55,13 @@ neverP = liftIO $ do
     _key <- Lazy.newKey
     _nodeP <- Ref.new $ P $ PulseD
         { _keyP      = _key
-        , _seenP     = agesAgo
         , _evalP     = pure Nothing
         , _nameP     = "neverP"
         }
     pure $ Pulse{_key,_nodeP}
 
 -- | Return a 'Latch' that has a constant value
+{-# NOINLINE pureL #-}
 pureL :: a -> Latch a
 pureL a = unsafePerformIO $ Ref.new $ Latch
     { _seenL  = beginning
@@ -137,7 +136,7 @@ addOutput p = do
 runBuildIO :: BuildR -> BuildIO a -> IO (a, DependencyChanges, [Output])
 runBuildIO i m = do
     (a, buildW) <- unfold mempty m -- BuildW (topologyUpdates, os, liftIOLaters, _)) <- unfold mempty m
-    doit (bwLateIO buildW)          -- execute late IOs
+    bwLateIO buildW -- execute late IOs
     return (a, bwDependencyChanges buildW, bwOutputs buildW)
   where
     -- Recursively execute the  buildLater  calls.
@@ -197,7 +196,7 @@ changeParent pulse0 parent0 =
      parent = _nodeP parent0
 
 liftIOLater :: IO () -> Build ()
-liftIOLater x = RW.tell emptyBuildW{ bwLateIO = Action x }
+liftIOLater x = RW.tell emptyBuildW{ bwLateIO = x }
 
 {-----------------------------------------------------------------------------
     EvalL monad
@@ -246,7 +245,7 @@ readLatchFutureP :: Latch a -> EvalP (Future a)
 readLatchFutureP = return . readLatchIO
 
 rememberLatchUpdate :: IO () -> EvalP ()
-rememberLatchUpdate x = RWS.tell ((Action x,mempty),mempty)
+rememberLatchUpdate x = RWS.tell ((x,mempty),mempty)
 
 rememberOutput :: (Output, EvalO) -> EvalP ()
 rememberOutput x = RWS.tell ((mempty,[x]),mempty)

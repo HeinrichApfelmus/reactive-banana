@@ -53,7 +53,7 @@ data BuildW = BuildW
     , -- | outputs to be added to the network
       bwOutputs :: [Output]
     , -- | late IO actions
-      bwLateIO :: Action
+      bwLateIO :: IO ()
     , -- | late build actions
       bwLateBuild :: Maybe (Build ())
     }
@@ -76,17 +76,6 @@ data DependencyChange parent child
 type DependencyChanges = [DependencyChange SomeNode SomeNode]
 
 {-----------------------------------------------------------------------------
-    Synonyms
-------------------------------------------------------------------------------}
--- | 'IO' actions as a monoid with respect to sequencing.
-newtype Action = Action { doit :: IO () }
-instance Semigroup Action where
-    Action x <> Action y = Action (x >> y)
-instance Monoid Action where
-    mempty = Action $ return ()
-    mappend = (<>)
-
-{-----------------------------------------------------------------------------
     Pulse and Latch
 ------------------------------------------------------------------------------}
 data Pulse a = Pulse
@@ -96,7 +85,6 @@ data Pulse a = Pulse
 
 data PulseD a = PulseD
     { _keyP      :: Lazy.Key (Maybe a) -- Key to retrieve pulse from cache.
-    , _seenP     :: !Time              -- See note [Timestamp].
     , _evalP     :: EvalP (Maybe a)    -- Calculate current value.
     , _nameP     :: String             -- Name for debugging.
     }
@@ -113,7 +101,7 @@ showUnique = show . hashWithSalt 0
 
 type Latch  a = Ref.Ref (LatchD a)
 data LatchD a = Latch
-    { _seenL  :: !Time               -- Timestamp for the current value.
+    { _seenL  :: !Time               -- Timestamp for the current value. See Note [Timestamp]
     , _valueL :: a                   -- Current value.
     , _evalL  :: EvalL a             -- Recalculate current latch value.
     }
@@ -141,7 +129,7 @@ mkWeakNodeValue x v = Ref.mkWeak x v Nothing
 
 -- | Evaluation monads.
 type EvalPW   = (EvalLW, [(Output, EvalO)])
-type EvalLW   = Action
+type EvalLW   = IO ()
 
 type EvalO    = Future (IO ())
 type Future   = IO
@@ -206,13 +194,6 @@ instance Monoid Time where
 ------------------------------------------------------------------------------}
 {- Note [Timestamp]
 
-The time stamp indicates how recent the current value is.
-
-For Pulse:
-During pulse evaluation, a time stamp equal to the current
-time indicates that the pulse has already been evaluated in this phase.
-
-For Latch:
 The timestamp indicates the last time at which the latch has been written to.
 
     agesAgo   = The latch has never been written to.

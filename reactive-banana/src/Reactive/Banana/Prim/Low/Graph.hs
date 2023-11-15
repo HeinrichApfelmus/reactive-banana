@@ -104,6 +104,11 @@ getOutgoing Graph{outgoing} x =
   where
       shuffle (x,y) = (y,x)
 
+-- | Like 'getOutgoing', but returns only the vertices.
+getOutgoingVertices :: (Eq v, Hashable v) => Graph v e -> v -> [v]
+getOutgoingVertices Graph{outgoing} x =
+  maybe [] Map.keys (Map.lookup x outgoing)
+
 -- | Get all direct predecessors of a vertex in a 'Graph'.
 getIncoming :: (Eq v, Hashable v) => Graph v e -> v -> [(v,e)]
 getIncoming Graph{incoming} x =
@@ -116,14 +121,14 @@ getLevel Graph{levels} x = fromMaybe ground $ Map.lookup x levels
 -- | List all connected vertices,
 -- i.e. vertices on which at least one edge is incident.
 listConnectedVertices :: (Eq v, Hashable v) => Graph v e -> [v]
-listConnectedVertices Graph{incoming,outgoing} = 
-    Map.keys $ (() <$ outgoing) `Map.union` (() <$ incoming)
+listConnectedVertices Graph{incoming,outgoing} =
+    Map.keys $ outgoing `Map.union` incoming
 
 -- | Number of connected vertices,
 -- i.e. vertices on which at least one edge is incident.
 size :: (Eq v, Hashable v) => Graph v e -> Int
 size Graph{incoming,outgoing} =
-    Map.size $ (() <$ outgoing) `Map.union` (() <$ incoming)
+    Map.size $ outgoing `Map.union` incoming
 
 -- | Number of edges.
 edgeCount :: (Eq v, Hashable v) => Graph v e -> Int
@@ -202,7 +207,7 @@ clearSuccessors :: (Eq v, Hashable v) => v -> Graph v e -> Graph v e
 clearSuccessors x g@Graph{..} = g
     { outgoing = Map.delete x outgoing
     , incoming = foldr ($) incoming
-        [ Map.adjust (Map.delete x) z | (_,z) <- getOutgoing g x ]
+        [ Map.adjust (Map.delete x) z | z <- getOutgoingVertices g x ]
     }
 
 -- | Apply `deleteVertex` to all vertices which are not predecessors
@@ -234,7 +239,7 @@ collectGarbage roots g@Graph{incoming,outgoing} = g
 -- https://en.wikipedia.org/wiki/Topological_sorting
 topologicalSort :: (Eq v, Hashable v) => Graph v e -> [v]
 topologicalSort g@Graph{incoming} =
-    runIdentity $ reversePostOrder roots (Identity . map snd . getOutgoing g)
+    runIdentity $ reversePostOrder roots (Identity . getOutgoingVertices g)
   where
     -- all vertices that have no (direct) predecessors
     roots = [ x | (x,preds) <- Map.toList incoming, null preds ]
@@ -258,6 +263,9 @@ walkSuccessors xs step g = go (Q.fromList $ zipLevels xs) Set.empty []
   where
     zipLevels vs = [(getLevel g v, v) | v <- vs]
 
+    insertList :: Queue Level v -> [v] -> Queue Level v
+    insertList = L.foldl' (\q v -> Q.insert (getLevel g v) v q)
+
     go :: Queue Level v -> Set v -> [v] -> m [v]
     go q0 seen visits = case Q.minView q0 of
         Nothing -> pure $ reverse visits
@@ -267,14 +275,9 @@ walkSuccessors xs step g = go (Q.fromList $ zipLevels xs) Set.empty []
                 next <- step v
                 let q2 = case next of
                       Stop -> q1
-                      Next ->
-                          let successors = zipLevels $ map snd $ getOutgoing g v
-                          in  insertList q1 successors
+                      Next -> insertList q1 (getOutgoingVertices g v)
                 go q2 (Set.insert v seen) (v:visits)
 
-
-insertList :: Ord k => Queue k v -> [(k,v)] -> Queue k v
-insertList = L.foldl' (\q (k,v) -> Q.insert k v q)
 
 walkSuccessors_
     :: (Monad m, Eq v, Hashable v)
@@ -295,6 +298,6 @@ showDot fv g = unlines $
     <> ["}"]
   where
     showVertex x =
-        concat [ "  " <> showEdge x y <> "; " | (_,y) <- getOutgoing g x ]
+        concat [ "  " <> showEdge x y <> "; " | y <- getOutgoingVertices g x ]
     showEdge x y = escape x <> " -> " <> escape y
     escape = show . fv

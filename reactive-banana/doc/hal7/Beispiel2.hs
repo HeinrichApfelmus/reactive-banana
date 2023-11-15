@@ -42,6 +42,6 @@ main = start $ do
         sink output [text :== bresult]   
 
     network <- compile networkDescription    
-    actuate network
+    activate network
 
 

@@ -82,9 +82,9 @@ main = start $ do
             -- animate the sprite
             sink pp [on paint :== drawSprite . toPoint <$> bposition]
             reactimate $ repaint pp <$ etick
-    
-    network <- compile networkDescription    
-    actuate network
+
+    network <- compile networkDescription
+    activate network
 
 {-----------------------------------------------------------------------------
     2D Geometry

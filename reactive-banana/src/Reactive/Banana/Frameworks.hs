@@ -33,7 +33,10 @@ module Reactive.Banana.Frameworks (
     interpretFrameworks, newEvent, mapEventIO, newBehavior,
 
     -- * Running event networks
-    EventNetwork, actuate, pause, getSize,
+    EventNetwork, activate, pause, getSize,
+
+    -- * Deprecated
+    actuate
 
     ) where
 
@@ -72,7 +75,7 @@ describe the inputs, outputs and event graph in the
 'MomentIO' monad
 and use the 'compile' function to obtain an event network from that.
 
-To /activate/ an event network, use the 'actuate' function.
+To /activate/ an event network, use the 'activate' function.
 The network will register its input event handlers and start
 producing output.
 
@@ -107,7 +110,7 @@ A typical setup looks like this:
 >   -- compile network description into a network
 >   network <- compile networkDescription
 >   -- register handlers and start producing outputs
->   actuate network
+>   activate network
 
 In short,
 
@@ -117,7 +120,7 @@ The library uses this to register event handlers with your event-based framework
 * Use 'reactimate' to animate /output/ events.
 
 * Use 'compile' to put everything together in an 'EventNetwork's
-and use 'actuate' to start handling events.
+and use 'activate' to start handling events.
 
 -}
 
@@ -164,7 +167,7 @@ reactimate' = MIO . Prim.addReactimate . Prim.mapE unF . unE
 -- | Input,
 -- obtain an 'Event' from an 'AddHandler'.
 --
--- When the event network is actuated,
+-- When the event network is activated,
 -- this will register a callback function such that
 -- an event will occur whenever the callback function is called.
 fromAddHandler ::AddHandler a -> MomentIO (Event a)
@@ -300,7 +303,7 @@ liftIOLater = MIO . Prim.liftIOLater
 
 -- | Compile the description of an event network
 -- into an 'EventNetwork'
--- that you can 'actuate', 'pause' and so on.
+-- that you can 'activate', 'pause' and so on.
 compile :: MomentIO () -> IO EventNetwork
 compile = fmap EN . Prim.compile . unMIO
 
@@ -311,11 +314,15 @@ compile = fmap EN . Prim.compile . unMIO
 -- It may be paused or already running.
 newtype EventNetwork = EN { unEN :: Prim.EventNetwork }
 
--- | Actuate an event network.
+-- | Activate an event network.
 -- The inputs will register their event handlers, so that
 -- the networks starts to produce outputs in response to input events.
+activate :: EventNetwork -> IO ()
+activate = Prim.activate . unEN
+
+-- | Deprecated alias for 'activate'.
 actuate :: EventNetwork -> IO ()
-actuate = Prim.actuate . unEN
+actuate = activate
 
 -- | Pause an event network.
 -- Immediately stop producing output.
@@ -323,7 +330,7 @@ actuate = Prim.actuate . unEN
 -- Hence, the network stops responding to input events,
 -- but it's state will be preserved.
 --
--- You can resume the network with 'actuate'.
+-- You can resume the network with 'activate'.
 --
 -- Note: You can stop a network even while it is processing events,
 -- i.e. you can use 'pause' as an argument to 'reactimate'.
@@ -401,7 +408,7 @@ interpretFrameworks f xs = do
         e2 <- f e1
         reactimate $ writeIORef output . Just <$> e2
 
-    actuate network
+    activate network
     forM xs $ \x -> do
         case x of
             Nothing -> return Nothing
@@ -419,5 +426,5 @@ interpretAsHandler f addHandlerA = AddHandler $ \handlerB -> do
         e1 <- fromAddHandler addHandlerA
         e2 <- liftMoment (f e1)
         reactimate $ handlerB <$> e2
-    actuate network
+    activate network
     return (pause network)

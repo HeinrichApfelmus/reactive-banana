@@ -34,8 +34,11 @@ liftBuild = lift
     Interpretation
 ------------------------------------------------------------------------------}
 interpret :: (Event a -> Moment (Event b)) -> [Maybe a] -> IO [Maybe b]
-interpret f = Prim.interpret $ \pulse -> runReaderT (g pulse) undefined
-    where
+interpret f xs = do
+    -- This event network is unused, but it can't be undefined due to the seq in cacheAndSchedule
+    eventNetwork <- compile $ pure ()
+    Prim.interpret (\pulse -> runReaderT (g pulse) eventNetwork) xs
+  where
     g pulse = runCached =<< f (Prim.fromPure pulse)
     -- Ignore any  addHandler  inside the  Moment
 
@@ -44,13 +47,13 @@ interpret f = Prim.interpret $ \pulse -> runReaderT (g pulse) undefined
 ------------------------------------------------------------------------------}
 -- | Data type representing an event network.
 data EventNetwork = EventNetwork
-    { actuated :: IORef Bool
+    { activated :: IORef Bool
     , size :: IORef Int
     , s :: MVar Prim.Network
     }
 
 runStep :: EventNetwork -> Prim.Step -> IO ()
-runStep EventNetwork{ actuated, s, size } f = whenFlag actuated $ do
+runStep EventNetwork{ activated, s, size } f = whenFlag activated $ do
     output <- mask $ \restore -> do
         s1 <- takeMVar s                   -- read and take lock
         -- pollValues <- sequence polls    -- poll mutable data
@@ -67,20 +70,20 @@ runStep EventNetwork{ actuated, s, size } f = whenFlag actuated $ do
 getSize :: EventNetwork -> IO Int
 getSize EventNetwork{size} = readIORef size
 
-actuate :: EventNetwork -> IO ()
-actuate EventNetwork{ actuated } = writeIORef actuated True
+activate :: EventNetwork -> IO ()
+activate EventNetwork{ activated } = writeIORef activated True
 
 pause :: EventNetwork -> IO ()
-pause EventNetwork{ actuated } = writeIORef actuated False
+pause EventNetwork{ activated } = writeIORef activated False
 
 -- | Compile to an event network.
 compile :: Moment () -> IO EventNetwork
 compile setup = do
-    actuated <- newIORef False                   -- flag to set running status
-    s        <- newEmptyMVar                     -- setup callback machinery
-    size     <- newIORef 0
+    activated <- newIORef False                   -- flag to set running status
+    s         <- newEmptyMVar                     -- setup callback machinery
+    size      <- newIORef 0
 
-    let eventNetwork = EventNetwork{ actuated, s, size }
+    let eventNetwork = EventNetwork{ activated, s, size }
 
     (_output, s0) <-                             -- compile initial graph
         Prim.compile (runReaderT setup eventNetwork) =<< Prim.emptyNetwork
@@ -177,7 +180,7 @@ trim b = do
 -- and make sure that it is performed in the Build monad eventually
 cacheAndSchedule :: Moment a -> Moment (Cached Moment a)
 cacheAndSchedule m = ask >>= \r -> liftBuild $ do
-    let c = cache (const m r)   -- prevent let-floating!
+    let c = cache (r `seq` m)   -- prevent let-floating!
     Prim.buildLater $ void $ runReaderT (runCached c) r
     return c
 

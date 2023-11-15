@@ -39,7 +39,7 @@ step (inputs,pulses)
             $  runEvalP pulses
             $  evaluatePulses inputs nGraphGC
 
-    doit latchUpdates                          -- update latch values from pulses
+    latchUpdates                               -- update latch values from pulses
     applyDependencyChanges dependencyChanges   -- rearrange graph topology
         nGraphGC
     GraphGC.removeGarbage nGraphGC             -- remove unreachable pulses
