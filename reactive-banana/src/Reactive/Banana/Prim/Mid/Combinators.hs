@@ -1,9 +1,29 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-----------------------------------------------------------------------------
     reactive-banana
 ------------------------------------------------------------------------------}
-module Reactive.Banana.Prim.Mid.Combinators where
+module Reactive.Banana.Prim.Mid.Combinators (
+    -- * Pulse
+    mapP,
+    tagFuture,
+    filterJustP,
+    unsafeMapIOP,
+    mergeWithP,
+    applyP,
+
+    -- * Latch
+    Reactive.Banana.Prim.Mid.Plumbing.pureL,
+    mapL,
+    applyL,
+    accumL,
+
+    -- * Dynamic event switching
+    switchL,
+    executeP,
+    switchP,
+  ) where
 
 import Control.Monad
     ( join )
@@ -13,17 +33,13 @@ import Control.Monad.IO.Class
 import Reactive.Banana.Prim.Mid.Plumbing
     ( newPulse, newLatch, cachedLatch
     , dependOn, keepAlive, changeParent
-    , getValueL
-    , readPulseP, readLatchP, readLatchFutureP, liftBuildP,
+    , getValueL, getValueL'
+    , readPulseP, readLatchP, readLatchP', readLatchFutureP, liftBuildP,
     )
 import qualified Reactive.Banana.Prim.Mid.Plumbing
     ( pureL )
 import Reactive.Banana.Prim.Mid.Types
-    ( Latch, Future, Pulse, Build, EvalP )
-
-debug :: String -> a -> a
--- debug s = trace s
-debug _ = id
+    ( Latch(..), Latch', Future, Pulse, Build, EvalP )
 
 {-----------------------------------------------------------------------------
     Combinators - basic
@@ -89,30 +105,29 @@ applyP f x = do
     p `dependOn` x
     return p
 
-pureL :: a -> Latch a
-pureL = Reactive.Banana.Prim.Mid.Plumbing.pureL
-
 -- specialization of   mapL f = applyL (pureL f)
 mapL :: (a -> b) -> Latch a -> Latch b
-mapL f lx = cachedLatch ({-# SCC mapL #-} f <$> getValueL lx)
+mapL f = \case
+  PureL x -> PureL (f x)
+  ImpureL lx -> ImpureL (cachedLatch ({-# SCC mapL #-} f <$> getValueL' lx))
 
 applyL :: Latch (a -> b) -> Latch a -> Latch b
-applyL lf lx = cachedLatch
-    ({-# SCC applyL #-} getValueL lf <*> getValueL lx)
+applyL (PureL f) (PureL x) = PureL (f x)
+applyL lf lx = ImpureL (cachedLatch ({-# SCC applyL #-} getValueL lf <*> getValueL lx))
 
 accumL :: a -> Pulse (a -> a) -> Build (Latch a, Pulse a)
 accumL a p1 = do
     (updateOn, x) <- newLatch a
     p2 <- newPulse "accumL" $ do
-      a <- readLatchP x
+      a <- readLatchP' x
       f <- readPulseP p1
       return $ fmap (\g -> g a) f
     p2 `dependOn` p1
     updateOn p2
-    return (x,p2)
+    return (ImpureL x,p2)
 
 -- specialization of accumL
-stepperL :: a -> Pulse a -> Build (Latch a)
+stepperL :: a -> Pulse a -> Build (Latch' a)
 stepperL a p = do
     (updateOn, x) <- newLatch a
     updateOn p
@@ -124,7 +139,7 @@ stepperL a p = do
 switchL :: Latch a -> Pulse (Latch a) -> Build (Latch a)
 switchL l pl = mdo
     x <- stepperL l pl
-    return $ cachedLatch $ getValueL x >>= getValueL
+    return $ ImpureL $ cachedLatch $ getValueL' x >>= getValueL
 
 executeP :: forall a b. Pulse (b -> Build a) -> b -> Build (Pulse a)
 executeP p1 b = do
@@ -142,7 +157,7 @@ switchP p pp = do
     lp <- stepperL p pp
 
     -- fetch the latest Pulse value
-    pout <- newPulse "switchP_out" (readPulseP =<< readLatchP lp)
+    pout <- newPulse "switchP_out" (readPulseP =<< readLatchP' lp)
 
     let -- switch the Pulse `pout` to a new parent,
         -- keeping track of the new dependencies.
@@ -155,7 +170,7 @@ switchP p pp = do
 
     pin <- newPulse "switchP_in" switch :: Build (Pulse ())
     pin  `dependOn` pp
-    
+
     pout `dependOn` p       -- initial dependency
     pout `keepAlive` pin    -- keep switches happening
     pure pout

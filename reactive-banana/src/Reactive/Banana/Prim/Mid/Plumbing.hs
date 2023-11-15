@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE RecursiveDo #-}
@@ -61,16 +62,11 @@ neverP = liftIO $ do
     pure $ Pulse{_key,_nodeP}
 
 -- | Return a 'Latch' that has a constant value
-{-# NOINLINE pureL #-}
 pureL :: a -> Latch a
-pureL a = unsafePerformIO $ Ref.new $ Latch
-    { _seenL  = beginning
-    , _valueL = a
-    , _evalL  = return a
-    }
+pureL = PureL
 
 -- | Make new 'Latch' that can be updated by a 'Pulse'
-newLatch :: forall a. a -> Build (Pulse a -> Build (), Latch a)
+newLatch :: forall a. a -> Build (Pulse a -> Build (), Latch' a)
 newLatch a = do
     latch <- liftIO $ mdo
         latch <- Ref.new $ Latch
@@ -100,7 +96,7 @@ newLatch a = do
     return (updateOn, latch)
 
 -- | Make a new 'Latch' that caches a previous computation.
-cachedLatch :: EvalL a -> Latch a
+cachedLatch :: EvalL a -> Latch' a
 cachedLatch eval = unsafePerformIO $ mdo
     latch <- Ref.new $ Latch
         { _seenL  = agesAgo
@@ -177,6 +173,9 @@ alwaysP = snd <$> RW.ask
 readLatchB :: Latch a -> Build a
 readLatchB = liftIO . readLatchIO
 
+readLatchB' :: Latch' a -> Build a
+readLatchB' = liftIO . readLatchIO'
+
 dependOn :: Pulse child -> Pulse parent -> Build ()
 dependOn child parent = _nodeP parent `addChild` _nodeP child
 
@@ -204,12 +203,22 @@ liftIOLater x = RW.tell $ BuildW (mempty, mempty, x, mempty)
 -- | Evaluate a latch (-computation) at the latest time,
 -- but discard timestamp information.
 readLatchIO :: Latch a -> IO a
-readLatchIO latch = do
+readLatchIO = \case
+    PureL x -> pure x
+    ImpureL latch -> readLatchIO' latch
+
+readLatchIO' :: Latch' a -> IO a
+readLatchIO' latch = do
     Latch{..} <- Ref.read latch
     liftIO $ fst <$> RW.runReaderWriterIOT _evalL ()
 
 getValueL :: Latch a -> EvalL a
-getValueL latch = do
+getValueL = \case
+    PureL x -> pure x
+    ImpureL latch -> getValueL' latch
+
+getValueL' :: Latch' a -> EvalL a
+getValueL' latch = do
     Latch{..} <- Ref.read latch
     _evalL
 
@@ -240,6 +249,9 @@ writePulseP key a = do
 
 readLatchP :: Latch a -> EvalP a
 readLatchP = liftBuildP . readLatchB
+
+readLatchP' :: Latch' a -> EvalP a
+readLatchP' = liftBuildP . readLatchB'
 
 readLatchFutureP :: Latch a -> EvalP (Future a)
 readLatchFutureP = return . readLatchIO
