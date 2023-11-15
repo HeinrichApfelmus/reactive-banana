@@ -124,11 +124,11 @@ listConnectedVertices :: (Eq v, Hashable v) => Graph v e -> [v]
 listConnectedVertices Graph{incoming,outgoing} =
     Map.keys $ outgoing `Map.union` incoming
 
--- | Number of connected vertices,
+-- | O(v) Number of connected vertices,
 -- i.e. vertices on which at least one edge is incident.
 size :: (Eq v, Hashable v) => Graph v e -> Int
-size Graph{incoming,outgoing} =
-    Map.size $ outgoing `Map.union` incoming
+size Graph{levels} =
+    Map.size levels
 
 -- | Number of edges.
 edgeCount :: (Eq v, Hashable v) => Graph v e -> Int
