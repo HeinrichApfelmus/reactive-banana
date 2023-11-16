@@ -1,3 +1,6 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Reactive.Banana.Prim.Low.HasUnique
   ( HasUnique (getUnique),
     U (..),
@@ -5,11 +8,14 @@ module Reactive.Banana.Prim.Low.HasUnique
 where
 
 import Data.Hashable (Hashable (hashWithSalt))
-import Data.Unique (Unique)
+import Data.Unique.Really (Unique)
 
 -- | The class of values with a unique identity.
 class HasUnique k where
   getUnique :: k -> Unique
+
+instance HasUnique Unique where
+  getUnique = id
 
 -- An internal newtype whose purpose is to translates external HasUnique instances to internal Eq+Hashable instances,
 -- since the internal representation of a UniqueMap is a HashMap
@@ -20,6 +26,7 @@ class HasUnique k where
 --     instance HasUnique k => Hashable (U k)
 newtype U k
   = U k
+  deriving newtype (Show)
 
 instance (HasUnique k) => Eq (U k) where
   U x == U y =
