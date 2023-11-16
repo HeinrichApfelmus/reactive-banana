@@ -7,8 +7,8 @@ module Reactive.Banana.Prim.Low.GraphTraversal
     , reversePostOrder
     ) where
 
-import Data.Hashable
-import qualified Data.HashSet as Set
+import Reactive.Banana.Prim.Low.HasUnique (HasUnique)
+import qualified Reactive.Banana.Prim.Low.UniqueSet as Set
 
 {-----------------------------------------------------------------------------
     Graph traversal
@@ -20,14 +20,14 @@ type GraphM m a = a -> m [a]
 -- listing all (transitive) successor of a node.
 --
 -- Each vertex is listed *before* all its direct successors have been listed.
-reversePostOrder1 :: (Eq a, Hashable a, Monad m) => a -> GraphM m a -> m [a]
+reversePostOrder1 :: (HasUnique a, Monad m) => a -> GraphM m a -> m [a]
 reversePostOrder1 x = reversePostOrder [x]
 
 -- | Reverse post-order from multiple vertices.
 --
 -- INVARIANT: For this to be a valid topological order,
 -- none of the vertices may have a direct predecessor.
-reversePostOrder :: (Eq a, Hashable a, Monad m) => [a] -> GraphM m a -> m [a]
+reversePostOrder :: (HasUnique a, Monad m) => [a] -> GraphM m a -> m [a]
 reversePostOrder xs successors = fst <$> go xs [] Set.empty
     where
     go []     rpo visited        = return (rpo, visited)

@@ -41,15 +41,17 @@ import Data.Maybe
     ( fromMaybe )
 import Reactive.Banana.Prim.Low.GraphTraversal
     ( reversePostOrder )
+import Reactive.Banana.Prim.Low.HasUnique
+    ( HasUnique )
 
 import qualified Data.List as L
-import qualified Data.HashMap.Strict as Map
-import qualified Data.HashSet as Set
+import qualified Reactive.Banana.Prim.Low.UniqueMap as Map
+import qualified Reactive.Banana.Prim.Low.UniqueSet as Set
 import qualified Data.PQueue.Prio.Min as Q
 
 type Queue = Q.MinPQueue
-type Map = Map.HashMap
-type Set = Set.HashSet
+type Map = Map.UniqueMap
+type Set = Set.UniqueSet
 
 {-----------------------------------------------------------------------------
     Levels
@@ -98,37 +100,38 @@ empty = Graph
     }
 
 -- | Get all direct successors of a vertex in a 'Graph'.
-getOutgoing :: (Eq v, Hashable v) => Graph v e -> v -> [(e,v)]
+getOutgoing :: HasUnique v => Graph v e -> v -> [(e,v)]
 getOutgoing Graph{outgoing} x =
     map shuffle $ Map.toList $ fromMaybe Map.empty $ Map.lookup x outgoing
   where
       shuffle (x,y) = (y,x)
 
 -- | Like 'getOutgoing', but returns only the vertices.
-getOutgoingVertices :: (Eq v, Hashable v) => Graph v e -> v -> [v]
+getOutgoingVertices :: HasUnique v => Graph v e -> v -> [v]
 getOutgoingVertices Graph{outgoing} x =
   maybe [] Map.keys (Map.lookup x outgoing)
 
 -- | Get all direct predecessors of a vertex in a 'Graph'.
-getIncoming :: (Eq v, Hashable v) => Graph v e -> v -> [(v,e)]
+getIncoming :: HasUnique v => Graph v e -> v -> [(v,e)]
 getIncoming Graph{incoming} x =
     Map.toList $ fromMaybe Map.empty $ Map.lookup x incoming
 
 -- | Get the 'Level' of a vertex in a 'Graph'.
-getLevel :: (Eq v, Hashable v) => Graph v e -> v -> Level
+getLevel :: HasUnique v => Graph v e -> v -> Level
 getLevel Graph{levels} x = fromMaybe ground $ Map.lookup x levels
 
 -- | List all connected vertices,
 -- i.e. vertices on which at least one edge is incident.
-listConnectedVertices :: (Eq v, Hashable v) => Graph v e -> [v]
+listConnectedVertices :: HasUnique v => Graph v e -> [v]
 listConnectedVertices Graph{incoming,outgoing} =
-    Map.keys $ outgoing `Map.union` incoming
+    -- value combining function doesn't matter since we only care about keys
+    Map.keys $ Map.union (\_ _ -> id) outgoing incoming
 
 -- | Number of connected vertices,
 -- i.e. vertices on which at least one edge is incident.
-size :: (Eq v, Hashable v) => Graph v e -> Int
+size :: HasUnique v => Graph v e -> Int
 size Graph{incoming,outgoing} =
-    Map.size $ outgoing `Map.union` incoming
+    Map.size $ Map.union (\_ _ -> id) outgoing incoming
 
 -- | Number of edges.
 edgeCount :: (Eq v, Hashable v) => Graph v e -> Int
@@ -141,14 +144,14 @@ edgeCount Graph{incoming,outgoing} =
     Insertion
 ------------------------------------------------------------------------------}
 -- | Insert an edge from the first to the second vertex into the 'Graph'.
-insertEdge :: (Eq v, Hashable v) => (v,v) -> e -> Graph v e -> Graph v e
+insertEdge :: HasUnique v => (v,v) -> e -> Graph v e -> Graph v e
 insertEdge (x,y) exy g0@Graph{..} = Graph
     { outgoing
-        = Map.insertWith (\new old -> new <> old) x (Map.singleton y exy)
+        = Map.upsert x (Map.singleton y exy) (Map.insert y exy)
         $ insertDefaultIfNotMember y Map.empty
         $ outgoing
     , incoming
-        = Map.insertWith (\new old -> new <> old) y (Map.singleton x exy)
+        = Map.upsert y (Map.singleton x exy) (Map.insert x exy)
         . insertDefaultIfNotMember x Map.empty
         $ incoming
     , levels
@@ -163,7 +166,7 @@ insertEdge (x,y) exy g0@Graph{..} = Graph
         $ levels
 
     levelDifference = getLevel y levels0 - 1 - getLevel x levels0
-    adjustLevel g x = Map.adjust (+ levelDifference) x g
+    adjustLevel g x = Map.adjust x (+ levelDifference) g
     adjustLevels ls
         | levelDifference >= 0 = ls
         | otherwise            = L.foldl' adjustLevel ls predecessors
@@ -173,9 +176,9 @@ insertEdge (x,y) exy g0@Graph{..} = Graph
 
 -- Helper function: Insert a default value if the key is not a member yet
 insertDefaultIfNotMember
-    :: (Eq k, Hashable k)
+    :: HasUnique k
     => k -> a -> Map k a -> Map k a
-insertDefaultIfNotMember x def = Map.insertWith (\_ old -> old) x def
+insertDefaultIfNotMember x def = Map.upsert x def id
 
 {-----------------------------------------------------------------------------
     Deletion
@@ -189,39 +192,38 @@ deleteEdge (x,y) g = Graph
     }
 
 -- | Remove all edges incident on this vertex from the 'Graph'.
-deleteVertex :: (Eq v, Hashable v) => v -> Graph v e -> Graph v e
+deleteVertex :: HasUnique v => v -> Graph v e -> Graph v e
 deleteVertex x = clearLevels . clearPredecessors x . clearSuccessors x
   where
     clearLevels g@Graph{levels} = g{levels = Map.delete x levels}
 
 -- | Remove all the edges that connect the given vertex to its predecessors.
-clearPredecessors :: (Eq v, Hashable v) => v -> Graph v e -> Graph v e
+clearPredecessors :: HasUnique v => v -> Graph v e -> Graph v e
 clearPredecessors x g@Graph{..} = g
     { outgoing = foldr ($) outgoing
-        [ Map.adjust (Map.delete x) z | (z,_) <- getIncoming g x ]
+        [ Map.adjust z (Map.delete x) | (z,_) <- getIncoming g x ]
     , incoming = Map.delete x incoming
     }
 
 -- | Remove all the edges that connect the given vertex to its successors.
-clearSuccessors :: (Eq v, Hashable v) => v -> Graph v e -> Graph v e
+clearSuccessors :: HasUnique v => v -> Graph v e -> Graph v e
 clearSuccessors x g@Graph{..} = g
     { outgoing = Map.delete x outgoing
     , incoming = foldr ($) incoming
-        [ Map.adjust (Map.delete x) z | z <- getOutgoingVertices g x ]
+        [ Map.adjust z (Map.delete x) | z <- getOutgoingVertices g x ]
     }
 
 -- | Apply `deleteVertex` to all vertices which are not predecessors
 -- of any of the vertices in the given list.
-collectGarbage :: (Eq v, Hashable v) => [v] -> Graph v e -> Graph v e
+collectGarbage :: HasUnique v => [v] -> Graph v e -> Graph v e
 collectGarbage roots g@Graph{incoming,outgoing} = g
-    { incoming = Map.filterWithKey (\v _ -> isReachable v) incoming
+    { incoming = Map.restrictKeys reachables incoming
         -- incoming edges of reachable members are reachable by definition
     , outgoing
-        = Map.map (Map.filterWithKey (\v _ -> isReachable v))
-        $ Map.filterWithKey (\v _ -> isReachable v) outgoing
+        = Map.map (Map.restrictKeys reachables)
+        $ Map.restrictKeys reachables outgoing
     }
   where
-    isReachable x = x `Set.member` reachables
     reachables
         = Set.fromList . runIdentity
         $ reversePostOrder roots
@@ -237,12 +239,12 @@ collectGarbage roots g@Graph{incoming,outgoing} = g
 -- (Vertices that are not connected are not listed in the topological sort.)
 --
 -- https://en.wikipedia.org/wiki/Topological_sorting
-topologicalSort :: (Eq v, Hashable v) => Graph v e -> [v]
+topologicalSort :: HasUnique v => Graph v e -> [v]
 topologicalSort g@Graph{incoming} =
     runIdentity $ reversePostOrder roots (Identity . getOutgoingVertices g)
   where
     -- all vertices that have no (direct) predecessors
-    roots = [ x | (x,preds) <- Map.toList incoming, null preds ]
+    roots = [ x | (x,preds) <- Map.toList incoming, Map.isEmpty preds ]
 
 data Step = Next | Stop
 
@@ -257,7 +259,7 @@ data Step = Next | Stop
 -- >     runIdentity $ walkSuccessors (roots g) (pure Next) g
 --
 walkSuccessors
-    :: forall v e m. (Monad m, Eq v, Hashable v)
+    :: forall v e m. (Monad m, HasUnique v)
     => [v] -> (v -> m Step) -> Graph v e -> m [v]
 walkSuccessors xs step g = go (Q.fromList $ zipLevels xs) Set.empty []
   where
@@ -280,7 +282,7 @@ walkSuccessors xs step g = go (Q.fromList $ zipLevels xs) Set.empty []
 
 
 walkSuccessors_
-    :: (Monad m, Eq v, Hashable v)
+    :: (Monad m, HasUnique v)
     => [v] -> (v -> m Step) -> Graph v e -> m ()
 walkSuccessors_ xs step g = walkSuccessors xs step g >> pure ()
 
@@ -289,7 +291,7 @@ walkSuccessors_ xs step g = walkSuccessors xs step g >> pure ()
 ------------------------------------------------------------------------------}
 -- | Map to a string in @graphviz@ dot file format.
 showDot
-    :: (Eq v, Hashable v)
+    :: HasUnique v
     => (v -> String) -> Graph v e -> String
 showDot fv g = unlines $
     [ "digraph mygraph {"
