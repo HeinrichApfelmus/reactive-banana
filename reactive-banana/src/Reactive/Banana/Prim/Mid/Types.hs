@@ -99,7 +99,12 @@ instance Show (Pulse a) where
 showUnique :: Unique -> String
 showUnique = show . hashWithSalt 0
 
-type Latch  a = Ref.Ref (LatchD a)
+data Latch a
+  = PureL a
+  | ImpureL !(Latch' a)
+
+type Latch' a = Ref.Ref (LatchD a)
+
 data LatchD a = Latch
     { _seenL  :: !Time               -- Timestamp for the current value. See Note [Timestamp]
     , _valueL :: a                   -- Current value.
@@ -109,7 +114,7 @@ data LatchD a = Latch
 type LatchWrite = SomeNode
 data LatchWriteD = forall a. LatchWriteD
     { _evalLW  :: EvalP a            -- Calculate value to write.
-    , _latchLW :: Weak (Latch a)     -- Destination 'Latch' to write to.
+    , _latchLW :: Weak (Latch' a)    -- Destination 'Latch' to write to.
     }
 
 type Output  = SomeNode
