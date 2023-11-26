@@ -47,20 +47,26 @@ type Build  = ReaderWriterIOT BuildR BuildW IO
 type BuildR = (Time, Pulse ())
     -- ( current time
     -- , pulse that always fires)
-newtype BuildW = BuildW (DependencyChanges, [Output], IO (), Maybe (Build ()))
-    -- reader : current timestamp
-    -- writer : ( actions that change the network topology
-    --          , outputs to be added to the network
-    --          , late IO actions
-    --          , late build actions
-    --          )
+data BuildW = BuildW
+    { -- | actions that change the network topology
+      bwDependencyChanges :: DependencyChanges
+    , -- | outputs to be added to the network
+      bwOutputs :: [Output]
+    , -- | late IO actions
+      bwLateIO :: IO ()
+    , -- | late build actions
+      bwLateBuild :: Maybe (Build ())
+    }
 
 instance Semigroup BuildW where
-    BuildW x <> BuildW y = BuildW (x <> y)
+    BuildW x1 x2 x3 x4 <> BuildW y1 y2 y3 y4 = BuildW (x1 <> y1) (x2 <> y2) (x3 <> y3) (x4 <> y4)
 
 instance Monoid BuildW where
-    mempty  = BuildW mempty
+    mempty  = emptyBuildW
     mappend = (<>)
+
+emptyBuildW :: BuildW
+emptyBuildW = BuildW mempty mempty mempty mempty
 
 type BuildIO = Build
 
