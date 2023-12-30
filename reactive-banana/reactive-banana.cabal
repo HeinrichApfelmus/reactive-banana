@@ -25,12 +25,14 @@ Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
 Category:            FRP
 Cabal-version:       1.18
 Build-type:          Simple
-Tested-with:         GHC == 9.4.1
-                   , GHC == 9.2.4
-                   , GHC == 8.10.7
-                   , GHC == 8.8.4
-                   , GHC == 8.6.5
-                   , GHC == 8.4.4
+Tested-with:
+    GHC == 9.6.3
+  , GHC == 9.4.8
+  , GHC == 9.2.8
+  , GHC == 8.10.7
+  , GHC == 8.8.4
+  , GHC == 8.6.5
+  , GHC == 8.4.4
 
 extra-source-files:     CHANGELOG.md,
                         doc/examples/*.hs
@@ -45,8 +47,8 @@ Library
     default-language:   Haskell98
     hs-source-dirs:     src
 
-    build-depends:      base >= 4.10 && < 5,
-                        deepseq >= 1.4.3.0 && < 1.5,
+    build-depends:      base >= 4.2 && < 5,
+                        deepseq >= 1.4.3.0 && < 1.6,
                         semigroups >= 0.13 && < 0.21,
                         containers >= 0.5 && < 0.7,
                         transformers >= 0.2 && < 0.7,
@@ -100,7 +102,7 @@ Test-Suite unit
                         Reactive.Banana.Test.Low.GraphGC
     build-depends:      base >= 4.7 && < 5,
                         containers,
-                        deepseq >= 1.4.3.0 && < 1.5,
+                        deepseq >= 1.4.3.0 && < 1.6,
                         hashable,
                         pqueue,
                         reactive-banana,
