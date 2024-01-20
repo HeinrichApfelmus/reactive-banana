@@ -47,7 +47,8 @@ Library
                      reactive-banana >= 1.1 && < 1.4,
                      wxcore (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.94),
                      wx (>= 0.13.2.1 && < 0.90) || (>= 0.90.0.1 && < 0.94)
-    extensions:      ExistentialQuantification
+    default-extensions:
+                     ExistentialQuantification
     exposed-modules: Reactive.Banana.WX
 
 Source-repository    head
