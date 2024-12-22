@@ -1,7 +1,8 @@
-Name:                reactive-banana
-Version:             1.3.2.0
-Synopsis:            Library for functional reactive programming (FRP).
-Description:
+cabal-version:       1.18
+name:                reactive-banana
+version:             1.3.2.0
+synopsis:            Library for functional reactive programming (FRP).
+description:
     Reactive-banana is a library for Functional Reactive Programming (FRP).
     .
     FRP offers an elegant and concise way to express interactive programs such as graphical user interfaces, animations, computer music or robot controllers. It promises to avoid the spaghetti code that is all too common in traditional approaches to GUI programming.
@@ -17,15 +18,16 @@ Description:
     /API guide./
     Start with the "Reactive.Banana" module.
 
-Homepage:            http://wiki.haskell.org/Reactive-banana
-License:             BSD3
-License-file:        LICENSE
-Author:              Heinrich Apfelmus
-Maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
-Category:            FRP
-Cabal-version:       1.18
-Build-type:          Simple
-Tested-with:
+homepage:            http://wiki.haskell.org/Reactive-banana
+license:             BSD3
+license-file:        LICENSE
+author:              Heinrich Apfelmus
+maintainer:          Heinrich Apfelmus <apfelmus quantentunnel de>
+category:            FRP
+
+build-type:          Simple
+
+tested-with:
     GHC == 9.6.3
   , GHC == 9.4.8
   , GHC == 9.2.8
@@ -34,112 +36,120 @@ Tested-with:
   , GHC == 8.6.5
   , GHC == 8.4.4
 
-extra-source-files:     CHANGELOG.md,
-                        doc/examples/*.hs
-extra-doc-files:        doc/*.png
+extra-source-files:
+  CHANGELOG.md
+  , doc/examples/*.hs
+extra-doc-files:
+  doc/*.png
 
-Source-repository head
-    type:               git
-    location:           https://github.com/HeinrichApfelmus/reactive-banana
-    subdir:             reactive-banana/
+source-repository head
+  type:               git
+  location:           https://github.com/HeinrichApfelmus/reactive-banana
+  subdir:             reactive-banana/
 
-Library
-    default-language:   Haskell98
-    hs-source-dirs:     src
+library
+  default-language:   Haskell98
+  hs-source-dirs:     src
 
-    build-depends:      base >= 4.2 && < 5,
-                        deepseq >= 1.4.3.0 && < 1.6,
-                        semigroups >= 0.13 && < 0.21,
-                        containers >= 0.5 && < 0.8,
-                        transformers >= 0.2 && < 0.7,
-                        vault == 0.3.*,
-                        unordered-containers >= 0.2.1.0 && < 0.3,
-                        hashable >= 1.1 && < 1.5,
-                        pqueue >= 1.0 && < 1.6,
-                        stm >= 2.5 && < 2.6,
-                        these >= 0.2 && < 1.3
+  build-depends:
+      base >= 4.2 && < 5
+    , deepseq >= 1.4.3.0 && < 1.6
+    , semigroups >= 0.13 && < 0.21
+    , containers >= 0.5 && < 0.8
+    , transformers >= 0.2 && < 0.7
+    , vault == 0.3.*
+    , unordered-containers >= 0.2.1.0 && < 0.3
+    , hashable >= 1.1 && < 1.6
+    , pqueue >= 1.0 && < 1.6
+    , stm >= 2.5 && < 2.6
+    , these >= 0.2 && < 1.3
 
-    exposed-modules:
-                        Control.Event.Handler,
-                        Reactive.Banana,
-                        Reactive.Banana.Combinators,
-                        Reactive.Banana.Frameworks,
-                        Reactive.Banana.Model,
-                        Reactive.Banana.Prim.Mid,
-                        Reactive.Banana.Prim.High.Cached,
-                        Reactive.Banana.Prim.Low.Graph,
-                        Reactive.Banana.Prim.Low.GraphGC,
-                        Reactive.Banana.Prim.Low.Ref
+  exposed-modules:
+    Control.Event.Handler
+    Reactive.Banana
+    Reactive.Banana.Combinators
+    Reactive.Banana.Frameworks
+    Reactive.Banana.Model
+    Reactive.Banana.Prim.Mid
+    Reactive.Banana.Prim.High.Cached
+    Reactive.Banana.Prim.Low.Graph
+    Reactive.Banana.Prim.Low.GraphGC
+    Reactive.Banana.Prim.Low.Ref
 
-    other-modules:
-                        Control.Monad.Trans.ReaderWriterIO,
-                        Control.Monad.Trans.RWSIO,
-                        Reactive.Banana.Prim.Low.OrderedBag,
-                        Reactive.Banana.Prim.Low.GraphTraversal,
-                        Reactive.Banana.Prim.Mid.Combinators,
-                        Reactive.Banana.Prim.Mid.Compile,
-                        Reactive.Banana.Prim.Mid.Evaluation,
-                        Reactive.Banana.Prim.Mid.IO,
-                        Reactive.Banana.Prim.Mid.Plumbing,
-                        Reactive.Banana.Prim.Mid.Test,
-                        Reactive.Banana.Prim.Mid.Types,
-                        Reactive.Banana.Prim.High.Combinators,
-                        Reactive.Banana.Types
+  other-modules:
+    Control.Monad.Trans.ReaderWriterIO
+    Control.Monad.Trans.RWSIO
+    Reactive.Banana.Prim.Low.OrderedBag
+    Reactive.Banana.Prim.Low.GraphTraversal
+    Reactive.Banana.Prim.Mid.Combinators
+    Reactive.Banana.Prim.Mid.Compile
+    Reactive.Banana.Prim.Mid.Evaluation
+    Reactive.Banana.Prim.Mid.IO
+    Reactive.Banana.Prim.Mid.Plumbing
+    Reactive.Banana.Prim.Mid.Test
+    Reactive.Banana.Prim.Mid.Types
+    Reactive.Banana.Prim.High.Combinators
+    Reactive.Banana.Types
 
-    ghc-options: -Wall -Wcompat -Werror=incomplete-record-updates -Werror=incomplete-uni-patterns -Werror=missing-fields -Werror=partial-fields -Wno-name-shadowing
+  ghc-options: -Wall -Wcompat -Werror=incomplete-record-updates -Werror=incomplete-uni-patterns -Werror=missing-fields -Werror=partial-fields -Wno-name-shadowing
 
 Test-Suite unit
-    default-language:   Haskell98
-    type:               exitcode-stdio-1.0
-    hs-source-dirs:     test
-    main-is:            reactive-banana-tests.hs
-    other-modules:      Reactive.Banana.Test.High.Combinators,
-                        Reactive.Banana.Test.High.Plumbing,
-                        Reactive.Banana.Test.High.Space,
-                        Reactive.Banana.Test.Mid.Space,
-                        Reactive.Banana.Test.Low.Gen,
-                        Reactive.Banana.Test.Low.Graph,
-                        Reactive.Banana.Test.Low.GraphGC
-    build-depends:      base >= 4.7 && < 5,
-                        containers,
-                        deepseq >= 1.4.3.0 && < 1.6,
-                        hashable,
-                        pqueue,
-                        reactive-banana,
-                        semigroups,
-                        transformers,
-                        tasty,
-                        tasty-hunit,
-                        tasty-quickcheck >= 0.10.1.2 && < 0.12,
-                        QuickCheck >= 2.10 && < 2.16,
-                        unordered-containers,
-                        vault,
-                        these
+  default-language:   Haskell98
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     test
+  main-is:            reactive-banana-tests.hs
+  other-modules:
+    Reactive.Banana.Test.High.Combinators
+    Reactive.Banana.Test.High.Plumbing
+    Reactive.Banana.Test.High.Space
+    Reactive.Banana.Test.Mid.Space
+    Reactive.Banana.Test.Low.Gen
+    Reactive.Banana.Test.Low.Graph
+    Reactive.Banana.Test.Low.GraphGC
+  build-depends:
+    base >= 4.7 && < 5,
+    containers,
+    deepseq >= 1.4.3.0 && < 1.6,
+    hashable,
+    pqueue,
+    reactive-banana,
+    semigroups,
+    transformers,
+    tasty,
+    tasty-hunit,
+    tasty-quickcheck >= 0.10.1.2 && < 0.12,
+    QuickCheck >= 2.10 && < 2.16,
+    unordered-containers,
+    vault,
+    these
 
 Benchmark space
   default-language:     Haskell2010
   type:                 exitcode-stdio-1.0
-  build-depends:        base
-                      , reactive-banana
-                      , tasty-quickcheck
-                      , tasty
-                      , QuickCheck
+  build-depends:
+      base
+    , reactive-banana
+    , tasty-quickcheck
+    , tasty
+    , QuickCheck
   hs-source-dirs:       test
   main-is:              space.hs
-  other-modules:        Reactive.Banana.Test.Mid.Space
-                      , Reactive.Banana.Test.High.Space
+  other-modules:
+    Reactive.Banana.Test.Mid.Space
+    Reactive.Banana.Test.High.Space
   ghc-options:        -rtsopts -eventlog
 
 
 Benchmark benchmark
   default-language:     Haskell2010
   type:                 exitcode-stdio-1.0
-  build-depends:        base
-                      , reactive-banana
-                      , containers
-                      , random
-                      , tasty
-                      , tasty-bench
+  build-depends:
+    base
+    , reactive-banana
+    , containers
+    , random
+    , tasty
+    , tasty-bench
   hs-source-dirs:       benchmark
   main-is:              Main.hs
   ghc-options:          "-with-rtsopts=-A32m"
