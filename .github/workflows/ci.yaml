@@ -1,108 +1,116 @@
-name: CI
-
+name: Build cabal project
 on:
+  workflow_dispatch:
   pull_request:
+    types:
+      - synchronize
+      - opened
+      - reopened
+  merge_group:
   push:
-    branches: [master]
+    branches:
+      - master
+  schedule:
+    # Run once per day (at UTC 18:00) to maintain cache:
+    - cron: 0 18 * * *
+
+env:
+  target: 'reactive-banana'
 
 jobs:
   build:
-    name: ghc ${{matrix.ghc}}
-    runs-on: ubuntu-20.04
+    name: ${{ matrix.os }}-ghc-${{ matrix.ghc }}
+    runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.allow-failure }}
     strategy:
-      fail-fast: false
       matrix:
+        allow-failure:
+          - false
+        os:
+          - ubuntu-latest
+        cabal:
+          - '3.12'
+        ghc:
+          - '8.4'
+          - '8.6'
+          - '8.8'
+          - '8.10'
+          - '9.2'
+          - '9.4'
+          - '9.6'
+          - '9.8'
+          - '9.10'
         include:
-          - ghc: '9.8.1'
-            allow-failure: true
-          - ghc: '9.6.3'
-            allow-failure: false
-          - ghc: '9.4.8 '
-            allow-failure: false
-          - ghc: '9.2.8'
-            allow-failure: false
-          - ghc: '8.10.7'
-            allow-failure: false
-          - ghc: '8.8.4'
-            allow-failure: false
-          - ghc: '8.6.5'
-            allow-failure: false
-          - ghc: '8.4.4'
-            allow-failure: false
-
+          - allow-failure: true
+            os: ubuntu-latest
+            cabal: '3.12'
+            ghc: '9.12'
     steps:
-      # Weird, the action runner fails with a 'missing -lnuma' error, but only on 8.4.4.
-      - name: Install libnuma-dev for ghc 8.4.4
-        if: matrix.ghc == '8.4.4'
+      # Weird, the action runner fails with a 'missing -lnuma' error, but only on 8.4
+      - name: Install libnuma-dev for ghc 8.4
+        if: matrix.ghc == '8.4'
         run: sudo apt-get install libnuma-dev
 
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/cache@v2
-        id: cache-ghc
-        name: Cache GHC
+      - name: Environment
+        uses: haskell-actions/setup@v2
+        id: setup
         with:
-          path: ~/.ghcup/*
-          key: ghcup-0-${{matrix.ghc}}
-
-      # The random number towards the beginning of the cache keys below are meant to be bumped as a crude means to clear
-      # a cache. GitHub will automatically delete caches that haven't been accessed in 7 days, but there is no way to
-      # purge one manually.
-
-      # Cache dependencies stored in ~/.cabal/store
-      - uses: actions/cache@v2
-        name: Cache dependencies
-        with:
-          path: |
-            ~/.cabal/config
-            ~/.cabal/packages/hackage.haskell.org/
-            ~/.cabal/store
-          key: cabal-1-${{matrix.ghc}}-${{hashFiles('cabal.project')}}
-          restore-keys: cabal-1-${{matrix.ghc}}-
-
-      # Cache dist-newstyle/ for fast incremental builds in CI.
-      # The main cache key includes this commit hash, so we'll always fall back to the most recent build on this branch,
-      # or master.
-      - uses: actions/cache@v2
-        name: Cache build
-        with:
-          path: dist-newstyle
-          key: dist-0-${{matrix.ghc}}-${{github.sha}}
-          restore-keys: dist-0-${{matrix.ghc}}-
-
-      # Install ghc
-      - name: Install ghc
-        if: steps.cache-ghc.outputs.cache-hit != 'true'
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
-          ghcup install ghc ${{matrix.ghc}}
-
-      # Add ghc to path
-      - name: Add ~/.ghcup/bin to path
-        run: echo "$HOME/.ghcup/bin" >> $GITHUB_PATH
-
-      - name: Cabal update
-        run: cabal update
-
-      - name: Build dependencies
-        run: cabal build reactive-banana:lib:reactive-banana --disable-optimization --only-dependencies --with-compiler ghc-${{matrix.ghc}}
-
-      # We need to build the library and tests with the default optimization level
-      # in order to test garbage collection
-      - name: Build library
-        run: cabal build reactive-banana:lib:reactive-banana --with-compiler ghc-${{matrix.ghc}}
-
-      - name: Build tests
-        run: cabal build reactive-banana:test:unit --with-compiler ghc-${{matrix.ghc}}
-
-      - name: Run tests
-        run: cabal run reactive-banana:test:unit --with-compiler ghc-${{matrix.ghc}}
-
-      - name: Generate docs
-        run: cabal haddock reactive-banana --disable-optimization --with-compiler ghc-${{matrix.ghc}}
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: ${{ matrix.cabal }}
 
       - name: Cabal check
         run: |
           cd reactive-banana
           cabal check
+
+      - name: Configure
+        run: |
+          cabal configure \
+            --enable-tests \
+            --enable-benchmarks \
+            --enable-documentation \
+            --test-show-details=direct \
+            --write-ghc-environment-files=always
+          cabal build ${{ env.target }} --dry-run
+        # The last step generates dist-newstyle/cache/plan.json for the cache key.
+
+      # For a description of how the Caching works, see
+      # https://github.com/haskell-actions/setup?tab=readme-ov-file#model-cabal-workflow-with-caching
+      - name: Dependencies (Restore from cache)
+        uses: actions/cache/restore@v4
+        id: cache
+        env:
+          key: ${{ matrix.os }}-ghc-${{ matrix.ghc }}
+          hash: ${{ hashFiles('**/plan.json') }}
+        with:
+          key: ${{ env.key }}-${{ env.hash }}
+          restore-keys: ${{ env.key }}-
+          path: ${{ steps.setup.outputs.cabal-store }}
+
+      - name: Dependencies (Install)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: cabal build ${{ env.target }} --only-dependencies
+
+      # Cache dependencies already here,
+      # so that we do not have to rebuild them should the subsequent steps fail.
+      - name: Dependencies (Save cache)
+        uses: actions/cache/save@v4
+        # If we had an exact cache hit,
+        # trying to save the cache would error because of key clash.
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+          path: ${{ steps.setup.outputs.cabal-store }}
+
+      - name: Build
+        run: >
+          cabal build ${{ env.target }}
+          --enable-tests
+          --enable-benchmarks
+
+      - name: Test
+        run: >
+          cabal test ${{ env.target }}

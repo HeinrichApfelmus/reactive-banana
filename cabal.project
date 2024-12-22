@@ -1,1 +1,2 @@
-packages: reactive-banana
+packages:
+  reactive-banana
