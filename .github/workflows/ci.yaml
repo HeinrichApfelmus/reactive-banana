@@ -40,11 +40,12 @@ jobs:
           - '9.6'
           - '9.8'
           - '9.10'
-        include:
-          - allow-failure: true
-            os: ubuntu-latest
-            cabal: '3.12'
-            ghc: '9.12'
+          - '9.12'
+        # include:
+        #   - allow-failure: true
+        #     os: ubuntu-latest
+        #     cabal: '3.12'
+        #     ghc: '9.12'
     steps:
       # Weird, the action runner fails with a 'missing -lnuma' error, but only on 8.4
       - name: Install libnuma-dev for ghc 8.4
